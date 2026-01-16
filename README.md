@@ -18,7 +18,8 @@ Backend server project.
 
 ## Server Access
 
-- **Username:** root@juanmacias.com
+- **Server:** juanmacias.com
+- **Username:** root
 - **Domain:** redcercanias.com
 
 ## Development
