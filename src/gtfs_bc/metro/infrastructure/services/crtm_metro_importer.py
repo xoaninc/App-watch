@@ -288,10 +288,13 @@ class CRTMMetroImporter:
             if existing:
                 continue
 
+            # Add L prefix for numbered lines (L1, L2, etc.), keep R as-is
+            short_name = f"L{line_num}" if line_num.isdigit() else line_num
+
             route = RouteModel(
                 id=route_id,
                 agency_id="METRO_MADRID",
-                short_name=line_num,
+                short_name=short_name,
                 long_name=METRO_LONG_NAMES.get(line_num, f"Línea {line_num}"),
                 route_type=1,  # Metro/Subway
                 color=METRO_COLORS.get(line_num),
@@ -334,9 +337,14 @@ class CRTMMetroImporter:
         return created
 
     def _create_metro_stops(self, features: List[Dict]) -> int:
-        """Create Metro Madrid stops from Feature Service data."""
+        """Create Metro Madrid stops from Feature Service data.
+
+        Deduplicates by normalized name and merges lines for stations
+        that appear multiple times (e.g., transfer stations).
+        """
         created = 0
-        seen_stops = set()
+        # Dict to accumulate stop data: {normalized_name: {stop_data}}
+        stops_data: Dict[str, Dict] = {}
 
         for feature in features:
             attrs = feature.get('attributes', {})
@@ -355,30 +363,60 @@ class CRTMMetroImporter:
             if not name or not lon or not lat:
                 continue
 
+            # Normalize name for deduplication (lowercase, no extra spaces)
+            normalized_name = ' '.join(name.lower().split())
+
+            if normalized_name in stops_data:
+                # Merge lines for existing stop
+                existing_lineas = stops_data[normalized_name].get('lineas', '')
+                merged_lineas = self._merge_lineas(existing_lineas, lineas)
+                stops_data[normalized_name]['lineas'] = merged_lineas
+                # Keep the first codigo if we don't have one
+                if not stops_data[normalized_name].get('codigo') and codigo:
+                    stops_data[normalized_name]['codigo'] = codigo
+            else:
+                # New stop
+                stops_data[normalized_name] = {
+                    'name': name,
+                    'codigo': codigo,
+                    'lineas': lineas,
+                    'lat': lat,
+                    'lon': lon,
+                    'accesibilidad': accesibilidad,
+                }
+
+        # Now create stops from deduplicated data
+        for normalized_name, data in stops_data.items():
+            codigo = data['codigo']
+            name = data['name']
+
             # Create unique stop ID
             stop_id = f"METRO_{codigo}" if codigo else f"METRO_{name.upper().replace(' ', '_')}"
-
-            if stop_id in seen_stops:
-                continue
-            seen_stops.add(stop_id)
 
             # Check if stop already exists
             existing = self.db.query(StopModel).filter(StopModel.id == stop_id).first()
             if existing:
+                # Update lineas if we have more lines now
+                if data['lineas'] and data['lineas'] != existing.lineas:
+                    merged = self._merge_lineas(existing.lineas or '', data['lineas'])
+                    if merged != existing.lineas:
+                        existing.lineas = merged
+                        logger.debug(f"Updated lines for {existing.name}: {merged}")
                 continue
 
             # Determine wheelchair accessibility
+            accesibilidad = data['accesibilidad']
             wheelchair = 1 if accesibilidad and 'accesible' in str(accesibilidad).lower() else 0
 
             stop = StopModel(
                 id=stop_id,
                 name=name.title(),
-                lat=lat,
-                lon=lon,
+                lat=data['lat'],
+                lon=data['lon'],
                 code=codigo,
                 location_type=0,  # Stop
                 wheelchair_boarding=wheelchair,
-                lineas=lineas,
+                lineas=data['lineas'],
                 nucleo_id=self.MADRID_NUCLEO_ID,
                 nucleo_name=self.MADRID_NUCLEO_NAME,
             )
@@ -388,10 +426,25 @@ class CRTMMetroImporter:
         logger.info(f"Created {created} Metro stops")
         return created
 
+    def _merge_lineas(self, existing: str, new: str) -> str:
+        """Merge two comma-separated line strings, removing duplicates."""
+        existing_set = set(x.strip() for x in existing.split(',') if x.strip())
+        new_set = set(x.strip() for x in new.split(',') if x.strip())
+        merged = existing_set | new_set
+        # Sort lines: numbers first (sorted numerically), then letters
+        numeric = sorted([x for x in merged if x.isdigit()], key=int)
+        alpha = sorted([x for x in merged if not x.isdigit()])
+        return ','.join(numeric + alpha)
+
     def _create_ml_stops(self, features: List[Dict]) -> int:
-        """Create Metro Ligero stops from Feature Service data."""
+        """Create Metro Ligero stops from Feature Service data.
+
+        Deduplicates by normalized name and merges lines for stations
+        that appear multiple times.
+        """
         created = 0
-        seen_stops = set()
+        # Dict to accumulate stop data: {normalized_name: {stop_data}}
+        stops_data: Dict[str, Dict] = {}
 
         for feature in features:
             attrs = feature.get('attributes', {})
@@ -408,24 +461,50 @@ class CRTMMetroImporter:
             if not name or not lon or not lat:
                 continue
 
-            stop_id = f"ML_{codigo}" if codigo else f"ML_{name.upper().replace(' ', '_')}"
+            # Normalize name for deduplication
+            normalized_name = ' '.join(name.lower().split())
 
-            if stop_id in seen_stops:
-                continue
-            seen_stops.add(stop_id)
+            if normalized_name in stops_data:
+                # Merge lines for existing stop
+                existing_lineas = stops_data[normalized_name].get('lineas', '')
+                merged_lineas = self._merge_lineas(existing_lineas, lineas)
+                stops_data[normalized_name]['lineas'] = merged_lineas
+                if not stops_data[normalized_name].get('codigo') and codigo:
+                    stops_data[normalized_name]['codigo'] = codigo
+            else:
+                stops_data[normalized_name] = {
+                    'name': name,
+                    'codigo': codigo,
+                    'lineas': lineas,
+                    'lat': lat,
+                    'lon': lon,
+                }
+
+        # Create stops from deduplicated data
+        for normalized_name, data in stops_data.items():
+            codigo = data['codigo']
+            name = data['name']
+
+            stop_id = f"ML_{codigo}" if codigo else f"ML_{name.upper().replace(' ', '_')}"
 
             existing = self.db.query(StopModel).filter(StopModel.id == stop_id).first()
             if existing:
+                # Update lineas if we have more lines now
+                if data['lineas'] and data['lineas'] != existing.lineas:
+                    merged = self._merge_lineas(existing.lineas or '', data['lineas'])
+                    if merged != existing.lineas:
+                        existing.lineas = merged
+                        logger.debug(f"Updated lines for {existing.name}: {merged}")
                 continue
 
             stop = StopModel(
                 id=stop_id,
                 name=name.title(),
-                lat=lat,
-                lon=lon,
+                lat=data['lat'],
+                lon=data['lon'],
                 code=codigo,
                 location_type=0,
-                lineas=lineas,
+                lineas=data['lineas'],
                 nucleo_id=self.MADRID_NUCLEO_ID,
                 nucleo_name=self.MADRID_NUCLEO_NAME,
             )
