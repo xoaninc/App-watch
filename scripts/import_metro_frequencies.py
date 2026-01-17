@@ -26,24 +26,38 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
-# Default GTFS file paths
-DEFAULT_METRO_GTFS_PATH = "/Users/john/Downloads/google_transit_M4.zip"
-DEFAULT_ML_GTFS_PATH = "/Users/john/Downloads/google_transit_M10 (1).zip"
+
+def print_usage():
+    """Print usage instructions."""
+    print("Usage: python import_metro_frequencies.py <metro_gtfs_path> [ml_gtfs_path]")
+    print("")
+    print("Arguments:")
+    print("  metro_gtfs_path  Path to Metro Madrid GTFS zip file (required)")
+    print("  ml_gtfs_path     Path to Metro Ligero GTFS zip file (optional)")
+    print("")
+    print("Example:")
+    print("  python import_metro_frequencies.py ./data/google_transit_M4.zip ./data/google_transit_M10.zip")
 
 
 def main():
     """Run the Metro frequency import."""
-    # Get GTFS paths from command line or use defaults
-    metro_gtfs_path = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_METRO_GTFS_PATH
-    ml_gtfs_path = sys.argv[2] if len(sys.argv) > 2 else DEFAULT_ML_GTFS_PATH
+    # Require at least the Metro GTFS path
+    if len(sys.argv) < 2:
+        logger.error("Missing required argument: metro_gtfs_path")
+        print_usage()
+        sys.exit(1)
+
+    metro_gtfs_path = sys.argv[1]
+    ml_gtfs_path = sys.argv[2] if len(sys.argv) > 2 else None
 
     if not Path(metro_gtfs_path).exists():
         logger.error(f"Metro GTFS file not found: {metro_gtfs_path}")
         sys.exit(1)
 
-    if not Path(ml_gtfs_path).exists():
+    if ml_gtfs_path and not Path(ml_gtfs_path).exists():
         logger.warning(f"Metro Ligero GTFS file not found: {ml_gtfs_path}")
         logger.info("Importing only Metro Madrid frequencies...")
+        ml_gtfs_path = None
 
     logger.info(f"Importing Metro frequencies...")
 
@@ -51,7 +65,7 @@ def main():
     try:
         importer = MetroFrequencyImporter(db)
 
-        if Path(ml_gtfs_path).exists():
+        if ml_gtfs_path:
             # Import both
             stats = importer.import_all_metro_frequencies(metro_gtfs_path, ml_gtfs_path)
             logger.info("=" * 50)
