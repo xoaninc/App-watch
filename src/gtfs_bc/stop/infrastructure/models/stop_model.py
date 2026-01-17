@@ -35,6 +35,8 @@ class StopModel(Base):
     accesibilidad = Column(String(100), nullable=True)
     cor_bus = Column(Text, nullable=True)
     cor_metro = Column(Text, nullable=True)
+    cor_ml = Column(Text, nullable=True)
+    cor_cercanias = Column(Text, nullable=True)
 
     # Self-referential relationship for parent station
     parent_station = relationship("StopModel", remote_side=[id], backref="child_stops")

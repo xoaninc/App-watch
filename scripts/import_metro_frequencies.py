@@ -93,7 +93,7 @@ def main():
 
         # Metro lines
         for line_num in ['1', '6', '10']:
-            route_id = f'METRO_L{line_num}'
+            route_id = f'METRO_{line_num}'
             freqs = db.query(RouteFrequencyModel).filter(
                 RouteFrequencyModel.route_id == route_id,
                 RouteFrequencyModel.day_type == 'weekday'

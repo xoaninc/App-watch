@@ -61,6 +61,8 @@ class StopResponse(BaseModel):
     accesibilidad: Optional[str]
     cor_bus: Optional[str]
     cor_metro: Optional[str]
+    cor_ml: Optional[str]
+    cor_cercanias: Optional[str]
 
     class Config:
         from_attributes = True
@@ -294,7 +296,7 @@ def get_routes(
 def get_routes_by_coordinates(
     lat: float = Query(..., ge=-90, le=90, description="Latitude (e.g., 40.42 for Madrid)"),
     lon: float = Query(..., ge=-180, le=180, description="Longitude (e.g., -3.72 for Madrid)"),
-    limit: int = Query(100, ge=1, le=1000, description="Maximum results"),
+    limit: int = Query(600, ge=1, le=1000, description="Maximum results"),
     db: Session = Depends(get_db),
 ):
     """Get all routes/lines from the núcleo determined by the given coordinates.
@@ -360,7 +362,7 @@ def get_stops(
     nucleo_name: Optional[str] = Query(None, description="Filter by núcleo name"),
     location_type: Optional[int] = Query(None, description="Filter by location type (0=stop, 1=station)"),
     parent_station: Optional[str] = Query(None, description="Filter by parent station ID"),
-    limit: int = Query(100, ge=1, le=1000, description="Maximum results"),
+    limit: int = Query(600, ge=1, le=1000, description="Maximum results"),
     db: Session = Depends(get_db),
 ):
     """Get all stops/stations.
@@ -393,7 +395,7 @@ def get_stops(
 def get_stops_by_nucleo(
     nucleo_id: Optional[int] = Query(None, description="Núcleo ID"),
     nucleo_name: Optional[str] = Query(None, description="Núcleo name"),
-    limit: int = Query(100, ge=1, le=1000, description="Maximum results"),
+    limit: int = Query(600, ge=1, le=1000, description="Maximum results"),
     db: Session = Depends(get_db),
 ):
     """Get all stops in a specific núcleo.
@@ -428,19 +430,19 @@ def get_stops_by_nucleo(
 def get_stops_by_coordinates(
     lat: float = Query(..., ge=-90, le=90, description="Latitude (e.g., 40.42 for Madrid)"),
     lon: float = Query(..., ge=-180, le=180, description="Longitude (e.g., -3.72 for Madrid)"),
-    limit: int = Query(100, ge=1, le=1000, description="Maximum results"),
+    limit: int = Query(600, ge=1, le=1000, description="Maximum results"),
     db: Session = Depends(get_db),
 ):
     """Get all stops from the núcleo determined by the given coordinates.
 
     The endpoint automatically calculates which province the coordinates belong to,
     then maps it to the corresponding Renfe regional network (núcleo),
-    and returns all stops in that núcleo.
+    and returns all stops in that núcleo, ordered by distance from the given point.
 
     Flow:
     1. Coordinates → Find Province (PostGIS)
     2. Province → Find Nucleo (province mapping)
-    3. Nucleo → Return Stops
+    3. Nucleo → Return Stops (ordered by distance)
 
     If coordinates are outside Spain or in a province without Renfe service,
     returns empty list (no error).
@@ -460,11 +462,28 @@ def get_stops_by_coordinates(
     if not nucleo_name:
         return []
 
-    # Step 3: Get all stops in the determined nucleo
+    # Step 3: Calculate distance using Haversine formula (in meters)
+    # Using PostgreSQL math functions for spherical distance calculation
+    lat_rad = func.radians(lat)
+    lon_rad = func.radians(lon)
+    stop_lat_rad = func.radians(StopModel.lat)
+    stop_lon_rad = func.radians(StopModel.lon)
+
+    # Haversine formula components
+    dlat = stop_lat_rad - lat_rad
+    dlon = stop_lon_rad - lon_rad
+
+    a = func.power(func.sin(dlat / 2), 2) + \
+        func.cos(lat_rad) * func.cos(stop_lat_rad) * func.power(func.sin(dlon / 2), 2)
+
+    # Distance in meters (Earth radius = 6371000m)
+    distance = 2 * 6371000 * func.asin(func.sqrt(a))
+
+    # Step 4: Get all stops in the determined nucleo, ordered by distance
     stops = (
         db.query(StopModel)
         .filter(StopModel.nucleo_name == nucleo_name)
-        .order_by(StopModel.name)
+        .order_by(distance)
         .limit(limit)
         .all()
     )
@@ -522,10 +541,22 @@ def _get_frequency_based_departures(
     # If no routes found via sequences, try lineas field
     if not routes and stop.lineas:
         line_names = [l.strip() for l in stop.lineas.split(",")]
+        is_metro = stop.id.startswith("METRO_")
+        is_ml = stop.id.startswith("ML_")
+
         for line_name in line_names:
+            # Build short_name to search for
+            # Metro routes have "L" prefix (L1-L12), ML routes have "ML" prefix
+            if is_metro and line_name.isdigit():
+                search_name = f"L{line_name}"
+            elif is_ml and line_name.isdigit():
+                search_name = f"ML{line_name}"
+            else:
+                search_name = line_name
+
             # Try to find route by short_name
             route = db.query(RouteModel).filter(
-                RouteModel.short_name == line_name,
+                RouteModel.short_name == search_name,
                 RouteModel.id.like("METRO_%") | RouteModel.id.like("ML_%")
             ).first()
             if route:
