@@ -1,8 +1,11 @@
 from typing import List, Optional
 from datetime import datetime, time
+from zoneinfo import ZoneInfo
 import uuid
-from fastapi import APIRouter, Depends, HTTPException, Query, Body
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
+
+MADRID_TZ = ZoneInfo("Europe/Madrid")
 from sqlalchemy.orm import Session
 
 from core.database import get_db
@@ -570,8 +573,8 @@ def get_current_frequency(
     if not route:
         raise HTTPException(status_code=404, detail=f"Route {route_id} not found")
 
-    # Determine day type from current day
-    now = datetime.now()
+    # Determine day type from current day (Madrid timezone)
+    now = datetime.now(MADRID_TZ)
     weekday = now.weekday()
     if weekday == 5:
         day_type = "saturday"
@@ -755,7 +758,7 @@ def get_manual_alerts(
     query = db.query(AlertModel).filter(AlertModel.source == 'manual')
 
     if active_only:
-        now = datetime.utcnow()
+        now = datetime.now(MADRID_TZ).replace(tzinfo=None)  # Naive datetime for DB comparison
         query = query.filter(
             (AlertModel.active_period_start.is_(None)) | (AlertModel.active_period_start <= now),
             (AlertModel.active_period_end.is_(None)) | (AlertModel.active_period_end >= now),

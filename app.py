@@ -19,12 +19,12 @@ def create_app() -> FastAPI:
         lifespan=lifespan_with_scheduler,
     )
 
-    # CORS middleware
+    # CORS middleware - Public API, no credentials needed
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],  # Configure properly for production
-        allow_credentials=True,
-        allow_methods=["*"],
+        allow_origins=["*"],
+        allow_credentials=False,
+        allow_methods=["GET", "POST", "OPTIONS"],
         allow_headers=["*"],
     )
 

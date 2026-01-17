@@ -163,35 +163,46 @@ def get_agencies(db: Session = Depends(get_db)):
 @router.get("/nucleos", response_model=List[NucleoResponse])
 def get_nucleos(db: Session = Depends(get_db)):
     """Get all Renfe regional networks (núcleos)."""
-    nucleos = db.query(NucleoModel).order_by(NucleoModel.id).all()
+    # Get counts in a single query using subqueries to avoid N+1
+    stops_count_subq = (
+        db.query(StopModel.nucleo_id, func.count(StopModel.id).label('count'))
+        .group_by(StopModel.nucleo_id)
+        .subquery()
+    )
+    routes_count_subq = (
+        db.query(RouteModel.nucleo_id, func.count(RouteModel.id).label('count'))
+        .group_by(RouteModel.nucleo_id)
+        .subquery()
+    )
 
-    # Add stations and lines counts
-    result = []
-    for nucleo in nucleos:
-        stations_count = db.query(func.count(StopModel.id)).filter(
-            StopModel.nucleo_id == nucleo.id
-        ).scalar()
-        lines_count = db.query(func.count(RouteModel.id)).filter(
-            RouteModel.nucleo_id == nucleo.id
-        ).scalar()
-
-        result.append(
-            NucleoResponse(
-                id=nucleo.id,
-                name=nucleo.name,
-                color=nucleo.color,
-                bounding_box_min_lat=nucleo.bounding_box_min_lat,
-                bounding_box_max_lat=nucleo.bounding_box_max_lat,
-                bounding_box_min_lon=nucleo.bounding_box_min_lon,
-                bounding_box_max_lon=nucleo.bounding_box_max_lon,
-                center_lat=nucleo.center_lat,
-                center_lon=nucleo.center_lon,
-                stations_count=stations_count,
-                lines_count=lines_count,
-            )
+    nucleos_with_counts = (
+        db.query(
+            NucleoModel,
+            func.coalesce(stops_count_subq.c.count, 0).label('stations_count'),
+            func.coalesce(routes_count_subq.c.count, 0).label('lines_count'),
         )
+        .outerjoin(stops_count_subq, NucleoModel.id == stops_count_subq.c.nucleo_id)
+        .outerjoin(routes_count_subq, NucleoModel.id == routes_count_subq.c.nucleo_id)
+        .order_by(NucleoModel.id)
+        .all()
+    )
 
-    return result
+    return [
+        NucleoResponse(
+            id=nucleo.id,
+            name=nucleo.name,
+            color=nucleo.color,
+            bounding_box_min_lat=nucleo.bounding_box_min_lat,
+            bounding_box_max_lat=nucleo.bounding_box_max_lat,
+            bounding_box_min_lon=nucleo.bounding_box_min_lon,
+            bounding_box_max_lon=nucleo.bounding_box_max_lon,
+            center_lat=nucleo.center_lat,
+            center_lon=nucleo.center_lon,
+            stations_count=stations_count,
+            lines_count=lines_count,
+        )
+        for nucleo, stations_count, lines_count in nucleos_with_counts
+    ]
 
 
 @router.get("/nucleos/{nucleo_id}", response_model=NucleoResponse)
@@ -730,7 +741,7 @@ def get_stop_departures(
     active_services_query = db.query(CalendarModel.service_id).filter(
         CalendarModel.start_date <= today,
         CalendarModel.end_date >= today,
-        weekday_columns[weekday] == True,
+        weekday_columns[weekday].is_(True),
     )
 
     # 2. Add exceptions (type 1 = added)
