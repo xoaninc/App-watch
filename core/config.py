@@ -9,6 +9,14 @@ class AuthSettings(BaseSettings):
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
+    def validate_secret_key(self, environment: str) -> None:
+        """Validate SECRET_KEY is properly configured in production."""
+        if environment == "production" and self.SECRET_KEY == "change-me-in-production":
+            raise ValueError(
+                "SECRET_KEY must be set to a secure value in production. "
+                "Set the SECRET_KEY environment variable."
+            )
+
 
 class GroqSettings(BaseSettings):
     GROQ_API_KEY: str = ""

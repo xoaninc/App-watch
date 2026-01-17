@@ -7,6 +7,9 @@ from src.gtfs_bc.realtime.infrastructure.services.gtfs_rt_scheduler import lifes
 
 def create_app() -> FastAPI:
     """Create and configure the FastAPI application."""
+    # Validate SECRET_KEY is properly configured in production
+    settings.auth.validate_secret_key(settings.ENVIRONMENT)
+
     app = FastAPI(
         title="RenfeServer API",
         description="API de información de transporte ferroviario en España",
