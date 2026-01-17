@@ -94,6 +94,7 @@ class AlertEntityModel(Base):
         index=True,
     )
     route_id = Column(String(100), nullable=True, index=True)
+    route_short_name = Column(String(20), nullable=True, index=True)  # Extracted line name (C1, C5, etc.)
     stop_id = Column(String(100), nullable=True, index=True)
     trip_id = Column(String(100), nullable=True, index=True)
     agency_id = Column(String(50), nullable=True)

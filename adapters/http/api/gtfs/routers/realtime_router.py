@@ -67,6 +67,7 @@ class StopDelayResponse(BaseModel):
 
 class AlertEntityResponse(BaseModel):
     route_id: Optional[str]
+    route_short_name: Optional[str]  # Extracted line name (C1, C5, etc.) for matching with /routes
     stop_id: Optional[str]
     trip_id: Optional[str]
     agency_id: Optional[str]
@@ -270,6 +271,7 @@ def get_alerts(
             informed_entities=[
                 AlertEntityResponse(
                     route_id=e.route_id,
+                    route_short_name=e.route_short_name,
                     stop_id=e.stop_id,
                     trip_id=e.trip_id,
                     agency_id=e.agency_id,
@@ -307,6 +309,7 @@ def get_alerts_for_route(
             informed_entities=[
                 AlertEntityResponse(
                     route_id=e.route_id,
+                    route_short_name=e.route_short_name,
                     stop_id=e.stop_id,
                     trip_id=e.trip_id,
                     agency_id=e.agency_id,
@@ -344,6 +347,7 @@ def get_alerts_for_stop(
             informed_entities=[
                 AlertEntityResponse(
                     route_id=e.route_id,
+                    route_short_name=e.route_short_name,
                     stop_id=e.stop_id,
                     trip_id=e.trip_id,
                     agency_id=e.agency_id,
@@ -780,6 +784,7 @@ def get_manual_alerts(
             informed_entities=[
                 AlertEntityResponse(
                     route_id=e.route_id,
+                    route_short_name=e.route_short_name,
                     stop_id=e.stop_id,
                     trip_id=e.trip_id,
                     agency_id=e.agency_id,

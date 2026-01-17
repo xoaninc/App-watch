@@ -1,4 +1,5 @@
 import logging
+import re
 from datetime import datetime, date
 from typing import List, Dict, Any, Optional
 
@@ -33,6 +34,24 @@ class GTFSRealtimeFetcher:
 
     def __init__(self, db: Session):
         self.db = db
+
+    @staticmethod
+    def _extract_route_short_name(route_id: Optional[str]) -> Optional[str]:
+        """Extract route short_name from GTFS-RT route_id.
+
+        GTFS-RT route_id formats:
+        - {nucleo}T{code}C{line} (e.g., 30T0024C5 -> C5) for Cercanías
+        - {nucleo}T{code}T{line} (e.g., 31T0009T1 -> T1) for Tranvía/other lines
+        - {nucleo}T{code}R{line} (e.g., 51T0025R2 -> R2) for Rodalies Catalunya
+        Returns the line name like C1, C5, C8a, T1, R2, etc.
+        """
+        if not route_id:
+            return None
+        # Match pattern ending with C, T, or R followed by line number/letter
+        match = re.search(r'([CTR])([0-9]+[a-z]?)$', route_id, re.IGNORECASE)
+        if match:
+            return f"{match.group(1).upper()}{match.group(2)}"
+        return None
 
     async def fetch_and_store_vehicle_positions(self) -> int:
         """Fetch vehicle positions from Renfe API and store in database.
@@ -348,6 +367,7 @@ class GTFSRealtimeFetcher:
             entity_model = AlertEntityModel(
                 alert_id=alert.alert_id,
                 route_id=ie.route_id,
+                route_short_name=self._extract_route_short_name(ie.route_id),
                 stop_id=ie.stop_id,
                 trip_id=ie.trip_id,
                 agency_id=ie.agency_id,
