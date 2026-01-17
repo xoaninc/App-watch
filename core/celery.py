@@ -1,16 +1,6 @@
 from celery import Celery
-from celery.schedules import crontab
 
 from core.config import settings
-
-# Import all models to register them with SQLAlchemy before tasks run
-# This prevents "failed to locate a name" errors in relationships
-try:
-    from src.auth_bc.organization.infrastructure.models import OrganizationModel  # noqa: F401
-    from src.auth_bc.user.infrastructure.models import UserModel  # noqa: F401
-    from src.billing_bc.subscription.infrastructure.models import SubscriptionModel  # noqa: F401
-except ImportError:
-    pass  # These models may not exist yet
 
 celery_app = Celery(
     "renfeserver",
@@ -40,10 +30,8 @@ celery_app.conf.update(
     timezone="Europe/Madrid",
     enable_utc=True,
 
-    # Task autodiscovery
+    # Task routes
     task_routes={
-        "src.reporting_bc.report.infrastructure.tasks.*": {"queue": "reports"},
-        "src.onboarding_bc.web_crawler.infrastructure.tasks.*": {"queue": "onboarding"},
         "src.gtfs_bc.realtime.infrastructure.tasks.*": {"queue": "gtfs_realtime"},
     },
 
@@ -57,9 +45,7 @@ celery_app.conf.update(
     },
 )
 
-# Autodiscover tasks from installed apps
+# Autodiscover tasks
 celery_app.autodiscover_tasks([
-    "src.reporting_bc.report.infrastructure.tasks",
-    "src.onboarding_bc.web_crawler.infrastructure.tasks",
     "src.gtfs_bc.realtime.infrastructure.tasks",
 ])
