@@ -274,13 +274,22 @@ def populate_connections(db: Session, max_distance_meters: float = DEFAULT_MAX_D
     # === SEVILLA CONNECTIONS ===
     # In Sevilla, there's RENFE Cercanías, Metro L1, and Tranvía T1
 
-    # Metro Sevilla -> Cercanías connections
+    # Metro Sevilla -> Cercanías and Tranvía connections
     for metro_sev in stops_by_type['metro_sev']:
         cercanias = get_matching_lines(metro_sev, stops_by_type['renfe'])
+        tranvia_lines = get_matching_lines(metro_sev, stops_by_type['tranvia_sev'])
+
+        updated = False
         if cercanias:
             metro_sev.cor_cercanias = sort_lines(cercanias)
+            updated = True
+        if tranvia_lines:
+            metro_sev.cor_tranvia = sort_lines(tranvia_lines)
+            updated = True
+
+        if updated:
             stats['metro_sev_updated'] += 1
-            logger.info(f"  {metro_sev.name} (Metro SEV): Cercanías={metro_sev.cor_cercanias}")
+            logger.info(f"  {metro_sev.name} (Metro SEV): Cercanías={metro_sev.cor_cercanias}, Tranvía={metro_sev.cor_tranvia}")
 
     # Tranvía Sevilla -> Metro and Cercanías connections
     for tranvia in stops_by_type['tranvia_sev']:
@@ -299,16 +308,25 @@ def populate_connections(db: Session, max_distance_meters: float = DEFAULT_MAX_D
             stats['tranvia_sev_updated'] += 1
             logger.info(f"  {tranvia.name} (Tranvía): Metro={tranvia.cor_metro}, Cercanías={tranvia.cor_cercanias}")
 
-    # RENFE Sevilla -> Metro Sevilla connections (same nucleo_id = 30)
+    # RENFE Sevilla -> Metro Sevilla and Tranvía connections (same nucleo_id = 30)
     sevilla_renfe = [s for s in stops_by_type['renfe'] if s.nucleo_id == 30]
     for renfe in sevilla_renfe:
         metro_sev_lines = get_matching_lines(renfe, stops_by_type['metro_sev'])
+        tranvia_lines = get_matching_lines(renfe, stops_by_type['tranvia_sev'])
+
+        updated = False
         if metro_sev_lines:
             # Append to existing cor_metro if present
             existing = set(renfe.cor_metro.split(', ')) if renfe.cor_metro else set()
             all_lines = existing | metro_sev_lines
             renfe.cor_metro = sort_lines(all_lines)
-            logger.info(f"  {renfe.name} (RENFE SEV): Metro={renfe.cor_metro}")
+            updated = True
+        if tranvia_lines:
+            renfe.cor_tranvia = sort_lines(tranvia_lines)
+            updated = True
+
+        if updated:
+            logger.info(f"  {renfe.name} (RENFE SEV): Metro={renfe.cor_metro}, Tranvía={renfe.cor_tranvia}")
 
     db.commit()
     return stats
@@ -401,13 +419,20 @@ def populate_connections_for_nucleo(db: Session, nucleo_id: int, max_distance_me
 
     # Sevilla logic (nucleo_id = 30)
     elif nucleo_id == 30:
-        # Metro Sevilla -> Cercanías
+        # Metro Sevilla -> Cercanías and Tranvía
         for metro_sev in stops_by_type['metro_sev']:
             cercanias = get_lines(metro_sev, stops_by_type['renfe'])
+            tranvia_lines = get_lines(metro_sev, stops_by_type['tranvia_sev'])
+            updated = False
             if cercanias:
                 metro_sev.cor_cercanias = sort_lines(cercanias)
+                updated = True
+            if tranvia_lines:
+                metro_sev.cor_tranvia = sort_lines(tranvia_lines)
+                updated = True
+            if updated:
                 stats['stops_updated'] += 1
-                logger.info(f"  {metro_sev.name} (Metro SEV): Cercanías={metro_sev.cor_cercanias}")
+                logger.info(f"  {metro_sev.name} (Metro SEV): Cercanías={metro_sev.cor_cercanias}, Tranvía={metro_sev.cor_tranvia}")
 
         # Tranvía -> Metro and Cercanías
         for tranvia in stops_by_type['tranvia_sev']:
@@ -424,15 +449,22 @@ def populate_connections_for_nucleo(db: Session, nucleo_id: int, max_distance_me
                 stats['stops_updated'] += 1
                 logger.info(f"  {tranvia.name} (Tranvía): Metro={tranvia.cor_metro}, Cercanías={tranvia.cor_cercanias}")
 
-        # RENFE -> Metro Sevilla
+        # RENFE -> Metro Sevilla and Tranvía
         for renfe in stops_by_type['renfe']:
             metro_lines = get_lines(renfe, stops_by_type['metro_sev'])
+            tranvia_lines = get_lines(renfe, stops_by_type['tranvia_sev'])
+            updated = False
             if metro_lines:
                 existing = set(renfe.cor_metro.split(', ')) if renfe.cor_metro else set()
                 all_lines = existing | metro_lines
                 renfe.cor_metro = sort_lines(all_lines)
+                updated = True
+            if tranvia_lines:
+                renfe.cor_tranvia = sort_lines(tranvia_lines)
+                updated = True
+            if updated:
                 stats['stops_updated'] += 1
-                logger.info(f"  {renfe.name} (RENFE): Metro={renfe.cor_metro}")
+                logger.info(f"  {renfe.name} (RENFE): Metro={renfe.cor_metro}, Tranvía={renfe.cor_tranvia}")
 
     db.commit()
     logger.info(f"Populated connections for {stats['stops_updated']} stops in núcleo {nucleo_id}")

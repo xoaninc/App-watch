@@ -343,6 +343,7 @@ class RenfeGeoJSONImporter:
                 gtfs_route.nucleo_name = nucleo_name
                 gtfs_route.renfe_idlinea = idlinea
                 gtfs_route.color = color  # Set color from Renfe
+                gtfs_route.text_color = "FFFFFF"  # White text on colored background
 
                 # Store geometry as WKT LineString if available
                 if geometry.get('type') == 'LineString':
@@ -364,6 +365,7 @@ class RenfeGeoJSONImporter:
                     long_name=nombre,
                     route_type=2,  # Rail
                     color=color,  # Set color from Renfe
+                    text_color="FFFFFF",  # White text on colored background
                     nucleo_id=nucleo_id,
                     nucleo_name=nucleo_name,
                     renfe_idlinea=idlinea,

@@ -98,6 +98,7 @@ ML_NETWORK_CONFIG = {
     'color': '3A7DDA',  # Blue (ML1 color as default)
     'text_color': 'FFFFFF',
     'description': 'Red de metro ligero de Madrid',
+    'logo_url': 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/86/MetroLigeroMadrid.svg/200px-MetroLigeroMadrid.svg.png',
 }
 
 
@@ -136,6 +137,7 @@ class CRTMMetroImporter:
                 existing.text_color = config['text_color']
                 existing.description = config.get('description')
                 existing.wikipedia_url = config.get('wikipedia_url')
+                existing.logo_url = config.get('logo_url')
                 logger.info(f"Updated network: {config['code']}")
             else:
                 network = NetworkModel(
@@ -147,6 +149,7 @@ class CRTMMetroImporter:
                     text_color=config['text_color'],
                     description=config.get('description'),
                     wikipedia_url=config.get('wikipedia_url'),
+                    logo_url=config.get('logo_url'),
                 )
                 self.db.add(network)
                 created += 1
