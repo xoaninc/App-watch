@@ -53,6 +53,7 @@ NETWORK_CONFIG = {
     'color': 'E4002B',  # Red
     'text_color': 'FFFFFF',
     'description': 'Servicio de tranvía en el centro de Sevilla',
+    'logo_url': 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/MetroCentro_Sevilla_logo.svg/200px-MetroCentro_Sevilla_logo.svg.png',
 }
 
 # MetroCentro T1 route configuration
@@ -89,6 +90,7 @@ def import_network(db: Session) -> str:
         existing.color = NETWORK_CONFIG['color']
         existing.text_color = NETWORK_CONFIG['text_color']
         existing.description = NETWORK_CONFIG['description']
+        existing.logo_url = NETWORK_CONFIG.get('logo_url')
     else:
         network = NetworkModel(
             code=network_code,
@@ -98,6 +100,7 @@ def import_network(db: Session) -> str:
             color=NETWORK_CONFIG['color'],
             text_color=NETWORK_CONFIG['text_color'],
             description=NETWORK_CONFIG['description'],
+            logo_url=NETWORK_CONFIG.get('logo_url'),
         )
         db.add(network)
         logger.info(f"Created network: {network_code}")
