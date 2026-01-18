@@ -622,6 +622,10 @@ def _get_frequency_based_departures(
             .first()
         )
 
+        # Track if we're using a future frequency (service hasn't started yet)
+        is_future_frequency = False
+        frequency_start_seconds = None
+
         if not frequency:
             # Try to get next upcoming frequency
             frequency = (
@@ -634,6 +638,14 @@ def _get_frequency_based_departures(
                 .order_by(RouteFrequencyModel.start_time)
                 .first()
             )
+            if frequency:
+                is_future_frequency = True
+                # Calculate when this frequency starts in seconds since midnight
+                frequency_start_seconds = (
+                    frequency.start_time.hour * 3600 +
+                    frequency.start_time.minute * 60 +
+                    frequency.start_time.second
+                )
 
         if not frequency:
             continue
@@ -686,9 +698,13 @@ def _get_frequency_based_departures(
         if not directions:
             directions = [(0, route.long_name or route.short_name)]
 
-        # Generate estimated departures starting from now
-        # Round up to next minute
-        next_departure_seconds = ((current_seconds // 60) + 1) * 60
+        # Generate estimated departures
+        # If using a future frequency, start from when service begins
+        # Otherwise, start from now (round up to next minute)
+        if is_future_frequency and frequency_start_seconds:
+            next_departure_seconds = frequency_start_seconds
+        else:
+            next_departure_seconds = ((current_seconds // 60) + 1) * 60
 
         # Generate departures for each direction
         departures_per_direction = max(1, limit // len(directions) // len(routes))
