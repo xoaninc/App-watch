@@ -588,13 +588,15 @@ def get_current_frequency(
         day_type = "weekday"
 
     current_time = now.time()
+    current_time_str = now.strftime("%H:%M:%S")  # For VARCHAR comparison
 
     # Find the frequency period for the current time
+    # Note: end_time is VARCHAR to support GTFS 25:30:00 format
     frequency = db.query(RouteFrequencyModel).filter(
         RouteFrequencyModel.route_id == route_id,
         RouteFrequencyModel.day_type == day_type,
         RouteFrequencyModel.start_time <= current_time,
-        RouteFrequencyModel.end_time > current_time,
+        RouteFrequencyModel.end_time > current_time_str,
     ).first()
 
     if not frequency:
