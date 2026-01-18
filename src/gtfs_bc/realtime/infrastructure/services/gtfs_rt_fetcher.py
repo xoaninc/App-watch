@@ -185,8 +185,9 @@ class GTFSRealtimeFetcher:
         )
         self.db.execute(stmt)
 
-        # Record platform history when train is stopped at a station
-        if vp.current_status.value == "STOPPED_AT" and vp.stop_id and vp.platform:
+        # Record platform history when train is at or approaching a station
+        # Include INCOMING_AT for networks like Cádiz that don't report STOPPED_AT
+        if vp.current_status.value in ("STOPPED_AT", "INCOMING_AT") and vp.stop_id and vp.platform:
             self._record_platform_history(vp)
 
     def _record_platform_history(self, vp: VehiclePosition) -> None:
