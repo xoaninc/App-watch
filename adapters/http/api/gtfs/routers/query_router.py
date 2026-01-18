@@ -69,7 +69,8 @@ class RouteOperatingHoursResponse(BaseModel):
     """Operating hours for a route (derived from stop_times for Cercanías)."""
     route_id: str
     route_short_name: str
-    weekday: Optional[DayOperatingHours]
+    weekday: Optional[DayOperatingHours]  # Monday-Thursday
+    friday: Optional[DayOperatingHours]   # Friday (extended hours)
     saturday: Optional[DayOperatingHours]
     sunday: Optional[DayOperatingHours]
 
@@ -584,10 +585,12 @@ def _get_frequency_based_departures(
     """
     departures = []
 
-    # Determine day type
+    # Determine day type (0=Monday, 4=Friday, 5=Saturday, 6=Sunday)
     weekday = now.weekday()
-    if weekday < 5:
-        day_type = "weekday"
+    if weekday < 4:
+        day_type = "weekday"  # Monday-Thursday
+    elif weekday == 4:
+        day_type = "friday"   # Friday has extended hours
     elif weekday == 5:
         day_type = "saturday"
     else:
@@ -645,11 +648,13 @@ def _get_frequency_based_departures(
     for route in routes:
         # Get applicable frequency for current time and day
         # Handle end_time=00:00:00 as "until midnight" (end of service)
+        effective_day_type = day_type
+
         frequency = (
             db.query(RouteFrequencyModel)
             .filter(
                 RouteFrequencyModel.route_id == route.id,
-                RouteFrequencyModel.day_type == day_type,
+                RouteFrequencyModel.day_type == effective_day_type,
                 RouteFrequencyModel.start_time <= current_time,
                 or_(
                     RouteFrequencyModel.end_time > current_time,
@@ -658,6 +663,23 @@ def _get_frequency_based_departures(
             )
             .first()
         )
+
+        # Fallback: if friday has no data, try weekday
+        if not frequency and effective_day_type == 'friday':
+            effective_day_type = 'weekday'
+            frequency = (
+                db.query(RouteFrequencyModel)
+                .filter(
+                    RouteFrequencyModel.route_id == route.id,
+                    RouteFrequencyModel.day_type == effective_day_type,
+                    RouteFrequencyModel.start_time <= current_time,
+                    or_(
+                        RouteFrequencyModel.end_time > current_time,
+                        RouteFrequencyModel.end_time == time(0, 0, 0),
+                    ),
+                )
+                .first()
+            )
 
         # Track if we're using a future frequency (service hasn't started yet)
         is_future_frequency = False
@@ -669,7 +691,7 @@ def _get_frequency_based_departures(
                 db.query(RouteFrequencyModel)
                 .filter(
                     RouteFrequencyModel.route_id == route.id,
-                    RouteFrequencyModel.day_type == day_type,
+                    RouteFrequencyModel.day_type == effective_day_type,
                     RouteFrequencyModel.start_time > current_time,
                 )
                 .order_by(RouteFrequencyModel.start_time)
@@ -1359,9 +1381,10 @@ def get_route_operating_hours(route_id: str, db: Session = Depends(get_db)):
 
         if frequencies:
             # Derive operating hours from frequencies
-            freq_by_day = {"weekday": [], "saturday": [], "sunday": []}
+            freq_by_day = {"weekday": [], "friday": [], "saturday": [], "sunday": []}
             for freq in frequencies:
-                freq_by_day[freq.day_type].append(freq)
+                if freq.day_type in freq_by_day:
+                    freq_by_day[freq.day_type].append(freq)
 
             def get_freq_hours(day_freqs: list) -> Optional[DayOperatingHours]:
                 if not day_freqs:
@@ -1372,6 +1395,12 @@ def get_route_operating_hours(route_id: str, db: Session = Depends(get_db)):
                 morning_freqs = [f for f in day_freqs if f.start_time >= morning_cutoff]
                 late_night_freqs = [f for f in day_freqs if f.start_time < morning_cutoff]
 
+                # Also check for frequencies that CROSS midnight (end_time < start_time and start >= 20:00)
+                midnight_crossing_freqs = [
+                    f for f in day_freqs
+                    if f.start_time >= time(20, 0, 0) and f.end_time < f.start_time
+                ]
+
                 # First departure: earliest morning frequency start time
                 if morning_freqs:
                     first_dep = min(f.start_time for f in morning_freqs)
@@ -1379,13 +1408,16 @@ def get_route_operating_hours(route_id: str, db: Session = Depends(get_db)):
                     first_dep = min(f.start_time for f in day_freqs)
 
                 # Last departure: check for late-night service (continues past midnight)
-                # If there are late-night frequencies, use the max end_time from those
-                # Otherwise use max end_time from all frequencies
+                # Priority: late_night_freqs > midnight_crossing_freqs > normal
                 if late_night_freqs:
                     # Late night service exists - find the latest end time
                     late_night_end = max(f.end_time for f in late_night_freqs)
                     # Format as 24+ hour for clarity (e.g., 02:00 becomes 26:00)
                     last_dep_str = f"{late_night_end.hour + 24}:{late_night_end.minute:02d}:{late_night_end.second:02d}"
+                elif midnight_crossing_freqs:
+                    # Frequencies that cross midnight - use the end_time as 24+ hour
+                    crossing_end = max(f.end_time for f in midnight_crossing_freqs)
+                    last_dep_str = f"{crossing_end.hour + 24}:{crossing_end.minute:02d}:{crossing_end.second:02d}"
                 else:
                     last_dep = max(f.end_time for f in day_freqs)
                     last_dep_str = last_dep.strftime("%H:%M:%S") if last_dep else None
@@ -1400,6 +1432,7 @@ def get_route_operating_hours(route_id: str, db: Session = Depends(get_db)):
                 route_id=route_id,
                 route_short_name=route.short_name.strip() if route.short_name else "",
                 weekday=get_freq_hours(freq_by_day["weekday"]),
+                friday=get_freq_hours(freq_by_day["friday"]) or get_freq_hours(freq_by_day["weekday"]),
                 saturday=get_freq_hours(freq_by_day["saturday"]),
                 sunday=get_freq_hours(freq_by_day["sunday"]),
             )
@@ -1409,6 +1442,7 @@ def get_route_operating_hours(route_id: str, db: Session = Depends(get_db)):
             route_id=route_id,
             route_short_name=route.short_name or "",
             weekday=None,
+            friday=None,
             saturday=None,
             sunday=None,
         )
@@ -1457,6 +1491,7 @@ def get_route_operating_hours(route_id: str, db: Session = Depends(get_db)):
         route_id=route_id,
         route_short_name=route.short_name.strip() if route.short_name else "",
         weekday=get_day_hours(trips_by_day["weekday"]),
+        friday=get_day_hours(trips_by_day["weekday"]),  # Cercanías: Friday same as weekday
         saturday=get_day_hours(trips_by_day["saturday"]),
         sunday=get_day_hours(trips_by_day["sunday"]),
     )
