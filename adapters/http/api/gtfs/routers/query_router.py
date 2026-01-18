@@ -584,6 +584,8 @@ def get_stops_by_nucleo(
     """Get all stops in a specific núcleo.
 
     Filter by either nucleo_id or nucleo_name.
+    Returns parent stations (location_type=1) or stops without a parent.
+    This avoids returning multiple platforms for the same station.
     """
     if not nucleo_id and not nucleo_name:
         raise HTTPException(
@@ -597,6 +599,20 @@ def get_stops_by_nucleo(
         query = query.filter(StopModel.nucleo_id == nucleo_id)
     else:
         query = query.filter(StopModel.nucleo_name.ilike(f"%{nucleo_name}%"))
+
+    # Only return parent stations (location_type=1) or stops without a parent
+    # This groups platforms under their parent station
+    # Exclude bus stops (TMB_METRO_2.xxx) which are not metro platforms
+    query = query.filter(
+        or_(
+            StopModel.location_type == 1,  # Parent stations
+            and_(
+                StopModel.parent_station_id.is_(None),  # Stops without parent
+                ~StopModel.id.like('TMB_METRO_2.%'),  # Exclude TMB bus stops
+                ~StopModel.id.like('TMB_METRO_E.%'),  # Exclude entrances
+            )
+        )
+    )
 
     stops = query.order_by(StopModel.name).limit(limit).all()
 
@@ -936,6 +952,18 @@ def get_stop_departures(
     if not stop:
         raise HTTPException(status_code=404, detail=f"Stop {stop_id} not found")
 
+    # If this is a parent station, get all child stop IDs
+    # Parent stations (location_type=1) don't have stop_times, their children do
+    if stop.location_type == 1:
+        child_stops = db.query(StopModel.id).filter(
+            StopModel.parent_station_id == stop_id
+        ).all()
+        stop_ids_to_query = [child.id for child in child_stops]
+        if not stop_ids_to_query:
+            stop_ids_to_query = [stop_id]  # Fallback to parent if no children
+    else:
+        stop_ids_to_query = [stop_id]
+
     # Get current time in seconds since midnight (Madrid timezone)
     now = datetime.now(MADRID_TZ)
     current_seconds = now.hour * 3600 + now.minute * 60 + now.second
@@ -1001,7 +1029,7 @@ def get_stop_departures(
             StopTimeModel.trip_id == max_sequence_subquery.c.trip_id
         )
         .filter(
-            StopTimeModel.stop_id == stop_id,
+            StopTimeModel.stop_id.in_(stop_ids_to_query),
             StopTimeModel.departure_seconds >= current_seconds,
             TripModel.service_id.in_(active_service_ids),
             # Exclude trips where this stop is the last stop (train arrives, doesn't depart)
@@ -1019,11 +1047,13 @@ def get_stop_departures(
         .all()
     )
 
-    # If no stop_times results, check if this is a Metro/ML/Tranvia stop and use frequency-based departures
-    is_metro_stop = (
-        stop_id.startswith("METRO_") or
-        stop_id.startswith("ML_") or
-        stop_id.startswith("TRAM_SEV_")
+    # If no stop_times results, check if this is a Metro/ML/Tranvia/FGC stop and use frequency-based departures
+    # For parent stations, check if any child is a metro/fgc stop
+    is_metro_stop = any(
+        sid.startswith("METRO_") or sid.startswith("ML_") or sid.startswith("TRAM_SEV_") or
+        sid.startswith("TMB_METRO_1.") or  # TMB Metro platforms
+        sid.startswith("FGC_")  # FGC platforms
+        for sid in stop_ids_to_query
     )
     if not results and is_metro_stop:
         return _get_frequency_based_departures(db, stop, route_id, limit, now, current_seconds)
@@ -1035,10 +1065,10 @@ def get_stop_departures(
         # Get routes that have stop_times results
         routes_with_stop_times = set(route.id for _, _, route in results)
 
-        # Get all routes serving this stop
+        # Get all routes serving these stops
         all_route_ids_at_stop = set(
             seq.route_id for seq in db.query(StopRouteSequenceModel.route_id)
-            .filter(StopRouteSequenceModel.stop_id == stop_id)
+            .filter(StopRouteSequenceModel.stop_id.in_(stop_ids_to_query))
             .all()
         )
 
@@ -1322,6 +1352,7 @@ def get_route_stops(route_id: str, db: Session = Depends(get_db)):
     """Get all stops served by a route, ordered by their position along the route.
 
     Returns stops with their stop_sequence number indicating position in the route.
+    For stops with a parent_station, returns the parent station instead to avoid duplicates.
     """
     from src.gtfs_bc.stop_route_sequence.infrastructure.models import StopRouteSequenceModel
 
@@ -1343,6 +1374,33 @@ def get_route_stops(route_id: str, db: Session = Depends(get_db)):
     )
 
     if results:
+        # Group by parent station to avoid duplicates
+        # If stop has parent_station_id, use the parent station instead
+        seen_stations = {}  # parent_id or stop_id -> (stop_or_parent, min_sequence)
+        parent_cache = {}  # Cache for parent station lookups
+
+        for stop, sequence in results:
+            if stop.parent_station_id:
+                # This stop has a parent - use the parent station
+                station_key = stop.parent_station_id
+                if station_key not in seen_stations:
+                    # Fetch parent station if not cached
+                    if station_key not in parent_cache:
+                        parent = db.query(StopModel).filter(StopModel.id == station_key).first()
+                        parent_cache[station_key] = parent
+                    parent = parent_cache[station_key]
+                    if parent:
+                        seen_stations[station_key] = (parent, sequence)
+                # Keep the minimum sequence (first occurrence)
+            else:
+                # No parent - use the stop itself
+                station_key = stop.id
+                if station_key not in seen_stations:
+                    seen_stations[station_key] = (stop, sequence)
+
+        # Sort by sequence and build response
+        sorted_stations = sorted(seen_stations.values(), key=lambda x: x[1])
+
         return [
             RouteStopResponse(
                 id=stop.id,
@@ -1366,7 +1424,7 @@ def get_route_stops(route_id: str, db: Session = Depends(get_db)):
                 cor_tranvia=stop.cor_tranvia,
                 stop_sequence=sequence,
             )
-            for stop, sequence in results
+            for stop, sequence in sorted_stations
         ]
 
     # If no sequences found, fallback to lineas-based search with alphabetical order
