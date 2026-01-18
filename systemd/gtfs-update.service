@@ -7,6 +7,7 @@ Type=oneshot
 User=root
 WorkingDirectory=/var/www/renfeserver
 Environment="PATH=/var/www/renfeserver/.venv/bin:/usr/local/bin:/usr/bin"
+Environment="NAP_API_KEY=8063e40c-0ace-4e5b-baf6-36f1b7ae05db"
 ExecStart=/var/www/renfeserver/.venv/bin/python /var/www/renfeserver/scripts/auto_update_gtfs.py
 StandardOutput=append:/var/log/renfeserver/gtfs_update.log
 StandardError=append:/var/log/renfeserver/gtfs_update.log
