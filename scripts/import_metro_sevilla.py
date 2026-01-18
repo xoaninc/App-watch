@@ -37,6 +37,14 @@ logger = logging.getLogger(__name__)
 # Sevilla nucleo ID
 SEVILLA_NUCLEO_ID = 30
 
+# Metro Sevilla route long names (terminus to terminus)
+METRO_SEV_LONG_NAMES = {
+    'L1': 'Ciudad Expo - Olivar de Quintos',
+}
+
+# Default text color for routes (black text on yellow background)
+DEFAULT_TEXT_COLOR = '000000'
+
 
 def read_csv(file_path: Path) -> list:
     """Read CSV file and return list of dicts."""
@@ -102,13 +110,19 @@ def import_routes(db: Session, gtfs_path: Path, agency_id: str) -> tuple:
         if short_name and short_name not in short_names:
             short_names.append(short_name)
 
+        # Use predefined long_name if available, otherwise fall back to GTFS
+        long_name = METRO_SEV_LONG_NAMES.get(short_name, route_data.get('route_long_name', ''))
+
+        # Use default text_color if GTFS value is empty
+        text_color = route_data.get('route_text_color', '') or DEFAULT_TEXT_COLOR
+
         if existing:
             logger.info(f"Route {new_route_id} already exists, updating...")
             existing.short_name = short_name
-            existing.long_name = route_data.get('route_long_name', '')
+            existing.long_name = long_name
             existing.route_type = int(route_data.get('route_type', 1))
             existing.color = route_data.get('route_color', 'F8B500')
-            existing.text_color = route_data.get('route_text_color', 'FFFFFF')
+            existing.text_color = text_color
             existing.agency_id = agency_id
             existing.nucleo_id = SEVILLA_NUCLEO_ID
             existing.nucleo_name = "Sevilla"
@@ -116,10 +130,10 @@ def import_routes(db: Session, gtfs_path: Path, agency_id: str) -> tuple:
             route = RouteModel(
                 id=new_route_id,
                 short_name=short_name,
-                long_name=route_data.get('route_long_name', ''),
+                long_name=long_name,
                 route_type=int(route_data.get('route_type', 1)),
                 color=route_data.get('route_color', 'F8B500'),
-                text_color=route_data.get('route_text_color', 'FFFFFF') or 'FFFFFF',
+                text_color=text_color,
                 agency_id=agency_id,
                 nucleo_id=SEVILLA_NUCLEO_ID,
                 nucleo_name="Sevilla",
