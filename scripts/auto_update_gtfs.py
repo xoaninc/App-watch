@@ -117,7 +117,7 @@ def run_import_script(script_name: str, *args) -> bool:
             env=env,
             capture_output=True,
             text=True,
-            timeout=600  # 10 minutes max
+            timeout=1800  # 30 minutes max (Renfe has millions of stop_times)
         )
 
         if result.returncode == 0:
