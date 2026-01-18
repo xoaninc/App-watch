@@ -201,6 +201,13 @@ class CRTMMetroImporter:
         # Create stops
         stats['stops_created'] = self._create_metro_stops(stations)
 
+        # Clear existing Metro sequences before re-creating (avoid duplicates)
+        self.db.query(StopRouteSequenceModel).filter(
+            StopRouteSequenceModel.route_id.like('METRO_%')
+        ).delete(synchronize_session=False)
+        self.db.flush()
+        logger.info("Cleared existing Metro sequences")
+
         # Create sequences from tramos
         if tramos:
             stats['sequences_created'] = self._create_metro_sequences(tramos)
@@ -232,6 +239,13 @@ class CRTMMetroImporter:
 
         # Create stops
         stats['stops_created'] = self._create_ml_stops(stations)
+
+        # Clear existing ML sequences before re-creating (avoid duplicates)
+        self.db.query(StopRouteSequenceModel).filter(
+            StopRouteSequenceModel.route_id.like('ML_%')
+        ).delete(synchronize_session=False)
+        self.db.flush()
+        logger.info("Cleared existing Metro Ligero sequences")
 
         # Create sequences
         if tramos:
@@ -575,23 +589,17 @@ class CRTMMetroImporter:
                 if not stop:
                     continue
 
-                # Check if sequence already exists
-                existing = self.db.query(StopRouteSequenceModel).filter(
-                    StopRouteSequenceModel.stop_id == stop.id,
-                    StopRouteSequenceModel.route_id == route_id
-                ).first()
-
-                if not existing:
-                    seq = StopRouteSequenceModel(
-                        stop_id=stop.id,
-                        route_id=route_id,
-                        sequence=sequence
-                    )
-                    self.db.add(seq)
-                    created += 1
-
+                # Add sequence (duplicates already cleared before this function)
+                seq = StopRouteSequenceModel(
+                    stop_id=stop.id,
+                    route_id=route_id,
+                    sequence=sequence
+                )
+                self.db.add(seq)
+                created += 1
                 sequence += 1
 
+        self.db.flush()
         logger.info(f"Created {created} Metro stop sequences")
         return created
 
@@ -641,21 +649,16 @@ class CRTMMetroImporter:
                 if not stop:
                     continue
 
-                existing = self.db.query(StopRouteSequenceModel).filter(
-                    StopRouteSequenceModel.stop_id == stop.id,
-                    StopRouteSequenceModel.route_id == route_id
-                ).first()
-
-                if not existing:
-                    seq = StopRouteSequenceModel(
-                        stop_id=stop.id,
-                        route_id=route_id,
-                        sequence=sequence
-                    )
-                    self.db.add(seq)
-                    created += 1
-
+                # Add sequence (duplicates already cleared before this function)
+                seq = StopRouteSequenceModel(
+                    stop_id=stop.id,
+                    route_id=route_id,
+                    sequence=sequence
+                )
+                self.db.add(seq)
+                created += 1
                 sequence += 1
 
+        self.db.flush()
         logger.info(f"Created {created} Metro Ligero stop sequences")
         return created
