@@ -329,10 +329,14 @@ def main():
             # Build route mapping first
             route_mapping = build_route_mapping(db, zf)
 
-            # Clear existing data in reverse FK order
+            # Clear existing data in reverse FK order (commit each to satisfy FK checks)
             logger.info("Clearing existing schedule data...")
             db.execute(text("DELETE FROM gtfs_stop_times"))
+            db.commit()
+            logger.info("  Cleared stop_times")
             db.execute(text("DELETE FROM gtfs_trips"))
+            db.commit()
+            logger.info("  Cleared trips")
             db.execute(text("DELETE FROM gtfs_calendar"))
             db.commit()
             logger.info("Cleared existing data")
