@@ -46,12 +46,13 @@ class RouteResponse(BaseModel):
 
 class RouteFrequencyResponse(BaseModel):
     """Frequency data for a route (Metro, ML, Tranvía)."""
-    route_id: str
+    trip_id: Optional[str] = None  # Optional - not always available
+    route_id: Optional[str] = None  # Optional for compatibility
     day_type: str  # 'weekday', 'saturday', 'sunday'
     start_time: str  # HH:MM:SS format
     end_time: str  # HH:MM:SS format
     headway_secs: int  # Interval between trains in seconds
-    headway_minutes: float  # Interval in minutes (for convenience)
+    headway_minutes: Optional[float] = None  # Interval in minutes (for convenience)
 
     class Config:
         from_attributes = True
@@ -718,18 +719,26 @@ def _get_frequency_based_departures(
             first_stop = db.query(StopModel).filter(StopModel.id == first_stop_seq.stop_id).first()
             last_stop = db.query(StopModel).filter(StopModel.id == last_stop_seq.stop_id).first()
 
-            # Don't show direction towards current stop if at terminal
+            # Show valid directions based on position:
+            # - Direction 0 (towards last_stop): show if NOT at last stop
+            # - Direction 1 (towards first_stop): show if NOT at first stop
+            # At terminus: only show direction AWAY from current stop (trains originate here)
+
+            # Check if current stop is a terminus by comparing stop IDs
+            is_at_first_stop = (first_stop_seq.stop_id == stop.id)
+            is_at_last_stop = (last_stop_seq.stop_id == stop.id)
+
             if stop_seq:
-                if stop_seq.sequence != first_stop_seq.sequence and last_stop:
-                    directions.append((0, last_stop.name))
-                if stop_seq.sequence != last_stop_seq.sequence and first_stop:
-                    directions.append((1, first_stop.name))
-            else:
-                # If no sequence info, show both directions
-                if last_stop:
-                    directions.append((0, last_stop.name))
-                if first_stop:
-                    directions.append((1, first_stop.name))
+                # Use sequence numbers for comparison
+                is_at_first_stop = (stop_seq.sequence == first_stop_seq.sequence)
+                is_at_last_stop = (stop_seq.sequence == last_stop_seq.sequence)
+
+            # Direction 0: towards last_stop - only show if NOT at last stop
+            if not is_at_last_stop and last_stop:
+                directions.append((0, last_stop.name))
+            # Direction 1: towards first_stop - only show if NOT at first stop
+            if not is_at_first_stop and first_stop:
+                directions.append((1, first_stop.name))
 
         if not directions:
             directions = [(0, route.long_name or route.short_name)]
@@ -1320,12 +1329,12 @@ def get_route_frequencies(route_id: str, db: Session = Depends(get_db)):
 def get_route_operating_hours(route_id: str, db: Session = Depends(get_db)):
     """Get operating hours for a route (first/last departure times).
 
-    For schedule-based routes (Cercanías), this derives operating hours from
-    stop_times data. For frequency-based routes (Metro, Tranvía), use the
-    /frequencies endpoint instead.
+    Works for both schedule-based routes (Cercanías) and frequency-based
+    routes (Metro, Tranvía). For Cercanías, derives from stop_times.
+    For Metro/Tranvía, derives from frequencies table.
 
     Returns first and last departure times for each day type (weekday,
-    saturday, sunday) along with total trip count.
+    saturday, sunday) along with total trip count (0 for frequency-based).
     """
     # Verify route exists
     route = db.query(RouteModel).filter(RouteModel.id == route_id).first()
@@ -1341,7 +1350,40 @@ def get_route_operating_hours(route_id: str, db: Session = Depends(get_db)):
     )
 
     if not trips_with_calendar:
-        # No schedule data - might be frequency-based route
+        # No schedule data - check if it's a frequency-based route
+        frequencies = (
+            db.query(RouteFrequencyModel)
+            .filter(RouteFrequencyModel.route_id == route_id)
+            .all()
+        )
+
+        if frequencies:
+            # Derive operating hours from frequencies
+            freq_by_day = {"weekday": [], "saturday": [], "sunday": []}
+            for freq in frequencies:
+                freq_by_day[freq.day_type].append(freq)
+
+            def get_freq_hours(day_freqs: list) -> Optional[DayOperatingHours]:
+                if not day_freqs:
+                    return None
+                # Get earliest start_time and latest end_time
+                first_dep = min(f.start_time for f in day_freqs)
+                last_dep = max(f.end_time for f in day_freqs)
+                return DayOperatingHours(
+                    first_departure=first_dep.strftime("%H:%M:%S") if first_dep else None,
+                    last_departure=last_dep.strftime("%H:%M:%S") if last_dep else None,
+                    total_trips=0,  # Not applicable for frequency-based
+                )
+
+            return RouteOperatingHoursResponse(
+                route_id=route_id,
+                route_short_name=route.short_name.strip() if route.short_name else "",
+                weekday=get_freq_hours(freq_by_day["weekday"]),
+                saturday=get_freq_hours(freq_by_day["saturday"]),
+                sunday=get_freq_hours(freq_by_day["sunday"]),
+            )
+
+        # No schedule data and no frequencies
         return RouteOperatingHoursResponse(
             route_id=route_id,
             route_short_name=route.short_name or "",

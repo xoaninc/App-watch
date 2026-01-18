@@ -4,6 +4,14 @@
 
 This document summarizes the changes made to standardize and improve the GTFS import system for adding new Spanish transit systems.
 
+## Automatic Update Schedule
+
+The GTFS data is automatically updated **every Monday at 04:00 AM** via systemd timer.
+
+- **Timer file**: `systemd/gtfs-update.timer`
+- **Service file**: `systemd/gtfs-update.service`
+- **Update script**: `scripts/auto_update_gtfs.py`
+
 ## Transit Systems Status
 
 | Sistema | Network | Agency | Colores | location_type | Correspondencias |
@@ -13,6 +21,21 @@ This document summarizes the changes made to standardize and improve the GTFS im
 | Metro Sevilla | ✅ METRO_SEV | ✅ METRO_SEVILLA | ✅ Verde (#0D6928) | ✅ 1 (station) | ✅ automático |
 | Tranvía Sevilla | ✅ TRAM_SEV | ✅ TRANVIA_SEVILLA | ✅ Rojo (#E4002B) | ✅ 1 (station) | ✅ automático |
 | Renfe Cercanías | N/A | N/A | N/A | N/A | ✅ automático |
+
+## Import Scripts Summary
+
+| Script | Sistema | Stops | Routes | Trips | Stop Times | Frequencies |
+|--------|---------|-------|--------|-------|------------|-------------|
+| `crtm_metro_importer.py` | Metro Madrid, ML | ✅ | ✅ | ❌ | ❌ | ❌ |
+| `import_metro_frequencies.py` | Metro Madrid, ML | ❌ | ❌ | ❌ | ❌ | ✅ |
+| `import_metro_sevilla.py` | Metro Sevilla | ✅ | ✅ | ❌ | ❌ | ✅ |
+| `import_tranvia_sevilla.py` | Tranvía Sevilla | ✅ | ✅ | ❌ | ❌ | ✅ |
+| `import_gtfs_static.py` | Cercanías | ✅* | ✅* | ✅ | ✅ | ❌ |
+| `import_metro_tussam.py` | Tussam (bus) | ✅ | ✅ | ❌ | ❌ | ❌ |
+
+*Cercanías stops/routes are imported during initial setup only.
+
+**Correspondence fields** (`cor_metro`, `cor_ml`, `cor_cercanias`, `cor_tranvia`) are automatically calculated by `populate_stop_connections.py` after each import.
 
 ## Correspondences System
 
@@ -480,6 +503,7 @@ curl https://juanmacias.com/api/v1/gtfs/routes/RENFE_C1_19/frequencies
 ```json
 [
   {
+    "trip_id": null,
     "route_id": "METRO_1",
     "day_type": "weekday",
     "start_time": "06:05:00",
@@ -488,6 +512,7 @@ curl https://juanmacias.com/api/v1/gtfs/routes/RENFE_C1_19/frequencies
     "headway_minutes": 9.0
   },
   {
+    "trip_id": null,
     "route_id": "METRO_1",
     "day_type": "weekday",
     "start_time": "07:00:00",
@@ -601,7 +626,7 @@ Renfe Cercanías usa horarios fijos (`stop_times`) en lugar de frecuencias.
 
 ### API Endpoint: GET /routes/{route_id}/operating-hours
 
-Endpoint para obtener el primer y último tren de cada día:
+Endpoint universal para obtener el primer y último tren/metro de cada día. **Funciona para TODOS los tipos de rutas:**
 
 ```bash
 # Cercanías Sevilla C1
@@ -609,9 +634,15 @@ curl https://juanmacias.com/api/v1/gtfs/routes/RENFE_C1_19/operating-hours
 
 # Cercanías Madrid C1
 curl https://juanmacias.com/api/v1/gtfs/routes/RENFE_C1_34/operating-hours
+
+# Metro Sevilla L1 (también funciona!)
+curl https://juanmacias.com/api/v1/gtfs/routes/METRO_SEV_L1_CE_OQ/operating-hours
+
+# Tranvía Sevilla T1
+curl https://juanmacias.com/api/v1/gtfs/routes/TRAM_SEV_T1/operating-hours
 ```
 
-**Respuesta:**
+**Respuesta Cercanías (schedule-based):**
 ```json
 {
   "route_id": "RENFE_C1_19",
@@ -634,7 +665,30 @@ curl https://juanmacias.com/api/v1/gtfs/routes/RENFE_C1_34/operating-hours
 }
 ```
 
-**Nota:** Para rutas frequency-based (Metro, Tranvía), este endpoint devuelve `null` en todos los campos. Usar `/frequencies` en su lugar.
+**Respuesta Metro/Tranvía (frequency-based):**
+```json
+{
+  "route_id": "METRO_SEV_L1_CE_OQ",
+  "route_short_name": "L1",
+  "weekday": {
+    "first_departure": "06:30:00",
+    "last_departure": "02:00:00",
+    "total_trips": 0
+  },
+  "saturday": {
+    "first_departure": "07:30:00",
+    "last_departure": "02:00:00",
+    "total_trips": 0
+  },
+  "sunday": {
+    "first_departure": "07:30:00",
+    "last_departure": "23:00:00",
+    "total_trips": 0
+  }
+}
+```
+
+**Nota:** `total_trips = 0` indica que es frequency-based (no hay trips discretos, se deriva de `gtfs_route_frequencies`).
 
 ### Cómo se Calculan los Horarios
 
@@ -653,21 +707,22 @@ Los horarios se derivan de `stop_times` + `calendar`:
 
 | Endpoint | Tipo de Ruta | Datos |
 |----------|--------------|-------|
-| `/routes/{id}/frequencies` | Metro, ML, Tranvía | Frecuencias por período |
-| `/routes/{id}/operating-hours` | Cercanías | Primer/último tren del día |
+| `/routes/{id}/frequencies` | Metro, ML, Tranvía | Frecuencias por período (headway) |
+| `/routes/{id}/operating-hours` | **TODOS** | Primer/último tren del día |
+
+**Recomendación:** Usar siempre `/operating-hours` para obtener horarios de apertura/cierre. Es universal.
 
 ```python
-# Ejemplo: Determinar qué endpoint usar
-route_id = "RENFE_C1_34"
+# Ejemplo: Obtener horarios de cualquier ruta
+route_id = "METRO_SEV_L1_CE_OQ"  # o "RENFE_C1_34"
 
-# Primero intentar frequencies
+hours = requests.get(f".../routes/{route_id}/operating-hours").json()
+service_start = hours["weekday"]["first_departure"]  # "06:30:00"
+service_end = hours["weekday"]["last_departure"]     # "02:00:00"
+
+# Si necesitas frecuencias (headway entre trenes):
 frequencies = requests.get(f".../routes/{route_id}/frequencies").json()
-
 if frequencies:
     # Es frequency-based (Metro, Tranvía)
-    service_start = min(f["start_time"] for f in frequencies if f["day_type"] == "weekday")
-else:
-    # Es schedule-based (Cercanías)
-    hours = requests.get(f".../routes/{route_id}/operating-hours").json()
-    service_start = hours["weekday"]["first_departure"]
+    headway = frequencies[0]["headway_secs"]  # 300 = 5 minutos
 ```
