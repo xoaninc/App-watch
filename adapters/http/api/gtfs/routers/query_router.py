@@ -702,6 +702,7 @@ def _get_frequency_based_departures(
     day_type = get_effective_day_type(now)
 
     current_time = now.time()
+    current_time_str = now.strftime("%H:%M:%S")  # For VARCHAR comparison with end_time
 
     # Get routes serving this stop from stop_route_sequence
     routes_query = (
@@ -755,6 +756,7 @@ def _get_frequency_based_departures(
         # Handle end_time=00:00:00 as "until midnight" (end of service)
         effective_day_type = day_type
 
+        # Note: end_time is VARCHAR to support GTFS 25:30:00 format
         frequency = (
             db.query(RouteFrequencyModel)
             .filter(
@@ -762,8 +764,8 @@ def _get_frequency_based_departures(
                 RouteFrequencyModel.day_type == effective_day_type,
                 RouteFrequencyModel.start_time <= current_time,
                 or_(
-                    RouteFrequencyModel.end_time > current_time,
-                    RouteFrequencyModel.end_time == time(0, 0, 0),  # 00:00:00 means until midnight
+                    RouteFrequencyModel.end_time > current_time_str,
+                    RouteFrequencyModel.end_time == "00:00:00",  # 00:00:00 means until midnight
                 ),
             )
             .first()
@@ -779,8 +781,8 @@ def _get_frequency_based_departures(
                     RouteFrequencyModel.day_type == effective_day_type,
                     RouteFrequencyModel.start_time <= current_time,
                     or_(
-                        RouteFrequencyModel.end_time > current_time,
-                        RouteFrequencyModel.end_time == time(0, 0, 0),
+                        RouteFrequencyModel.end_time > current_time_str,
+                        RouteFrequencyModel.end_time == "00:00:00",
                     ),
                 )
                 .first()
@@ -1564,11 +1566,25 @@ def get_route_operating_hours(route_id: str, db: Session = Depends(get_db)):
         # We use departure_time from the first stop of each trip (stop_sequence = 1 or min)
         from sqlalchemy import func as sqlfunc
 
-        # Get min/max departure times across all stop_times for these trips
-        # Note: Renfe can have late-night services (00:10, etc.) as last departures
-        result = (
+        # First departure: filter out late-night services (00:00-04:59) which are
+        # actually services from the previous day in GTFS format.
+        # Real morning service starts >= 05:00:00
+        # Note: departure_time is VARCHAR in GTFS format "HH:MM:SS", so string comparison works
+        morning_cutoff = "05:00:00"
+
+        # Get first departure from morning services only
+        first_dep_result = (
             db.query(
                 sqlfunc.min(StopTimeModel.departure_time).label("first_dep"),
+            )
+            .filter(StopTimeModel.trip_id.in_(trip_ids))
+            .filter(StopTimeModel.departure_time >= morning_cutoff)
+            .first()
+        )
+
+        # Get last departure and trip count (include all services)
+        last_dep_result = (
+            db.query(
                 sqlfunc.max(StopTimeModel.departure_time).label("last_dep"),
                 sqlfunc.count(sqlfunc.distinct(StopTimeModel.trip_id)).label("trip_count"),
             )
@@ -1576,13 +1592,13 @@ def get_route_operating_hours(route_id: str, db: Session = Depends(get_db)):
             .first()
         )
 
-        if not result or not result.first_dep:
+        if not first_dep_result or not first_dep_result.first_dep:
             return None
 
         return DayOperatingHours(
-            first_departure=str(result.first_dep),
-            last_departure=str(result.last_dep),
-            total_trips=result.trip_count or 0,
+            first_departure=str(first_dep_result.first_dep),
+            last_departure=str(last_dep_result.last_dep) if last_dep_result else None,
+            total_trips=last_dep_result.trip_count or 0 if last_dep_result else 0,
         )
 
     return RouteOperatingHoursResponse(
