@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 
 from core.database import SessionLocal
 from src.gtfs_bc.realtime.infrastructure.services.gtfs_rt_fetcher import GTFSRealtimeFetcher
+from src.gtfs_bc.realtime.infrastructure.services.multi_operator_fetcher import MultiOperatorFetcher
 
 logger = logging.getLogger(__name__)
 
@@ -103,11 +104,34 @@ class GTFSRTScheduler:
             )
 
     def _fetch_sync(self) -> dict:
-        """Synchronous fetch operation."""
+        """Synchronous fetch operation for all operators."""
         db = SessionLocal()
         try:
-            fetcher = GTFSRealtimeFetcher(db)
-            return fetcher.fetch_all_sync()
+            # Fetch Renfe GTFS-RT
+            renfe_fetcher = GTFSRealtimeFetcher(db)
+            renfe_result = renfe_fetcher.fetch_all_sync()
+
+            # Fetch other operators (TMB, FGC, Metro Bilbao, Euskotren)
+            multi_fetcher = MultiOperatorFetcher(db)
+            multi_results = multi_fetcher.fetch_all_operators_sync()
+
+            # Aggregate results
+            total_positions = renfe_result.get('vehicle_positions', 0)
+            total_updates = renfe_result.get('trip_updates', 0)
+            total_alerts = renfe_result.get('alerts', 0)
+
+            for op_result in multi_results:
+                total_positions += op_result.get('vehicle_positions', 0)
+                total_updates += op_result.get('trip_updates', 0)
+                total_alerts += op_result.get('alerts', 0)
+
+            return {
+                'vehicle_positions': total_positions,
+                'trip_updates': total_updates,
+                'alerts': total_alerts,
+                'renfe': renfe_result,
+                'operators': multi_results,
+            }
         finally:
             db.close()
 
