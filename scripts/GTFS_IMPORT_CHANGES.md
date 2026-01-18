@@ -342,3 +342,118 @@ Bilbao Abando: "Metro: Líneas 1 y 2"
 ```
 
 These are **NOT errors** - they come from RENFE's original data. Our import system only manages Madrid (nucleo_id=10) and Sevilla (nucleo_id=30) correspondences with proper code format.
+
+## Frequency-Based Services (Metro, Metro Ligero, Tranvía)
+
+Systems that use frequency-based departures instead of fixed schedules (stop_times):
+
+| Sistema | Tipo | Tabla de Datos |
+|---------|------|----------------|
+| Metro Madrid | frequency | `gtfs_route_frequencies` |
+| Metro Ligero | frequency | `gtfs_route_frequencies` |
+| Metro Sevilla | frequency | `gtfs_route_frequencies` |
+| Tranvía Sevilla | frequency | `gtfs_route_frequencies` |
+| Renfe Cercanías | schedule | `gtfs_stop_times` |
+
+### Frequency Data Structure
+
+```sql
+CREATE TABLE gtfs_route_frequencies (
+    id SERIAL PRIMARY KEY,
+    route_id VARCHAR(100) NOT NULL,
+    day_type VARCHAR(20) NOT NULL,  -- 'weekday', 'saturday', 'sunday'
+    start_time TIME NOT NULL,        -- Hora inicio del período
+    end_time TIME NOT NULL,          -- Hora fin del período
+    headway_secs INTEGER NOT NULL    -- Intervalo entre trenes (segundos)
+);
+```
+
+### Day Type Values
+
+| day_type | Días | Ejemplo |
+|----------|------|---------|
+| `weekday` | Lunes a Viernes | L-V |
+| `saturday` | Sábado | S |
+| `sunday` | Domingo y Festivos | D/F |
+
+### Import de Frecuencias
+
+Los scripts de import leen `frequencies.txt` y `calendar.txt` del GTFS:
+
+```python
+# En import_metro_sevilla.py, import_tranvia_sevilla.py
+def import_frequencies(db, gtfs_path, route_mapping):
+    # 1. Leer frequencies.txt y calendar.txt
+    # 2. Mapear service_id → day_type usando calendar.txt
+    # 3. Agrupar por (route_id, day_type, start_time, end_time)
+    # 4. Guardar mínimo headway para cada período
+
+    freq_model = RouteFrequencyModel(
+        route_id=route_id,
+        start_time=time(6, 30),      # ← Hora inicio servicio
+        end_time=time(23, 30),       # ← Hora fin servicio
+        headway_secs=360,            # ← 6 minutos entre trenes
+        day_type='weekday',
+    )
+```
+
+### Comportamiento de la API (Fuera de Horario)
+
+**Importante:** La API maneja correctamente las consultas fuera de horario:
+
+| Hora actual | Servicio | Respuesta API |
+|-------------|----------|---------------|
+| 14:00 (servicio activo) | ✅ | Salidas desde ahora |
+| 04:35 (sin servicio) | ❌ | Salidas desde hora de inicio |
+
+**Ejemplo a las 04:35 AM (domingo):**
+```json
+{
+  "route_short_name": "L1",
+  "departure_time": "07:30:00",  // ← Hora real de inicio, NO 04:35
+  "minutes_until": 175,
+  "frequency_based": true
+}
+```
+
+### Frecuencias por Defecto
+
+Si el GTFS no tiene `frequencies.txt`, los scripts usan valores por defecto:
+
+```python
+# En import_tranvia_sevilla.py
+default_frequencies = [
+    # Weekday
+    {'day_type': 'weekday', 'start': (6, 30), 'end': (9, 0), 'headway': 360},   # 6min
+    {'day_type': 'weekday', 'start': (9, 0), 'end': (14, 0), 'headway': 480},   # 8min
+    # ...
+    # Saturday
+    {'day_type': 'saturday', 'start': (7, 0), 'end': (14, 0), 'headway': 480},
+    # Sunday
+    {'day_type': 'sunday', 'start': (8, 0), 'end': (14, 0), 'headway': 600},
+]
+```
+
+### Verificar Frecuencias Importadas
+
+```sql
+-- Ver frecuencias de un sistema
+SELECT route_id, day_type, start_time, end_time, headway_secs
+FROM gtfs_route_frequencies
+WHERE route_id LIKE 'METRO_SEV%'
+ORDER BY route_id, day_type, start_time;
+
+-- Verificar que hay datos para todos los días
+SELECT route_id, day_type, COUNT(*) as periods
+FROM gtfs_route_frequencies
+WHERE route_id LIKE 'TRAM_SEV%'
+GROUP BY route_id, day_type;
+```
+
+### Checklist para Nuevos Sistemas Frequency-Based
+
+1. ✅ Importar frecuencias desde `frequencies.txt` (o usar defaults)
+2. ✅ Asegurar que hay datos para `weekday`, `saturday`, `sunday`
+3. ✅ Verificar que `start_time` y `end_time` son correctos
+4. ✅ El `headway_secs` debe ser razonable (60-1200 segundos)
+5. ✅ La API mostrará salidas desde `start_time` si se consulta antes
