@@ -44,6 +44,19 @@ class RouteResponse(BaseModel):
         from_attributes = True
 
 
+class RouteFrequencyResponse(BaseModel):
+    """Frequency data for a route (Metro, ML, Tranvía)."""
+    route_id: str
+    day_type: str  # 'weekday', 'saturday', 'sunday'
+    start_time: str  # HH:MM:SS format
+    end_time: str  # HH:MM:SS format
+    headway_secs: int  # Interval between trains in seconds
+    headway_minutes: float  # Interval in minutes (for convenience)
+
+    class Config:
+        from_attributes = True
+
+
 class StopResponse(BaseModel):
     id: str
     name: str
@@ -1247,4 +1260,41 @@ def get_route_stops(route_id: str, db: Session = Depends(get_db)):
             stop_sequence=idx + 1,
         )
         for idx, stop in enumerate(stops)
+    ]
+
+
+@router.get("/routes/{route_id}/frequencies", response_model=List[RouteFrequencyResponse])
+def get_route_frequencies(route_id: str, db: Session = Depends(get_db)):
+    """Get frequency data for a route (operating hours and headways).
+
+    Returns frequency information for Metro, Metro Ligero, Tranvía, and other
+    frequency-based services. Includes start/end times and headway for each
+    day type (weekday, saturday, sunday).
+
+    Returns empty list for schedule-based routes (like Cercanías) that use
+    stop_times instead of frequencies.
+    """
+    # Verify route exists
+    route = db.query(RouteModel).filter(RouteModel.id == route_id).first()
+    if not route:
+        raise HTTPException(status_code=404, detail=f"Route {route_id} not found")
+
+    # Get frequencies for this route
+    frequencies = (
+        db.query(RouteFrequencyModel)
+        .filter(RouteFrequencyModel.route_id == route_id)
+        .order_by(RouteFrequencyModel.day_type, RouteFrequencyModel.start_time)
+        .all()
+    )
+
+    return [
+        RouteFrequencyResponse(
+            route_id=freq.route_id,
+            day_type=freq.day_type,
+            start_time=freq.start_time.strftime("%H:%M:%S"),
+            end_time=freq.end_time.strftime("%H:%M:%S"),
+            headway_secs=freq.headway_secs,
+            headway_minutes=round(freq.headway_secs / 60, 1),
+        )
+        for freq in frequencies
     ]
