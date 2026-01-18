@@ -165,16 +165,17 @@ Fixed network and location_type for Metro Madrid and Metro Ligero.
 Fixed color and added network support.
 
 **Fixes:**
-- Changed default color from `F8B500` (yellow) to `E4002B` (red)
+- Set official Metro Sevilla green color `#0D6928`
 - Added `NetworkModel` for route_count to work
 
 **Changes:**
 - Added `NetworkModel` import
 - Added `NETWORK_CONFIG` constant
-- Changed `DEFAULT_ROUTE_COLOR` to `E4002B`
-- Changed `DEFAULT_TEXT_COLOR` to `FFFFFF`
+- Set `DEFAULT_ROUTE_COLOR` to `#0D6928` (green)
+- Set `DEFAULT_TEXT_COLOR` to `#FFFFFF`
 - Added `import_network()` function
 - Updated main() to call `import_network()`
+- Added automatic correspondence calculation with `populate_connections_for_nucleo()`
 
 ### `scripts/populate_stop_connections.py`
 Extended to handle Sevilla transit systems and name-based matching.
@@ -211,17 +212,16 @@ Extended to handle Sevilla transit systems and name-based matching.
 |----|------|
 | 10 | Madrid |
 | 20 | Asturias |
-| 30 | Santander |
-| 31 | Bilbao |
-| 32 | San Sebastián |
-| 40 | Zaragoza |
-| 50 | Barcelona (Rodalies) |
-| 60 | Valencia |
-| 61 | Murcia/Alicante |
-| 62 | Castellón |
-| 70 | Sevilla |
-| 71 | Cádiz |
-| 72 | Málaga |
+| 30 | Sevilla |
+| 31 | Cádiz |
+| 32 | Málaga |
+| 40 | Valencia |
+| 41 | Murcia/Alicante |
+| 50 | Rodalies de Catalunya |
+| 60 | Bilbao |
+| 61 | San Sebastián |
+| 62 | Cantabria |
+| 70 | Zaragoza |
 
 ## Adding New Transit Systems
 
