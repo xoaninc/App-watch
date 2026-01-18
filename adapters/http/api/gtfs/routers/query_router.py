@@ -1141,6 +1141,18 @@ def get_stop_departures(
             if stu.platform:
                 stop_platforms[stu.trip_id] = stu.platform
 
+    # For TMB/FGC: Also get platforms by stop_id (RT trip_ids differ from static GTFS)
+    # Get all recent platforms for the queried stop_ids
+    stop_platforms_by_stop = {}
+    if stop_ids_to_query:
+        recent_platforms = db.query(StopTimeUpdateModel).filter(
+            StopTimeUpdateModel.stop_id.in_(stop_ids_to_query),
+            StopTimeUpdateModel.platform.isnot(None)
+        ).order_by(StopTimeUpdateModel.arrival_time.desc()).limit(100).all()
+        for stu in recent_platforms:
+            if stu.stop_id not in stop_platforms_by_stop:
+                stop_platforms_by_stop[stu.stop_id] = stu.platform
+
     # Get train positions: first try GTFS-RT, then fall back to estimated
     train_positions = {}
 
@@ -1256,8 +1268,11 @@ def get_stop_departures(
         # Get headsign: prefer trip.headsign, fall back to last stop name (destination)
         headsign = trip.headsign or last_stop_names.get(trip.id)
 
-        # Get platform from GTFS-RT (prefer stop_time_update, then vehicle_position)
+        # Get platform from GTFS-RT (prefer stop_time_update, then vehicle_position, then by stop_id)
         platform = stop_platforms.get(trip.id) or vehicle_platforms.get(trip.id)
+        # For TMB/FGC: try platform by stop_id if not found by trip_id
+        if not platform and stop_time.stop_id in stop_platforms_by_stop:
+            platform = stop_platforms_by_stop[stop_time.stop_id]
         platform_estimated = False
 
         # If no real platform, try to get estimated from history

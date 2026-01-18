@@ -72,8 +72,8 @@ GTFS_RT_OPERATORS = {
         'name': 'TMB Metro Barcelona',
         'format': 'tmb_api',
         'stations_url': 'https://api.tmb.cat/v1/imetro/estacions',
-        'stop_id_prefix': 'TMB_',
-        'trip_id_prefix': 'TMB_',
+        'stop_id_prefix': 'TMB_METRO_1.',  # Format: TMB_METRO_1.{station_code}
+        'trip_id_prefix': 'TMB_METRO_1.',
     },
     'fgc': {
         'name': 'FGC',
