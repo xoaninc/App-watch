@@ -50,8 +50,8 @@ NETWORK_CONFIG = {
     'name': 'Tranvía de Sevilla (MetroCentro)',
     'city': 'Sevilla',
     'region': 'Andalucía',
-    'color': 'E4002B',  # Red
-    'text_color': 'FFFFFF',
+    'color': '#E4002B',  # Red
+    'text_color': '#FFFFFF',
     'description': 'Servicio de tranvía en el centro de Sevilla',
     'logo_url': 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/MetroCentro_Sevilla_logo.svg/200px-MetroCentro_Sevilla_logo.svg.png',
 }
@@ -62,8 +62,8 @@ TRANVIA_CONFIG = {
     'short_name': 'T1',
     'long_name': 'Archivo de Indias - Luis de Morales',
     'route_type': 0,  # Tram/Light Rail
-    'color': 'E4002B',  # Red (typical tram color)
-    'text_color': 'FFFFFF',
+    'color': '#E4002B',  # Red (typical tram color)
+    'text_color': '#FFFFFF',
 }
 
 # TUSSAM route_id for tranvia
