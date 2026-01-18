@@ -542,13 +542,23 @@ def get_stops_by_coordinates(
     lat: float = Query(..., ge=-90, le=90, description="Latitude (e.g., 40.42 for Madrid)"),
     lon: float = Query(..., ge=-180, le=180, description="Longitude (e.g., -3.72 for Madrid)"),
     radius_km: float = Query(50, ge=1, le=200, description="Search radius in kilometers"),
+    transport_type: Optional[str] = Query(
+        None,
+        description="Filter by transport type: metro, cercanias, fgc, tram, all. Default returns only stops with GTFS-RT."
+    ),
     limit: int = Query(100, ge=1, le=1000, description="Maximum results"),
     db: Session = Depends(get_db),
 ):
-    """Get all stops near the given coordinates, ordered by distance.
+    """Get transit stops near the given coordinates, ordered by distance.
 
-    Returns stops within the specified radius, ordered by distance from the point.
-    Default radius is 50km which covers most metropolitan areas.
+    By default, only returns stops that have GTFS-RT real-time data available:
+    - Metro (TMB, Madrid, Bilbao, etc.)
+    - Cercanías/Rodalies (RENFE)
+    - FGC
+    - Tram
+    - Euskotren
+
+    Use transport_type=all to include all stops (including bus stops without real-time).
 
     For Barcelona example: lat=41.3851&lon=2.1734
     For Madrid example: lat=40.42&lon=-3.72
@@ -573,12 +583,11 @@ def get_stops_by_coordinates(
     radius_m = radius_km * 1000
 
     # Filter by bounding box first for performance, then by actual distance
-    # Approximate 1 degree = 111km at equator
     lat_delta = radius_km / 111
     lon_delta = radius_km / (111 * math.cos(math.radians(lat)))
 
-    # Get stops within radius, only parent stations or stops without parent
-    stops = (
+    # Build base query
+    query = (
         db.query(StopModel)
         .filter(
             StopModel.lat.between(lat - lat_delta, lat + lat_delta),
@@ -587,8 +596,60 @@ def get_stops_by_coordinates(
                 StopModel.location_type == 1,  # Parent stations
                 StopModel.parent_station_id.is_(None),  # Stops without parent
             ),
-            ~StopModel.id.like('%_E.%'),  # Exclude entrances
+            # Exclude entrances and TMB bus stops (TMB_METRO_2.xxx which are buses, not metro)
+            ~StopModel.id.like('%_E.%'),
+            ~StopModel.id.like('TMB_METRO_2.%'),
         )
+    )
+
+    # Apply transport type filter
+    # Only stops with GTFS-RT data available by default
+    if transport_type == 'all':
+        # Return all stops (including static GTFS without real-time)
+        pass
+    elif transport_type == 'metro':
+        query = query.filter(
+            or_(
+                StopModel.id.like('TMB_METRO_P.%'),
+                StopModel.id.like('TMB_METRO_1.%'),
+                StopModel.id.like('METRO_%'),
+                StopModel.id.like('ML_%'),
+                StopModel.id.like('METRO_BILBAO_%'),
+                StopModel.id.like('FGC_%'),
+            )
+        )
+    elif transport_type == 'cercanias':
+        query = query.filter(StopModel.id.like('RENFE_%'))
+    elif transport_type == 'fgc':
+        query = query.filter(StopModel.id.like('FGC_%'))
+    elif transport_type == 'tram':
+        query = query.filter(StopModel.id.like('TRAM_%'))
+    else:
+        # Default: only stops with GTFS-RT (metro, cercanías, FGC, tram, euskotren)
+        query = query.filter(
+            or_(
+                # Metro Barcelona (parent stations and line stops)
+                StopModel.id.like('TMB_METRO_P.%'),
+                StopModel.id.like('TMB_METRO_1.%'),
+                # Cercanías/Rodalies
+                StopModel.id.like('RENFE_%'),
+                # FGC
+                StopModel.id.like('FGC_%'),
+                # Metro Madrid
+                StopModel.id.like('METRO_%'),
+                # Metro Ligero Madrid
+                StopModel.id.like('ML_%'),
+                # Metro Bilbao
+                StopModel.id.like('METRO_BILBAO_%'),
+                # Euskotren
+                StopModel.id.like('EUSKOTREN_%'),
+                # Tram
+                StopModel.id.like('TRAM_%'),
+            )
+        )
+
+    stops = (
+        query
         .filter(distance <= radius_m)
         .order_by(distance)
         .limit(limit)
