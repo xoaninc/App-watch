@@ -1,4 +1,4 @@
-# Guía de Importación de Metro Madrid y Metro Ligero
+# Guía de Importación de Metro Madrid, Metro Ligero y Metro de Sevilla
 
 ## Resumen de Datos
 
@@ -17,6 +17,16 @@
 - **short_name**: `ML1`, `ML2`, `ML3`, `ML4`
 - **Líneas**: 4
 - **Estaciones**: ~56
+
+### Metro de Sevilla
+- **Agency ID**: `METRO_SEV_MSVQL1`
+- **Route IDs**: `METRO_SEV_L1_CE_OQ`
+- **Stop IDs**: `METRO_SEV_L1_E{n}` (ej: `METRO_SEV_L1_E1`)
+- **short_name**: `L1`
+- **Líneas**: 1 (Línea 1)
+- **Estaciones**: 21 (Ciudad Expo - Olivar de Quintos)
+- **Nucleo**: Sevilla (id=30)
+- **Fuente**: GTFS de Metro de Sevilla
 
 ---
 
@@ -43,6 +53,20 @@ python scripts/import_metro_frequencies.py ./data/google_transit_M4.zip ./data/g
 
 **Fuente de datos**: GTFS de CRTM
 - Descargar de: https://www.crtm.es/tu-transporte-publico/metro/
+
+### 2b. Importar Metro de Sevilla
+```bash
+python scripts/import_metro_sevilla.py <gtfs_folder_path>
+
+# Ejemplo:
+python scripts/import_metro_sevilla.py ./data/20251211_130028_Metro_Sevilla
+```
+
+**Fuente de datos**: GTFS de Metro de Sevilla
+- Descargar de: https://www.metro-sevilla.es/
+- Incluye: agency, routes, stops, frequencies
+- El script importa estaciones (location_type=1) y frecuencias automáticamente
+- Soporta wheelchair_boarding
 
 ### 3. Poblar correspondencias (cor_metro, cor_ml, cor_cercanias)
 ```bash
@@ -85,16 +109,18 @@ El importador deduplica estaciones por nombre normalizado:
 ### Rutas
 | Tipo | Formato ID | short_name |
 |------|-----------|------------|
-| Metro | `METRO_{num}` | `L{num}` |
+| Metro Madrid | `METRO_{num}` | `L{num}` |
 | Metro Ramal | `METRO_R` | `R` |
 | Metro Ligero | `ML_ML{num}` | `ML{num}` |
+| Metro Sevilla | `METRO_SEV_L1_CE_OQ` | `L1` |
 | Cercanías | `RENFE_C{num}_{nucleo}` | `C{num}` |
 
 ### Paradas
 | Tipo | Formato ID |
 |------|-----------|
-| Metro | `METRO_{codigo}` |
+| Metro Madrid | `METRO_{codigo}` |
 | Metro Ligero | `ML_{codigo}` |
+| Metro Sevilla | `METRO_SEV_L1_E{n}` |
 | Cercanías | `RENFE_{codigo}` |
 
 ---
@@ -155,11 +181,11 @@ UPDATE gtfs_stops SET name = 'Méndez Álvaro RENFE' WHERE id LIKE 'RENFE_%' AND
 
 ### Verificar conteos
 ```sql
--- Paradas por tipo
+-- Paradas por tipo (Madrid)
 SELECT
   CASE
     WHEN id LIKE 'RENFE_%' THEN 'Cercanías'
-    WHEN id LIKE 'METRO_%' THEN 'Metro'
+    WHEN id LIKE 'METRO_%' AND id NOT LIKE 'METRO_SEV%' THEN 'Metro Madrid'
     WHEN id LIKE 'ML_%' THEN 'Metro Ligero'
   END as tipo,
   COUNT(*) as total
@@ -167,11 +193,17 @@ FROM gtfs_stops
 WHERE nucleo_name = 'Madrid'
 GROUP BY 1;
 
+-- Paradas Metro Sevilla
+SELECT COUNT(*) as total
+FROM gtfs_stops
+WHERE id LIKE 'METRO_SEV_%';
+
 -- Rutas por tipo
 SELECT
   CASE
     WHEN id LIKE 'RENFE_%' THEN 'Cercanías'
-    WHEN id LIKE 'METRO_%' THEN 'Metro'
+    WHEN id LIKE 'METRO_SEV_%' THEN 'Metro Sevilla'
+    WHEN id LIKE 'METRO_%' THEN 'Metro Madrid'
     WHEN id LIKE 'ML_%' THEN 'Metro Ligero'
   END as tipo,
   COUNT(*) as total
@@ -196,11 +228,17 @@ ORDER BY name;
 
 ### API Tests
 ```bash
-# Verificar orden por distancia
+# Verificar orden por distancia (Madrid)
 curl "https://redcercanias.com/api/v1/gtfs/stops/by-coordinates?lat=40.4725&lon=-3.6826&limit=5"
 
-# Verificar prefijo L en Metro
+# Verificar prefijo L en Metro Madrid
 curl "https://redcercanias.com/api/v1/gtfs/routes?nucleo_id=10" | jq '.[] | select(.id | startswith("METRO_")) | {id, short_name}'
+
+# Verificar Metro Sevilla (nucleo_id=30)
+curl "https://redcercanias.com/api/v1/gtfs/routes?nucleo_id=30" | jq '.[] | select(.id | startswith("METRO_SEV")) | {id, short_name}'
+
+# Paradas Metro Sevilla
+curl "https://redcercanias.com/api/v1/gtfs/stops/by-coordinates?lat=37.38&lon=-5.97&limit=5"
 ```
 
 ---
