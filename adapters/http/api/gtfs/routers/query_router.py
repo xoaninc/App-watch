@@ -933,7 +933,30 @@ def get_stop_departures(
         ).all()
         stop_ids_to_query = [child.id for child in child_stops]
         if not stop_ids_to_query:
-            stop_ids_to_query = [stop_id]  # Fallback to parent if no children
+            # No direct children - try to find related stops by pattern
+            # TMB_METRO_P.XXXXXXX -> TMB_METRO_1.XXX (platform stops use last 3 digits)
+            if stop_id.startswith("TMB_METRO_P."):
+                suffix = stop_id.split(".")[-1][-3:]  # Last 3 digits
+                platform_stop_id = f"TMB_METRO_1.{suffix}"
+                platform_stop = db.query(StopModel.id).filter(
+                    StopModel.id == platform_stop_id
+                ).first()
+                if platform_stop:
+                    stop_ids_to_query = [platform_stop.id]
+                else:
+                    stop_ids_to_query = [stop_id]
+            # FGC_XX -> FGC_XX1, FGC_XX2, etc. (platform stops have numeric suffix)
+            elif stop_id.startswith("FGC_") and not stop_id[-1].isdigit():
+                platform_stops = db.query(StopModel.id).filter(
+                    StopModel.id.like(f"{stop_id}%"),
+                    StopModel.id != stop_id
+                ).all()
+                if platform_stops:
+                    stop_ids_to_query = [p.id for p in platform_stops]
+                else:
+                    stop_ids_to_query = [stop_id]
+            else:
+                stop_ids_to_query = [stop_id]  # Fallback to parent if no children
     else:
         stop_ids_to_query = [stop_id]
 

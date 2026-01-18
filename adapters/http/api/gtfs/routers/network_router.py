@@ -49,6 +49,7 @@ class LineResponse(BaseModel):
     line_code: str  # e.g., "C1", "C2"
     color: str
     text_color: str
+    sort_order: Optional[int] = None
     route_count: int
     routes: List[dict]
 
@@ -103,7 +104,7 @@ async def get_network(code: str, db: Session = Depends(get_db)):
     routes = (
         db.query(RouteModel)
         .filter(RouteModel.network_id == code)
-        .order_by(RouteModel.short_name)
+        .order_by(RouteModel.sort_order.nulls_last(), RouteModel.short_name)
         .all()
     )
 
@@ -116,6 +117,7 @@ async def get_network(code: str, db: Session = Depends(get_db)):
                 "line_code": line_code,
                 "color": route.color or network.color,
                 "text_color": route.text_color or network.text_color,
+                "sort_order": route.sort_order,
                 "routes": [],
             }
         lines_dict[line_code]["routes"].append(
@@ -126,19 +128,20 @@ async def get_network(code: str, db: Session = Depends(get_db)):
             }
         )
 
-    # Convert to list with natural sort
+    # Convert to list and sort by sort_order (fallback to natural sort)
     lines = sorted(
         [
             LineResponse(
                 line_code=data["line_code"],
                 color=data["color"],
                 text_color=data["text_color"],
+                sort_order=data["sort_order"],
                 route_count=len(data["routes"]),
                 routes=data["routes"],
             )
             for data in lines_dict.values()
         ],
-        key=lambda x: natural_sort_key(x.line_code)
+        key=lambda x: (x.sort_order if x.sort_order is not None else 9999, natural_sort_key(x.line_code))
     )
 
     return NetworkDetailResponse(
@@ -168,7 +171,7 @@ async def get_network_lines(code: str, db: Session = Depends(get_db)):
     routes = (
         db.query(RouteModel)
         .filter(RouteModel.network_id == code)
-        .order_by(RouteModel.short_name)
+        .order_by(RouteModel.sort_order.nulls_last(), RouteModel.short_name)
         .all()
     )
 
@@ -181,6 +184,7 @@ async def get_network_lines(code: str, db: Session = Depends(get_db)):
                 "line_code": line_code,
                 "color": route.color or network.color,
                 "text_color": route.text_color or network.text_color,
+                "sort_order": route.sort_order,
                 "routes": [],
             }
         lines_dict[line_code]["routes"].append(
@@ -197,10 +201,11 @@ async def get_network_lines(code: str, db: Session = Depends(get_db)):
                 line_code=data["line_code"],
                 color=data["color"],
                 text_color=data["text_color"],
+                sort_order=data["sort_order"],
                 route_count=len(data["routes"]),
                 routes=data["routes"],
             )
             for data in lines_dict.values()
         ],
-        key=lambda x: natural_sort_key(x.line_code)
+        key=lambda x: (x.sort_order if x.sort_order is not None else 9999, natural_sort_key(x.line_code))
     )
