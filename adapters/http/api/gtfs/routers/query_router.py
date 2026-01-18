@@ -1,6 +1,7 @@
 from typing import List, Optional
 from datetime import datetime, date, time, timedelta
 from zoneinfo import ZoneInfo
+import math
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -441,8 +442,7 @@ def get_route(route_id: str, db: Session = Depends(get_db)):
 @router.get("/stops", response_model=List[StopResponse])
 def get_stops(
     search: Optional[str] = Query(None, description="Search by name"),
-    nucleo_id: Optional[int] = Query(None, description="Filter by núcleo ID"),
-    nucleo_name: Optional[str] = Query(None, description="Filter by núcleo name"),
+    network_id: Optional[str] = Query(None, description="Filter by network ID (e.g., 51T, TMB_METRO)"),
     location_type: Optional[int] = Query(None, description="Filter by location type (0=stop, 1=station)"),
     parent_station: Optional[str] = Query(None, description="Filter by parent station ID"),
     limit: int = Query(600, ge=1, le=1000, description="Maximum results"),
@@ -450,7 +450,7 @@ def get_stops(
 ):
     """Get all stops/stations.
 
-    Optionally filter by name search, núcleo, location type, or parent station.
+    Optionally filter by name search, network, location type, or parent station.
     """
     query = db.query(StopModel)
 
@@ -458,11 +458,18 @@ def get_stops(
         search_term = f"%{search}%"
         query = query.filter(StopModel.name.ilike(search_term))
 
-    if nucleo_id:
-        query = query.filter(StopModel.nucleo_id == nucleo_id)
-
-    if nucleo_name:
-        query = query.filter(StopModel.nucleo_name.ilike(f"%{nucleo_name}%"))
+    if network_id:
+        # Filter stops by ID prefix based on network
+        prefix_map = {
+            'TMB_METRO': 'TMB_METRO_%',
+            'FGC': 'FGC_%',
+            '11T': 'METRO_%',
+            '12T': 'ML_%',
+            '51T': 'RENFE_%',  # Rodalies Catalunya
+            '10T': 'RENFE_%',  # Cercanías Madrid
+        }
+        if network_id in prefix_map:
+            query = query.filter(StopModel.id.like(prefix_map[network_id]))
 
     if location_type is not None:
         query = query.filter(StopModel.location_type == location_type)
@@ -474,52 +481,57 @@ def get_stops(
     return stops
 
 
-@router.get("/stops/by-nucleo", response_model=List[StopResponse])
-def get_stops_by_nucleo(
-    nucleo_id: Optional[int] = Query(None, description="Núcleo ID"),
-    nucleo_name: Optional[str] = Query(None, description="Núcleo name"),
+@router.get("/stops/by-network", response_model=List[StopResponse])
+def get_stops_by_network(
+    network_id: str = Query(..., description="Network ID (e.g., 51T, TMB_METRO, FGC)"),
     limit: int = Query(600, ge=1, le=1000, description="Maximum results"),
     db: Session = Depends(get_db),
 ):
-    """Get all stops in a specific núcleo.
+    """Get all stops in a specific network.
 
-    Filter by either nucleo_id or nucleo_name.
     Returns parent stations (location_type=1) or stops without a parent.
     This avoids returning multiple platforms for the same station.
     """
-    if not nucleo_id and not nucleo_name:
-        raise HTTPException(
-            status_code=400,
-            detail="Must provide either nucleo_id or nucleo_name parameter"
-        )
-
     query = db.query(StopModel)
 
-    if nucleo_id:
-        query = query.filter(StopModel.nucleo_id == nucleo_id)
+    # Map network_id to stop ID prefix
+    prefix_map = {
+        'TMB_METRO': 'TMB_METRO_%',
+        'FGC': 'FGC_%',
+        'EUSKOTREN': 'EUSKOTREN_%',
+        'METRO_BILBAO': 'METRO_BILBAO_%',
+        '11T': 'METRO_%',
+        '12T': 'ML_%',
+    }
+
+    # For Renfe networks, use RENFE_ prefix
+    if network_id.endswith('T') and network_id not in prefix_map:
+        prefix = 'RENFE_%'
     else:
-        query = query.filter(StopModel.nucleo_name.ilike(f"%{nucleo_name}%"))
+        prefix = prefix_map.get(network_id, f'{network_id}_%')
+
+    query = query.filter(StopModel.id.like(prefix))
 
     # Only return parent stations (location_type=1) or stops without a parent
     # This groups platforms under their parent station
-    # Exclude bus stops (TMB_METRO_2.xxx) which are not metro platforms
+    # Exclude bus stops and entrances
     query = query.filter(
         or_(
             StopModel.location_type == 1,  # Parent stations
             and_(
                 StopModel.parent_station_id.is_(None),  # Stops without parent
-                ~StopModel.id.like('TMB_METRO_2.%'),  # Exclude TMB bus stops
-                ~StopModel.id.like('TMB_METRO_E.%'),  # Exclude entrances
+                ~StopModel.id.like('%_2.%'),  # Exclude bus stops
+                ~StopModel.id.like('%_E.%'),  # Exclude entrances
             )
         )
     )
 
     stops = query.order_by(StopModel.name).limit(limit).all()
 
-    if not stops and nucleo_id:
+    if not stops:
         raise HTTPException(
             status_code=404,
-            detail=f"No stops found for nucleoId {nucleo_id}"
+            detail=f"No stops found for network {network_id}"
         )
 
     return stops
@@ -529,40 +541,19 @@ def get_stops_by_nucleo(
 def get_stops_by_coordinates(
     lat: float = Query(..., ge=-90, le=90, description="Latitude (e.g., 40.42 for Madrid)"),
     lon: float = Query(..., ge=-180, le=180, description="Longitude (e.g., -3.72 for Madrid)"),
-    limit: int = Query(600, ge=1, le=1000, description="Maximum results"),
+    radius_km: float = Query(50, ge=1, le=200, description="Search radius in kilometers"),
+    limit: int = Query(100, ge=1, le=1000, description="Maximum results"),
     db: Session = Depends(get_db),
 ):
-    """Get all stops from the núcleo determined by the given coordinates.
+    """Get all stops near the given coordinates, ordered by distance.
 
-    The endpoint automatically calculates which province the coordinates belong to,
-    then maps it to the corresponding Renfe regional network (núcleo),
-    and returns all stops in that núcleo, ordered by distance from the given point.
+    Returns stops within the specified radius, ordered by distance from the point.
+    Default radius is 50km which covers most metropolitan areas.
 
-    Flow:
-    1. Coordinates → Find Province (PostGIS)
-    2. Province → Find Nucleo (province mapping)
-    3. Nucleo → Return Stops (ordered by distance)
-
-    If coordinates are outside Spain or in a province without Renfe service,
-    returns empty list (no error).
-
+    For Barcelona example: lat=41.3851&lon=2.1734
     For Madrid example: lat=40.42&lon=-3.72
     """
-    # Step 1: Determine province and networks from coordinates
-    result = get_province_and_networks_by_coordinates(db, lat, lon)
-
-    if not result:
-        # Coordinates are outside Spain - return empty list
-        return []
-
-    province_code = result.get('province_code')
-
-    # Step 2: If no province found, return empty list
-    if not province_code:
-        return []
-
-    # Step 3: Calculate distance using Haversine formula (in meters)
-    # Using PostgreSQL math functions for spherical distance calculation
+    # Calculate distance using Haversine formula (in meters)
     lat_rad = func.radians(lat)
     lon_rad = func.radians(lon)
     stop_lat_rad = func.radians(StopModel.lat)
@@ -578,10 +569,27 @@ def get_stops_by_coordinates(
     # Distance in meters (Earth radius = 6371000m)
     distance = 2 * 6371000 * func.asin(func.sqrt(a))
 
-    # Step 4: Get all stops in the province, ordered by distance
+    # Convert radius to meters
+    radius_m = radius_km * 1000
+
+    # Filter by bounding box first for performance, then by actual distance
+    # Approximate 1 degree = 111km at equator
+    lat_delta = radius_km / 111
+    lon_delta = radius_km / (111 * math.cos(math.radians(lat)))
+
+    # Get stops within radius, only parent stations or stops without parent
     stops = (
         db.query(StopModel)
-        .filter(StopModel.province == result.get('province_name'))
+        .filter(
+            StopModel.lat.between(lat - lat_delta, lat + lat_delta),
+            StopModel.lon.between(lon - float(lon_delta), lon + float(lon_delta)),
+            or_(
+                StopModel.location_type == 1,  # Parent stations
+                StopModel.parent_station_id.is_(None),  # Stops without parent
+            ),
+            ~StopModel.id.like('%_E.%'),  # Exclude entrances
+        )
+        .filter(distance <= radius_m)
         .order_by(distance)
         .limit(limit)
         .all()
@@ -654,9 +662,13 @@ def _get_frequency_based_departures(
                 RouteModel.short_name == search_name,
                 RouteModel.id.like("METRO_%") | RouteModel.id.like("ML_%") | RouteModel.id.like("TRAM_SEV_%")
             )
-            # Filter by nucleo_id if stop has one
-            if stop.nucleo_id is not None:
-                route_query = route_query.filter(RouteModel.nucleo_id == stop.nucleo_id)
+            # Filter by network_id to match stop's network
+            # Extract network from stop ID prefix (e.g., TMB_METRO_, FGC_, RENFE_)
+            stop_prefix = stop.id.split('_')[0] if '_' in stop.id else None
+            if stop_prefix:
+                network_map = {'TMB': 'TMB_METRO', 'FGC': 'FGC', 'METRO': '11T', 'ML': '12T'}
+                if stop_prefix in network_map:
+                    route_query = route_query.filter(RouteModel.network_id == network_map[stop_prefix])
 
             route = route_query.first()
             if route:
@@ -1327,8 +1339,6 @@ def get_route_stops(route_id: str, db: Session = Depends(get_db)):
                 parent_station_id=stop.parent_station_id,
                 zone_id=stop.zone_id,
                 province=stop.province,
-                nucleo_id=stop.nucleo_id,
-                nucleo_name=stop.nucleo_name,
                 lineas=stop.lineas,
                 parking_bicis=stop.parking_bicis,
                 accesibilidad=stop.accesibilidad,
@@ -1344,11 +1354,15 @@ def get_route_stops(route_id: str, db: Session = Depends(get_db)):
 
     # If no sequences found, fallback to lineas-based search with alphabetical order
     short_name = route.short_name
+
+    # Build filter based on stop ID prefix matching route's network
+    route_prefix = route.id.split('_')[0] if '_' in route.id else None
+
     stops = (
         db.query(StopModel)
         .filter(
             and_(
-                StopModel.nucleo_id == route.nucleo_id,
+                StopModel.id.like(f"{route_prefix}%") if route_prefix else True,
                 StopModel.lineas.isnot(None),
                 or_(
                     StopModel.lineas == short_name,
@@ -1374,8 +1388,6 @@ def get_route_stops(route_id: str, db: Session = Depends(get_db)):
             parent_station_id=stop.parent_station_id,
             zone_id=stop.zone_id,
             province=stop.province,
-            nucleo_id=stop.nucleo_id,
-            nucleo_name=stop.nucleo_name,
             lineas=stop.lineas,
             parking_bicis=stop.parking_bicis,
             accesibilidad=stop.accesibilidad,
