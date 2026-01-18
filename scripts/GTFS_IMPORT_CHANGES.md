@@ -271,5 +271,74 @@ Network codes must match route ID prefixes for `route_count` to work:
 |--------------|------------------|------------------|
 | `METRO_SEV` | `METRO_SEV_*` | `METRO_SEV_L1` |
 | `TRAM_SEV` | `TRAM_SEV_*` | `TRAM_SEV_T1` |
-| `METRO_` | `METRO_*` | `METRO_L1` |
-| `ML_` | `ML_*` | `ML_ML1` |
+| `METRO` | `METRO_*` | `METRO_1` |
+| `ML` | `ML_*` | `ML_ML1` |
+
+## Color Format Convention
+
+**All colors MUST include the `#` prefix** for CSS compatibility:
+
+```python
+# CORRECT
+'color': '#ED1C24'
+'text_color': '#FFFFFF'
+DEFAULT_ROUTE_COLOR = '#0D6928'
+
+# WRONG - will not display correctly in apps
+'color': 'ED1C24'
+```
+
+**Color columns in database:**
+- `gtfs_routes.color`: VARCHAR(7) - e.g., `#2DBEF0`
+- `gtfs_routes.text_color`: VARCHAR(7) - e.g., `#FFFFFF`
+- `gtfs_networks.color`: VARCHAR(7) - e.g., `#ED1C24`
+- `gtfs_networks.text_color`: VARCHAR(7) - e.g., `#FFFFFF`
+
+## Correspondence Format Convention
+
+The correspondence fields (`cor_metro`, `cor_ml`, `cor_cercanias`, `cor_tranvia`) use specific formats:
+
+### cor_metro (Metro line connections)
+- **Format**: `L1, L2, L3` or `R` for Ramal
+- **Example**: `L1, L3, L5` (for Sol)
+- **Filtering**: Only Metro lines 1-12 and R are included (Cercanías lines like C1, C4 are filtered out)
+
+### cor_ml (Metro Ligero connections)
+- **Format**: `ML1, ML2, ML3, ML4`
+- **Example**: `ML2` (for Aravaca)
+- **Filtering**: Only ML lines 1-4 are included (Cercanías lines are filtered out)
+
+### cor_cercanias (Cercanías connections)
+- **Format**: `C1, C2, C3, C4, C4a, C4b, C5, etc.`
+- **Example**: `C4, C4a, C4b, C5` (for Villaverde Alto)
+- **No filtering**: All Cercanías lines are included
+
+### cor_tranvia (Tranvía connections)
+- **Format**: `T1`
+- **Example**: `T1` (for Sevilla stops)
+
+### Filtering Functions in populate_stop_connections.py
+
+| Function | Purpose | Valid Lines |
+|----------|---------|-------------|
+| `is_metro_line()` | Check if line is Metro | 1-12, L1-L12, R |
+| `is_ml_line()` | Check if line is ML | 1-4, ML1-ML4 |
+| `normalize_metro_line()` | Add L prefix | 1→L1, 2→L2, etc. |
+| `normalize_ml_line()` | Add ML prefix | 1→ML1, 2→ML2, etc. |
+
+**Important:** The `sort_lines()` function takes parameters:
+- `add_l_prefix=True` for cor_metro (filters non-Metro lines)
+- `add_ml_prefix=True` for cor_ml (filters non-ML lines)
+
+## Note About Other Cities
+
+Stops in cities without dedicated Metro import scripts (Barcelona, Valencia, Bilbao, Málaga) may have **descriptive text** in `cor_metro` from the original RENFE GTFS data:
+
+```
+# Examples from RENFE data (not managed by us):
+Barcelona-Sants: "Metro líneas L3 y L5"
+València Estació del Nord: "Metro: Líneas 3 y 5"
+Bilbao Abando: "Metro: Líneas 1 y 2"
+```
+
+These are **NOT errors** - they come from RENFE's original data. Our import system only manages Madrid (nucleo_id=10) and Sevilla (nucleo_id=30) correspondences with proper code format.
