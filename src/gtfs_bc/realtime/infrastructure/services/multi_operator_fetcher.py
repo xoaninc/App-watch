@@ -94,15 +94,33 @@ class MultiOperatorFetcher:
         self.db = db
 
     @staticmethod
-    def _extract_platform_from_stop_id(stop_id: str) -> Optional[str]:
-        """Extract platform number from FGC-style stop_id.
+    def _extract_platform_from_stop_id(stop_id: str, operator: str = 'fgc', direction_id: Optional[int] = None) -> Optional[str]:
+        """Extract platform number from stop_id based on operator format.
 
-        FGC uses stop_ids like: PC1, PC2, AB1, SR2 where the number is the platform.
+        Different operators encode platform differently:
+        - FGC: stop_ids like PC1, PC2, AB1 where trailing digit is platform
+        - Euskotren: stop_ids like 'ES:Euskotren:Quay:2621_Plataforma_Q1:' where Q1/Q2 is platform
+        - Metro Bilbao: inferred from direction_id (1 or 2)
+
         Returns the platform number or None if not found.
         """
         if not stop_id:
             return None
-        # Match trailing digits in stop_id (e.g., PC2 -> 2, AB1 -> 1)
+
+        # Euskotren format: ES:Euskotren:Quay:2621_Plataforma_Q1:
+        if operator == 'euskotren' or '_Plataforma_Q' in stop_id:
+            match = re.search(r'_Plataforma_Q(\d+)', stop_id)
+            if match:
+                return match.group(1)
+            return None
+
+        # Metro Bilbao: infer platform from direction_id
+        if operator == 'metro_bilbao':
+            if direction_id is not None and direction_id in (1, 2):
+                return str(direction_id)
+            return None
+
+        # FGC format: trailing digits (e.g., PC2 -> 2, AB1 -> 1)
         match = re.search(r'(\d+)$', stop_id)
         if match:
             return match.group(1)
@@ -184,8 +202,8 @@ class MultiOperatorFetcher:
 
         try:
             if config['format'] == 'protobuf':
-                results['vehicle_positions'] = await self._fetch_protobuf_vehicle_positions(config)
-                results['trip_updates'] = await self._fetch_protobuf_trip_updates(config)
+                results['vehicle_positions'] = await self._fetch_protobuf_vehicle_positions(config, operator_code)
+                results['trip_updates'] = await self._fetch_protobuf_trip_updates(config, operator_code)
                 results['alerts'] = await self._fetch_protobuf_alerts(config)
             elif config['format'] == 'json':
                 results['vehicle_positions'] = await self._fetch_json_vehicle_positions(config)
@@ -223,8 +241,8 @@ class MultiOperatorFetcher:
 
         try:
             if config['format'] == 'protobuf':
-                results['vehicle_positions'] = self._fetch_protobuf_vehicle_positions_sync(config)
-                results['trip_updates'] = self._fetch_protobuf_trip_updates_sync(config)
+                results['vehicle_positions'] = self._fetch_protobuf_vehicle_positions_sync(config, operator_code)
+                results['trip_updates'] = self._fetch_protobuf_trip_updates_sync(config, operator_code)
                 results['alerts'] = self._fetch_protobuf_alerts_sync(config)
             elif config['format'] == 'json':
                 results['vehicle_positions'] = self._fetch_json_vehicle_positions_sync(config)
@@ -264,7 +282,7 @@ class MultiOperatorFetcher:
     # Protobuf fetchers (Metro Bilbao, Euskotren)
     # -------------------------------------------------------------------------
 
-    async def _fetch_protobuf_vehicle_positions(self, config: dict) -> int:
+    async def _fetch_protobuf_vehicle_positions(self, config: dict, operator_code: str = 'fgc') -> int:
         """Fetch vehicle positions from protobuf endpoint."""
         url = config.get('vehicle_positions')
         if not url:
@@ -273,9 +291,9 @@ class MultiOperatorFetcher:
         async with httpx.AsyncClient() as client:
             response = await client.get(url, timeout=30.0, follow_redirects=True)
             response.raise_for_status()
-            return self._parse_protobuf_vehicle_positions(response.content, config)
+            return self._parse_protobuf_vehicle_positions(response.content, config, operator_code)
 
-    def _fetch_protobuf_vehicle_positions_sync(self, config: dict) -> int:
+    def _fetch_protobuf_vehicle_positions_sync(self, config: dict, operator_code: str = 'fgc') -> int:
         """Sync version of _fetch_protobuf_vehicle_positions."""
         url = config.get('vehicle_positions')
         if not url:
@@ -283,9 +301,9 @@ class MultiOperatorFetcher:
 
         response = httpx.get(url, timeout=30.0, follow_redirects=True)
         response.raise_for_status()
-        return self._parse_protobuf_vehicle_positions(response.content, config)
+        return self._parse_protobuf_vehicle_positions(response.content, config, operator_code)
 
-    def _parse_protobuf_vehicle_positions(self, data: bytes, config: dict) -> int:
+    def _parse_protobuf_vehicle_positions(self, data: bytes, config: dict, operator_code: str = 'fgc') -> int:
         """Parse protobuf vehicle positions and store in DB."""
         feed = gtfs_realtime_pb2.FeedMessage()
         feed.ParseFromString(data)
@@ -314,8 +332,11 @@ class MultiOperatorFetcher:
             stop_id = f"{prefix}{raw_stop_id}" if raw_stop_id else None
             trip_id = f"{trip_prefix}{vp.trip.trip_id}" if vp.trip.trip_id else None
 
-            # Extract platform from stop_id for FGC (e.g., PC2 -> "2")
-            platform = self._extract_platform_from_stop_id(raw_stop_id) if raw_stop_id else None
+            # Get direction_id for platform inference (Metro Bilbao)
+            direction_id = vp.trip.direction_id if vp.trip.direction_id else None
+
+            # Extract platform from stop_id based on operator format
+            platform = self._extract_platform_from_stop_id(raw_stop_id, operator_code, direction_id) if raw_stop_id else None
 
             # Get label and extract route_short_name
             label = vp.vehicle.label if vp.vehicle.label else None
@@ -370,7 +391,7 @@ class MultiOperatorFetcher:
         self.db.commit()
         return count
 
-    async def _fetch_protobuf_trip_updates(self, config: dict) -> int:
+    async def _fetch_protobuf_trip_updates(self, config: dict, operator_code: str = 'fgc') -> int:
         """Fetch trip updates from protobuf endpoint."""
         url = config.get('trip_updates')
         if not url:
@@ -379,9 +400,9 @@ class MultiOperatorFetcher:
         async with httpx.AsyncClient() as client:
             response = await client.get(url, timeout=30.0, follow_redirects=True)
             response.raise_for_status()
-            return self._parse_protobuf_trip_updates(response.content, config)
+            return self._parse_protobuf_trip_updates(response.content, config, operator_code)
 
-    def _fetch_protobuf_trip_updates_sync(self, config: dict) -> int:
+    def _fetch_protobuf_trip_updates_sync(self, config: dict, operator_code: str = 'fgc') -> int:
         """Sync version of _fetch_protobuf_trip_updates."""
         url = config.get('trip_updates')
         if not url:
@@ -389,9 +410,9 @@ class MultiOperatorFetcher:
 
         response = httpx.get(url, timeout=30.0, follow_redirects=True)
         response.raise_for_status()
-        return self._parse_protobuf_trip_updates(response.content, config)
+        return self._parse_protobuf_trip_updates(response.content, config, operator_code)
 
-    def _parse_protobuf_trip_updates(self, data: bytes, config: dict) -> int:
+    def _parse_protobuf_trip_updates(self, data: bytes, config: dict, operator_code: str = 'fgc') -> int:
         """Parse protobuf trip updates and store in DB."""
         feed = gtfs_realtime_pb2.FeedMessage()
         feed.ParseFromString(data)
@@ -409,6 +430,9 @@ class MultiOperatorFetcher:
 
             if not trip_id:
                 continue
+
+            # Get direction_id for platform inference (Metro Bilbao)
+            direction_id = tu.trip.direction_id if tu.trip.direction_id else None
 
             # Delete existing stop time updates for this trip
             self.db.query(StopTimeUpdateModel).filter(
@@ -449,8 +473,8 @@ class MultiOperatorFetcher:
                     raw_stop_id = stu.stop_id if stu.stop_id else None
                     stop_id = f"{prefix}{raw_stop_id}" if raw_stop_id else None
 
-                    # Extract platform from stop_id for FGC (e.g., PC2 -> "2")
-                    platform = self._extract_platform_from_stop_id(raw_stop_id) if raw_stop_id else None
+                    # Extract platform from stop_id based on operator format
+                    platform = self._extract_platform_from_stop_id(raw_stop_id, operator_code, direction_id) if raw_stop_id else None
 
                     arrival_delay = stu.arrival.delay if stu.HasField('arrival') else None
                     arrival_time = datetime.fromtimestamp(stu.arrival.time) if stu.HasField('arrival') and stu.arrival.time else None

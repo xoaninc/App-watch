@@ -2,19 +2,111 @@
 
 ## Overview
 
-GTFS-RT (Realtime) provides live updates for transit data including vehicle positions, trip delays, and service alerts. This implementation fetches data from Renfe's official GTFS-RT endpoints and stores it in the database.
+GTFS-RT (Realtime) provides live updates for transit data including vehicle positions, trip delays, and service alerts. This implementation fetches data from multiple operators and stores it in the database.
 
-**Note:** Renfe's GTFS-RT feeds may be empty at times. The system is ready to capture data when available.
+**Note:** Feeds may be empty during night hours when no trains are running.
+
+## Scheduler Automático
+
+El sistema incluye un **scheduler automático** que hace fetch cada **30 segundos** de todos los operadores configurados.
+
+### Implementación
+
+- **Sistema**: AsyncIO nativo integrado con FastAPI lifespan
+- **Intervalo**: 30 segundos (`FETCH_INTERVAL = 30`)
+- **Delay inicial**: 5 segundos (para que la app arranque completamente)
+- **Archivo**: `src/gtfs_bc/realtime/infrastructure/services/gtfs_rt_scheduler.py`
+
+### Activación
+
+El scheduler se activa automáticamente al iniciar la aplicación FastAPI:
+
+```python
+# app.py
+lifespan=lifespan_with_scheduler
+```
+
+### Endpoint de Estado
+
+```
+GET /api/v1/gtfs/realtime/scheduler/status
+```
+
+Respuesta:
+```json
+{
+  "running": true,
+  "last_fetch": "2026-01-18T10:15:30",
+  "fetch_count": 12345,
+  "error_count": 3,
+  "interval_seconds": 30
+}
+```
+
+### Sistema Alternativo (Celery)
+
+También existe configuración para Celery Beat como alternativa:
+- **Archivo**: `core/celery.py`
+- **Cola**: `gtfs_realtime`
+- **Intervalo**: 30 segundos
+
+---
+
+## Operadores Soportados
+
+El sistema soporta **múltiples operadores** con **diferentes formatos de datos**:
+
+| Operador | Formato | Tipo de Feed |
+|----------|---------|--------------|
+| **Renfe** | JSON | Vehicle Positions, Trip Updates, Alerts |
+| **Metro Bilbao** | Protobuf | Vehicle Positions, Trip Updates, Alerts |
+| **Euskotren** | Protobuf | Vehicle Positions, Trip Updates, Alerts |
+| **FGC** | Protobuf/JSON | Vehicle Positions, Trip Updates, Alerts |
+| **TMB Metro Barcelona** | API personalizada (iMetro) | Predicciones por estación |
+
+---
 
 ## Data Sources
 
-Renfe provides three GTFS-RT feeds:
+### Renfe (JSON)
 
 | Feed | URL | Description |
 |------|-----|-------------|
 | Vehicle Positions | `https://gtfsrt.renfe.com/vehicle_positions.json` | Live train locations |
 | Trip Updates | `https://gtfsrt.renfe.com/trip_updates.json` | Delays and schedule changes |
 | Alerts | `https://gtfsrt.renfe.com/alerts.json` | Service disruptions and notices |
+
+### Metro Bilbao (Protobuf)
+
+| Feed | URL |
+|------|-----|
+| Vehicle Positions | `https://opendata.euskadi.eus/.../gtfsrt_metro_bilbao_vehicle_positions.pb` |
+| Trip Updates | `https://opendata.euskadi.eus/.../gtfsrt_metro_bilbao_trip_updates.pb` |
+| Alerts | `https://opendata.euskadi.eus/.../gtfsrt_metro_bilbao_alerts.pb` |
+
+### Euskotren (Protobuf)
+
+| Feed | URL |
+|------|-----|
+| Vehicle Positions | `https://opendata.euskadi.eus/.../gtfsrt_euskotren_vehicle_positions.pb` |
+| Trip Updates | `https://opendata.euskadi.eus/.../gtfsrt_euskotren_trip_updates.pb` |
+| Alerts | `https://opendata.euskadi.eus/.../gtfsrt_euskotren_alerts.pb` |
+
+### FGC (JSON/Protobuf)
+
+| Feed | URL |
+|------|-----|
+| Vehicle Positions | `https://dadesobertes.fgc.cat/.../vehicle-positions-gtfs_realtime/...` |
+| Trip Updates | `https://dadesobertes.fgc.cat/.../trip-updates-gtfs_realtime/...` |
+| Alerts | `https://dadesobertes.fgc.cat/.../alerts-gtfs_realtime/...` |
+
+### TMB Metro Barcelona (API iMetro)
+
+| Feed | URL |
+|------|-----|
+| Predicciones | `https://api.tmb.cat/v1/imetro/estacions` |
+
+Requiere credenciales: `app_id` y `app_key`
 
 ## Database Tables
 
@@ -134,16 +226,72 @@ Returns scheduled departures with realtime delay information:
 
 ## Usage
 
+### Automático (Recomendado)
+
+El scheduler integrado hace fetch automáticamente cada 30 segundos. No requiere configuración adicional.
+
 ### Manual Fetch
 ```bash
 curl -X POST https://redcercanias.com/api/v1/gtfs/realtime/fetch
 ```
 
-### Periodic Updates (Cron)
-For production, set up a cron job or scheduled task to fetch data every 30-60 seconds:
+### Verificar Estado del Scheduler
 ```bash
-*/1 * * * * curl -s -X POST https://redcercanias.com/api/v1/gtfs/realtime/fetch > /dev/null
+curl https://redcercanias.com/api/v1/gtfs/realtime/scheduler/status
 ```
+
+---
+
+## Arquitectura de Fetchers
+
+### Archivos Principales
+
+| Archivo | Propósito |
+|---------|-----------|
+| `src/gtfs_bc/realtime/infrastructure/services/gtfs_rt_fetcher.py` | Fetcher principal de Renfe (JSON) |
+| `src/gtfs_bc/realtime/infrastructure/services/multi_operator_fetcher.py` | Fetcher multi-operador (Protobuf, JSON, API) |
+| `src/gtfs_bc/realtime/infrastructure/services/gtfs_rt_scheduler.py` | Scheduler AsyncIO + lifespan |
+
+### Flujo de Ejecución
+
+```
+FastAPI Startup
+    ↓
+app.py lifespan_with_scheduler
+    ↓
+GTFSRTScheduler.start() [async]
+    ↓
+_fetch_loop() cada 30 segundos
+    ↓
+├─ GTFSRealtimeFetcher.fetch_all_sync() [Renfe]
+│  ├─ fetch_and_store_vehicle_positions_sync()
+│  ├─ fetch_and_store_trip_updates_sync()
+│  └─ fetch_and_store_alerts_sync()
+│
+└─ MultiOperatorFetcher.fetch_all_operators_sync()
+   ├─ Metro Bilbao (Protobuf)
+   ├─ Euskotren (Protobuf)
+   ├─ FGC (JSON/Protobuf)
+   └─ TMB Metro (API iMetro)
+```
+
+### Parsers por Formato
+
+- **JSON (Renfe)**: Métodos `from_gtfsrt_json()` en entidades de dominio
+- **Protobuf**: Métodos `_parse_protobuf_*()` en `multi_operator_fetcher.py`
+- **API TMB**: Método `_parse_tmb_predictions()` en `multi_operator_fetcher.py`
+
+### Prefijos de IDs por Operador
+
+| Operador | Prefijo |
+|----------|---------|
+| Renfe | `RENFE_` |
+| Metro Bilbao | `METRO_BILBAO_` |
+| Euskotren | `EUSKOTREN_` |
+| FGC | `FGC_` |
+| TMB Metro | `TMB_METRO_` |
+
+---
 
 ## Notes
 
@@ -151,3 +299,5 @@ For production, set up a cron job or scheduled task to fetch data every 30-60 se
 - Alerts persist until their `active_period_end` or until updated by Renfe
 - The `/departures` endpoint automatically includes delay info when available
 - Route IDs in alerts use GTFS format (e.g., `10T0025C9`) not our format (`RENFE_C9_34`)
+- El scheduler se integra con FastAPI lifespan y arranca automáticamente
+- Detección automática de variantes C4a/C4b y C8a/C8b en Madrid basada en headsign

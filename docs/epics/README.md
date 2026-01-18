@@ -55,8 +55,14 @@ Plataforma de información de transporte ferroviario en España, proporcionando 
 | Fuente | URL | Tipo | Frecuencia |
 |--------|-----|------|------------|
 | GTFS Estático | https://data.renfe.com/dataset | ZIP/CSV | Semanal |
-| GTFS Realtime | https://gtfsrt.renfe.com/ | Protobuf | 30 seg |
+| GTFS Realtime Renfe | https://gtfsrt.renfe.com/*.json | **JSON** | 30 seg (auto) |
+| GTFS-RT Metro Bilbao | opendata.euskadi.eus | Protobuf | 30 seg (auto) |
+| GTFS-RT Euskotren | opendata.euskadi.eus | Protobuf | 30 seg (auto) |
+| GTFS-RT FGC | dadesobertes.fgc.cat | JSON/Protobuf | 30 seg (auto) |
+| TMB iMetro API | api.tmb.cat | REST API | 30 seg (auto) |
 | Wikipedia | es.wikipedia.org | HTML | Manual |
+
+**Nota:** Renfe usa **JSON**, no Protobuf. El scheduler automático hace fetch cada 30 segundos.
 
 ## Consideraciones Técnicas
 
