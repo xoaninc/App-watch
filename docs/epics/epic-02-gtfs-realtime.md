@@ -1,24 +1,39 @@
 # Epic 02: Integración GTFS Realtime
 
+## Estado: ✅ Completada
+
 ## Objetivo
 Integrar los datos en tiempo real de GTFS-RT para obtener la posición actual de los trenes y las actualizaciones de horarios.
 
 ## Fuentes de Datos
-- https://gtfsrt.renfe.com/
-- Formato: Protocol Buffers (GTFS-RT)
+
+### Renfe (JSON)
+- https://gtfsrt.renfe.com/vehicle_positions.json
+- https://gtfsrt.renfe.com/trip_updates.json
+- https://gtfsrt.renfe.com/alerts.json
+- **Formato: JSON** (no Protobuf)
+
+### Otros Operadores
+| Operador | Formato | URLs |
+|----------|---------|------|
+| Metro Bilbao | Protobuf | opendata.euskadi.eus |
+| Euskotren | Protobuf | opendata.euskadi.eus |
+| FGC | JSON/Protobuf | dadesobertes.fgc.cat |
+| TMB Metro | API iMetro | api.tmb.cat |
 
 ## User Stories
 
-### US-02.1: Conexión al feed GTFS-RT
+### US-02.1: Conexión al feed GTFS-RT ✅
 **Como** sistema
 **Quiero** conectarme al feed GTFS-RT de Renfe
 **Para** obtener datos en tiempo real
 
 **Criterios de aceptación:**
-- Conexión al endpoint de Renfe
-- Parseo de Protocol Buffers
-- Manejo de errores de conexión
-- Reconexión automática
+- ✅ Conexión al endpoint de Renfe
+- ✅ Parseo de JSON (Renfe usa JSON, no Protobuf)
+- ✅ Parseo de Protobuf (para Metro Bilbao, Euskotren, FGC)
+- ✅ Manejo de errores de conexión
+- ✅ Reconexión automática (scheduler cada 30s)
 
 ### US-02.2: Procesamiento de Vehicle Positions
 **Como** sistema
@@ -131,11 +146,37 @@ ServiceAlert (
 ```
 
 ## Tareas Técnicas
-1. Instalar dependencia gtfs-realtime-bindings
-2. Crear cliente HTTP para feed GTFS-RT
-3. Implementar parser de Protocol Buffers
-4. Crear modelos para datos en tiempo real
-5. Implementar worker de Celery para polling
-6. Crear repositorio de posiciones históricas
-7. Implementar limpieza de datos antiguos
-8. Añadir métricas y logging
+1. ✅ Instalar dependencia gtfs-realtime-bindings
+2. ✅ Crear cliente HTTP para feed GTFS-RT
+3. ✅ Implementar parser de JSON (Renfe) y Protobuf (otros)
+4. ✅ Crear modelos para datos en tiempo real
+5. ✅ Implementar scheduler AsyncIO (alternativa a Celery)
+6. ✅ Crear repositorio de posiciones históricas
+7. ⏳ Implementar limpieza de datos antiguos
+8. ✅ Añadir métricas y logging
+
+---
+
+## Implementación Actual
+
+### Scheduler Automático
+- **Sistema**: AsyncIO nativo integrado con FastAPI lifespan
+- **Intervalo**: 30 segundos
+- **Archivo**: `src/gtfs_bc/realtime/infrastructure/services/gtfs_rt_scheduler.py`
+
+### Archivos Principales
+| Archivo | Propósito |
+|---------|-----------|
+| `gtfs_rt_fetcher.py` | Fetcher principal de Renfe (JSON) |
+| `multi_operator_fetcher.py` | Fetcher multi-operador (Protobuf, JSON, API) |
+| `gtfs_rt_scheduler.py` | Scheduler AsyncIO + lifespan |
+
+### Endpoints API
+- `POST /api/v1/gtfs/realtime/fetch` - Fetch manual
+- `GET /api/v1/gtfs/realtime/vehicles` - Posiciones
+- `GET /api/v1/gtfs/realtime/delays` - Retrasos
+- `GET /api/v1/gtfs/realtime/alerts` - Alertas
+- `GET /api/v1/gtfs/realtime/scheduler/status` - Estado del scheduler
+
+### Documentación Completa
+Ver `GTFS_REALTIME.md` en la raíz del proyecto.

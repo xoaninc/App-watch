@@ -420,6 +420,98 @@ class GTFSRealtimeFetcher:
             )
             self.db.add(entity_model)
 
+    def _correlate_platforms_from_vehicle_positions(self) -> int:
+        """Correlate platforms from vehicle_positions to stop_time_updates.
+
+        Renfe's trip_updates don't include platform info, but vehicle_positions do.
+        This method updates stop_time_updates with platform info from matching
+        vehicle_positions for the same trip_id and stop_id.
+
+        Returns the number of stop_time_updates updated.
+        """
+        # Get all vehicle positions with platform info
+        vehicle_positions = (
+            self.db.query(VehiclePositionModel)
+            .filter(VehiclePositionModel.platform.isnot(None))
+            .filter(VehiclePositionModel.stop_id.isnot(None))
+            .all()
+        )
+
+        if not vehicle_positions:
+            return 0
+
+        count = 0
+        for vp in vehicle_positions:
+            # Update stop_time_updates for this trip_id and stop_id
+            updated = (
+                self.db.query(StopTimeUpdateModel)
+                .filter(StopTimeUpdateModel.trip_id == vp.trip_id)
+                .filter(StopTimeUpdateModel.stop_id == vp.stop_id)
+                .filter(StopTimeUpdateModel.platform.is_(None))
+                .update({"platform": vp.platform})
+            )
+            count += updated
+
+        if count > 0:
+            self.db.commit()
+            logger.info(f"Correlated {count} stop_time_updates with platform from vehicle_positions")
+
+        return count
+
+    def _predict_platforms_from_history(self) -> int:
+        """Predict platforms for stop_time_updates using historical data.
+
+        Uses platform_history to predict the most likely platform for each
+        stop_id + route combination based on historical observations.
+
+        Returns the number of stop_time_updates updated with predictions.
+        """
+        from sqlalchemy import func
+
+        # Get stop_time_updates without platform
+        stus_without_platform = (
+            self.db.query(StopTimeUpdateModel)
+            .filter(StopTimeUpdateModel.platform.is_(None))
+            .all()
+        )
+
+        if not stus_without_platform:
+            return 0
+
+        count = 0
+        for stu in stus_without_platform:
+            # Get the route_short_name from the trip
+            trip = self.db.query(TripModel).filter(TripModel.id == stu.trip_id).first()
+            if not trip:
+                continue
+
+            route_short_name = self._extract_route_short_name(trip.route_id)
+            if not route_short_name:
+                continue
+
+            # Find the most common platform for this stop_id + route_short_name
+            most_common = (
+                self.db.query(
+                    PlatformHistoryModel.platform,
+                    func.sum(PlatformHistoryModel.count).label('total')
+                )
+                .filter(PlatformHistoryModel.stop_id == stu.stop_id)
+                .filter(PlatformHistoryModel.route_short_name == route_short_name)
+                .group_by(PlatformHistoryModel.platform)
+                .order_by(func.sum(PlatformHistoryModel.count).desc())
+                .first()
+            )
+
+            if most_common and most_common.total >= 3:  # Minimum 3 observations
+                stu.platform = most_common.platform
+                count += 1
+
+        if count > 0:
+            self.db.commit()
+            logger.info(f"Predicted {count} platforms from historical data")
+
+        return count
+
     def fetch_all_sync(self) -> Dict[str, int]:
         """Fetch vehicle positions, trip updates, and alerts synchronously.
 
@@ -428,10 +520,19 @@ class GTFSRealtimeFetcher:
         vehicle_count = self.fetch_and_store_vehicle_positions_sync()
         trip_count = self.fetch_and_store_trip_updates_sync()
         alerts_count = self.fetch_and_store_alerts_sync()
+
+        # Correlate platforms from vehicle_positions to stop_time_updates
+        platform_correlations = self._correlate_platforms_from_vehicle_positions()
+
+        # Predict platforms from historical data for remaining stop_time_updates
+        platform_predictions = self._predict_platforms_from_history()
+
         return {
             "vehicle_positions": vehicle_count,
             "trip_updates": trip_count,
             "alerts": alerts_count,
+            "platform_correlations": platform_correlations,
+            "platform_predictions": platform_predictions,
         }
 
     def get_vehicle_positions(
