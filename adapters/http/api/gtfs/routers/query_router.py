@@ -83,6 +83,13 @@ class RouteStopResponse(BaseModel):
     nucleo_id: Optional[int]
     nucleo_name: Optional[str]
     lineas: Optional[str]
+    parking_bicis: Optional[str]
+    accesibilidad: Optional[str]
+    cor_bus: Optional[str]
+    cor_metro: Optional[str]
+    cor_ml: Optional[str]
+    cor_cercanias: Optional[str]
+    cor_tranvia: Optional[str]
     stop_sequence: int  # Position in the route (1-based)
 
     class Config:
@@ -1183,6 +1190,13 @@ def get_route_stops(route_id: str, db: Session = Depends(get_db)):
                 nucleo_id=stop.nucleo_id,
                 nucleo_name=stop.nucleo_name,
                 lineas=stop.lineas,
+                parking_bicis=stop.parking_bicis,
+                accesibilidad=stop.accesibilidad,
+                cor_bus=stop.cor_bus,
+                cor_metro=stop.cor_metro,
+                cor_ml=stop.cor_ml,
+                cor_cercanias=stop.cor_cercanias,
+                cor_tranvia=stop.cor_tranvia,
                 stop_sequence=sequence,
             )
             for stop, sequence in results
@@ -1223,6 +1237,13 @@ def get_route_stops(route_id: str, db: Session = Depends(get_db)):
             nucleo_id=stop.nucleo_id,
             nucleo_name=stop.nucleo_name,
             lineas=stop.lineas,
+            parking_bicis=stop.parking_bicis,
+            accesibilidad=stop.accesibilidad,
+            cor_bus=stop.cor_bus,
+            cor_metro=stop.cor_metro,
+            cor_ml=stop.cor_ml,
+            cor_cercanias=stop.cor_cercanias,
+            cor_tranvia=stop.cor_tranvia,
             stop_sequence=idx + 1,
         )
         for idx, stop in enumerate(stops)
