@@ -387,7 +387,7 @@ class CRTMMetroImporter:
                 long_name=METRO_LONG_NAMES.get(line_num, f"Línea {line_num}"),
                 route_type=1,  # Metro/Subway
                 color=METRO_COLORS.get(line_num),
-                text_color=METRO_TEXT_COLORS.get(line_num, 'FFFFFF'),
+                text_color=METRO_TEXT_COLORS.get(line_num, '#FFFFFF'),
                 nucleo_id=self.MADRID_NUCLEO_ID,
                 nucleo_name=self.MADRID_NUCLEO_NAME,
             )
