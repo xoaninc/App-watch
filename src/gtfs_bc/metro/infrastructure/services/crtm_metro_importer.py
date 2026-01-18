@@ -9,6 +9,7 @@ from src.gtfs_bc.agency.infrastructure.models import AgencyModel
 from src.gtfs_bc.stop.infrastructure.models import StopModel
 from src.gtfs_bc.route.infrastructure.models import RouteModel
 from src.gtfs_bc.stop_route_sequence.infrastructure.models import StopRouteSequenceModel
+from src.gtfs_bc.network.infrastructure.models import NetworkModel
 
 logger = logging.getLogger(__name__)
 
@@ -77,6 +78,28 @@ ML_LONG_NAMES = {
     'ML4': 'Tranvía de Parla (Circular)',
 }
 
+# Network configurations (required for route_count in API)
+METRO_NETWORK_CONFIG = {
+    'code': 'METRO',  # Must match route ID prefix (METRO_*)
+    'name': 'Metro de Madrid',
+    'city': 'Madrid',
+    'region': 'Comunidad de Madrid',
+    'color': 'ED1C24',  # Red (Metro corporate color)
+    'text_color': 'FFFFFF',
+    'description': 'Red de metro de Madrid',
+    'wikipedia_url': 'https://es.wikipedia.org/wiki/Metro_de_Madrid',
+}
+
+ML_NETWORK_CONFIG = {
+    'code': 'ML',  # Must match route ID prefix (ML_*)
+    'name': 'Metro Ligero de Madrid',
+    'city': 'Madrid',
+    'region': 'Comunidad de Madrid',
+    'color': '3A7DDA',  # Blue (ML1 color as default)
+    'text_color': 'FFFFFF',
+    'description': 'Red de metro ligero de Madrid',
+}
+
 
 class CRTMMetroImporter:
     """Import Metro Madrid and Metro Ligero data from CRTM Feature Service."""
@@ -94,6 +117,43 @@ class CRTMMetroImporter:
 
     def __init__(self, db: Session):
         self.db = db
+
+    def _create_networks(self) -> int:
+        """Create Metro and Metro Ligero networks (for route_count in API)."""
+        created = 0
+
+        for config in [METRO_NETWORK_CONFIG, ML_NETWORK_CONFIG]:
+            existing = self.db.query(NetworkModel).filter(
+                NetworkModel.code == config['code']
+            ).first()
+
+            if existing:
+                # Update existing
+                existing.name = config['name']
+                existing.city = config['city']
+                existing.region = config['region']
+                existing.color = config['color']
+                existing.text_color = config['text_color']
+                existing.description = config.get('description')
+                existing.wikipedia_url = config.get('wikipedia_url')
+                logger.info(f"Updated network: {config['code']}")
+            else:
+                network = NetworkModel(
+                    code=config['code'],
+                    name=config['name'],
+                    city=config['city'],
+                    region=config['region'],
+                    color=config['color'],
+                    text_color=config['text_color'],
+                    description=config.get('description'),
+                    wikipedia_url=config.get('wikipedia_url'),
+                )
+                self.db.add(network)
+                created += 1
+                logger.info(f"Created network: {config['code']}")
+
+        self.db.flush()
+        return created
 
     def _create_agencies(self) -> int:
         """Create Metro Madrid and Metro Ligero agencies."""
@@ -137,6 +197,7 @@ class CRTMMetroImporter:
             Dictionary with import statistics
         """
         stats = {
+            'networks_created': 0,
             'agencies_created': 0,
             'metro_stops_created': 0,
             'metro_routes_created': 0,
@@ -147,7 +208,11 @@ class CRTMMetroImporter:
         }
 
         try:
-            # Create agencies first
+            # Create networks first (for route_count in API)
+            logger.info("Creating networks...")
+            stats['networks_created'] = self._create_networks()
+
+            # Create agencies
             logger.info("Creating agencies...")
             stats['agencies_created'] = self._create_agencies()
 
@@ -428,7 +493,7 @@ class CRTMMetroImporter:
                 lat=data['lat'],
                 lon=data['lon'],
                 code=codigo,
-                location_type=0,  # Stop
+                location_type=1,  # Station
                 wheelchair_boarding=wheelchair,
                 lineas=data['lineas'],
                 nucleo_id=self.MADRID_NUCLEO_ID,
@@ -517,7 +582,7 @@ class CRTMMetroImporter:
                 lat=data['lat'],
                 lon=data['lon'],
                 code=codigo,
-                location_type=0,
+                location_type=1,  # Station
                 lineas=data['lineas'],
                 nucleo_id=self.MADRID_NUCLEO_ID,
                 nucleo_name=self.MADRID_NUCLEO_NAME,
@@ -555,6 +620,9 @@ class CRTMMetroImporter:
 
             line_stops[key].append((stop_name, orden))
 
+        # Track (stop_id, route_id) globally to avoid duplicates across directions
+        seen_combinations = set()
+
         # For each line, create sequences
         for (line_num, sentido), stops in line_stops.items():
             # Sort by order
@@ -565,13 +633,13 @@ class CRTMMetroImporter:
             if not route:
                 continue
 
-            seen_stops = set()
+            seen_stops_this_direction = set()
             sequence = 0
 
             for stop_name, _ in stops:
-                if stop_name in seen_stops:
+                if stop_name in seen_stops_this_direction:
                     continue
-                seen_stops.add(stop_name)
+                seen_stops_this_direction.add(stop_name)
 
                 # Find matching stop
                 stop = self.db.query(StopModel).filter(
@@ -589,7 +657,13 @@ class CRTMMetroImporter:
                 if not stop:
                     continue
 
-                # Add sequence (duplicates already cleared before this function)
+                # Skip if this (stop_id, route_id) was already added
+                combo_key = (stop.id, route_id)
+                if combo_key in seen_combinations:
+                    continue
+                seen_combinations.add(combo_key)
+
+                # Add sequence
                 seq = StopRouteSequenceModel(
                     stop_id=stop.id,
                     route_id=route_id,
@@ -625,6 +699,9 @@ class CRTMMetroImporter:
 
             line_stops[key].append((stop_name, orden))
 
+        # Track (stop_id, route_id) globally to avoid duplicates across directions
+        seen_combinations = set()
+
         for (line_num, sentido), stops in line_stops.items():
             stops.sort(key=lambda x: x[1])
 
@@ -633,13 +710,13 @@ class CRTMMetroImporter:
             if not route:
                 continue
 
-            seen_stops = set()
+            seen_stops_this_direction = set()
             sequence = 0
 
             for stop_name, _ in stops:
-                if stop_name in seen_stops:
+                if stop_name in seen_stops_this_direction:
                     continue
-                seen_stops.add(stop_name)
+                seen_stops_this_direction.add(stop_name)
 
                 stop = self.db.query(StopModel).filter(
                     StopModel.name.ilike(stop_name),
@@ -649,7 +726,13 @@ class CRTMMetroImporter:
                 if not stop:
                     continue
 
-                # Add sequence (duplicates already cleared before this function)
+                # Skip if this (stop_id, route_id) was already added
+                combo_key = (stop.id, route_id)
+                if combo_key in seen_combinations:
+                    continue
+                seen_combinations.add(combo_key)
+
+                # Add sequence
                 seq = StopRouteSequenceModel(
                     stop_id=stop.id,
                     route_id=route_id,

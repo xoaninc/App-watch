@@ -4,7 +4,17 @@
 This script imports the schedule data needed for the /departures endpoint.
 
 Usage:
+    # Import all núcleos
     python scripts/import_gtfs_static.py /path/to/fomento_transit.zip
+
+    # Import specific núcleo by ID
+    python scripts/import_gtfs_static.py /path/to/fomento_transit.zip --nucleo 10
+
+    # Import specific núcleo by name
+    python scripts/import_gtfs_static.py /path/to/fomento_transit.zip --nucleo madrid
+
+    # List available núcleos in the GTFS file
+    python scripts/import_gtfs_static.py /path/to/fomento_transit.zip --list-nucleos
 """
 
 import sys
@@ -12,13 +22,38 @@ import os
 import csv
 import zipfile
 import logging
+import argparse
 from datetime import datetime
 from io import TextIOWrapper
+from typing import Optional
 from sqlalchemy import text
 from core.database import SessionLocal, engine
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
+
+# Núcleo ID to name mapping
+NUCLEO_NAMES = {
+    10: 'Madrid',
+    20: 'Asturias',
+    30: 'Santander',
+    31: 'Bilbao',
+    32: 'San Sebastián',
+    40: 'Zaragoza',
+    50: 'Barcelona (Rodalies)',
+    60: 'Valencia',
+    61: 'Murcia/Alicante',
+    62: 'Castellón',
+    70: 'Sevilla',
+    71: 'Cádiz',
+    72: 'Málaga',
+}
+
+# Nucleo ID mapping: GTFS -> our database
+NUCLEO_MAPPING = {
+    51: 50,  # Rodalies de Catalunya
+    90: 10,  # Madrid C9 special trains
+}
 
 BATCH_SIZE = 10000
 
@@ -36,6 +71,83 @@ def parse_date(date_str: str) -> str:
     """Convert YYYYMMDD to YYYY-MM-DD."""
     date_str = date_str.strip()
     return f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:8]}"
+
+
+def parse_nucleo_arg(nucleo_arg: str) -> Optional[int]:
+    """Parse --nucleo argument (ID or name) and return núcleo ID."""
+    if nucleo_arg is None:
+        return None
+
+    # Try as integer ID
+    try:
+        nucleo_id = int(nucleo_arg)
+        if nucleo_id in NUCLEO_NAMES:
+            return nucleo_id
+        logger.error(f"Unknown núcleo ID: {nucleo_id}")
+        logger.info(f"Valid IDs: {list(NUCLEO_NAMES.keys())}")
+        return None
+    except ValueError:
+        pass
+
+    # Try as name (case-insensitive)
+    nucleo_lower = nucleo_arg.lower()
+    for nid, name in NUCLEO_NAMES.items():
+        if nucleo_lower in name.lower():
+            return nid
+
+    logger.error(f"Unknown núcleo name: {nucleo_arg}")
+    logger.info(f"Valid names: {list(NUCLEO_NAMES.values())}")
+    return None
+
+
+def list_nucleos(zf: zipfile.ZipFile) -> dict:
+    """List núcleos found in GTFS file with route counts."""
+    nucleos = {}
+
+    with zf.open('routes.txt') as f:
+        reader = csv.DictReader(TextIOWrapper(f, encoding='utf-8'))
+        reader.fieldnames = [name.strip() for name in reader.fieldnames]
+
+        for row in reader:
+            gtfs_route_id = row['route_id'].strip()
+
+            # Extract nucleo_id from GTFS route_id (first 2 digits)
+            if len(gtfs_route_id) >= 2 and gtfs_route_id[:2].isdigit():
+                gtfs_nucleo_id = int(gtfs_route_id[:2])
+                our_nucleo_id = NUCLEO_MAPPING.get(gtfs_nucleo_id, gtfs_nucleo_id)
+
+                if our_nucleo_id not in nucleos:
+                    nucleos[our_nucleo_id] = {
+                        'name': NUCLEO_NAMES.get(our_nucleo_id, f'Unknown ({our_nucleo_id})'),
+                        'route_count': 0,
+                        'routes': []
+                    }
+                nucleos[our_nucleo_id]['route_count'] += 1
+                short_name = row.get('route_short_name', '').strip()
+                if short_name and short_name not in nucleos[our_nucleo_id]['routes']:
+                    nucleos[our_nucleo_id]['routes'].append(short_name)
+
+    return nucleos
+
+
+def print_nucleos(nucleos: dict):
+    """Print núcleos in a formatted table."""
+    print("\n" + "=" * 60)
+    print("NÚCLEOS IN GTFS FILE")
+    print("=" * 60)
+    print(f"{'ID':<5} {'Name':<25} {'Routes':<8} {'Lines'}")
+    print("-" * 60)
+
+    for nid in sorted(nucleos.keys()):
+        info = nucleos[nid]
+        routes_str = ', '.join(sorted(info['routes'])[:10])
+        if len(info['routes']) > 10:
+            routes_str += f"... (+{len(info['routes']) - 10} more)"
+        print(f"{nid:<5} {info['name']:<25} {info['route_count']:<8} {routes_str}")
+
+    print("=" * 60)
+    print(f"Total: {len(nucleos)} núcleos")
+    print("\nUse --nucleo <ID> or --nucleo <name> to import a specific núcleo")
 
 
 def import_calendar(db, zf: zipfile.ZipFile) -> int:
@@ -88,7 +200,7 @@ def import_calendar(db, zf: zipfile.ZipFile) -> int:
     return len(rows)
 
 
-def build_route_mapping(db, zf: zipfile.ZipFile) -> dict:
+def build_route_mapping(db, zf: zipfile.ZipFile, nucleo_filter: Optional[int] = None) -> dict:
     """Build mapping from GTFS route_id to our route_id.
 
     GTFS route_id format: {nucleo_id}T{seq}{short_name} (e.g., 10T0001C1)
@@ -99,14 +211,16 @@ def build_route_mapping(db, zf: zipfile.ZipFile) -> dict:
     Note: GTFS uses different nucleo codes in some cases:
     - 51 in GTFS = 50 in our DB (Rodalies de Catalunya)
     - 90 in GTFS = 10 in our DB (Madrid C9 special)
-    """
-    # Nucleo ID mapping: GTFS -> our database
-    NUCLEO_MAPPING = {
-        51: 50,  # Rodalies de Catalunya
-        90: 10,  # Madrid C9 special trains
-    }
 
-    logger.info("Building route mapping...")
+    Args:
+        db: Database session
+        zf: Opened GTFS zip file
+        nucleo_filter: If set, only map routes for this núcleo ID
+    """
+    if nucleo_filter:
+        logger.info(f"Building route mapping for núcleo {nucleo_filter} ({NUCLEO_NAMES.get(nucleo_filter, 'Unknown')})...")
+    else:
+        logger.info("Building route mapping for all núcleos...")
 
     # Get our routes with nucleo_id and short_name
     our_routes = db.execute(text(
@@ -123,6 +237,8 @@ def build_route_mapping(db, zf: zipfile.ZipFile) -> dict:
 
     # Parse GTFS routes and build mapping
     gtfs_to_our = {}
+    skipped_by_filter = 0
+
     with zf.open('routes.txt') as f:
         reader = csv.DictReader(TextIOWrapper(f, encoding='utf-8'))
         reader.fieldnames = [name.strip() for name in reader.fieldnames]
@@ -135,11 +251,19 @@ def build_route_mapping(db, zf: zipfile.ZipFile) -> dict:
                 gtfs_nucleo_id = int(gtfs_route_id[:2])
                 # Map to our nucleo_id if different
                 our_nucleo_id = NUCLEO_MAPPING.get(gtfs_nucleo_id, gtfs_nucleo_id)
+
+                # Filter by nucleo if specified
+                if nucleo_filter and our_nucleo_id != nucleo_filter:
+                    skipped_by_filter += 1
+                    continue
+
                 key = (our_nucleo_id, short_name.lower())
 
                 if key in route_lookup:
                     gtfs_to_our[gtfs_route_id] = route_lookup[key]
 
+    if nucleo_filter:
+        logger.info(f"Skipped {skipped_by_filter} routes from other núcleos")
     logger.info(f"Mapped {len(gtfs_to_our)} GTFS routes to our routes")
     return gtfs_to_our
 
@@ -307,43 +431,120 @@ def import_stop_times(db, zf: zipfile.ZipFile) -> int:
     return total_imported
 
 
+def clear_nucleo_data(db, nucleo_id: int):
+    """Clear trips and stop_times for a specific núcleo."""
+    nucleo_name = NUCLEO_NAMES.get(nucleo_id, 'Unknown')
+    logger.info(f"Clearing existing data for núcleo {nucleo_id} ({nucleo_name})...")
+
+    # Get route IDs for this nucleo
+    result = db.execute(text(
+        "SELECT id FROM gtfs_routes WHERE nucleo_id = :nid"
+    ), {'nid': nucleo_id}).fetchall()
+    route_ids = [r[0] for r in result]
+
+    if not route_ids:
+        logger.warning(f"No routes found for núcleo {nucleo_id}")
+        return
+
+    logger.info(f"  Found {len(route_ids)} routes for núcleo {nucleo_id}")
+
+    # Delete stop_times for trips on these routes
+    delete_result = db.execute(text("""
+        DELETE FROM gtfs_stop_times
+        WHERE trip_id IN (
+            SELECT id FROM gtfs_trips WHERE route_id = ANY(:rids)
+        )
+    """), {'rids': route_ids})
+    db.commit()
+    logger.info(f"  Cleared {delete_result.rowcount} stop_times")
+
+    # Delete trips for these routes
+    delete_result = db.execute(text(
+        "DELETE FROM gtfs_trips WHERE route_id = ANY(:rids)"
+    ), {'rids': route_ids})
+    db.commit()
+    logger.info(f"  Cleared {delete_result.rowcount} trips")
+
+
+def clear_all_data(db):
+    """Clear all trips, stop_times, and calendar data."""
+    logger.info("Clearing all existing schedule data...")
+    db.execute(text("DELETE FROM gtfs_stop_times"))
+    db.commit()
+    logger.info("  Cleared stop_times")
+    db.execute(text("DELETE FROM gtfs_trips"))
+    db.commit()
+    logger.info("  Cleared trips")
+    db.execute(text("DELETE FROM gtfs_calendar"))
+    db.commit()
+    logger.info("  Cleared calendar")
+
+
 def main():
-    if len(sys.argv) < 2:
-        print("Usage: python scripts/import_gtfs_static.py /path/to/fomento_transit.zip")
+    parser = argparse.ArgumentParser(
+        description='Import GTFS static data (calendar, trips, stop_times) from fomento_transit.zip'
+    )
+    parser.add_argument('zip_path', help='Path to GTFS zip file')
+    parser.add_argument(
+        '--nucleo',
+        help='Import only this núcleo (ID or name). Examples: 10, madrid, sevilla'
+    )
+    parser.add_argument(
+        '--list-nucleos',
+        action='store_true',
+        help='List núcleos available in the GTFS file and exit'
+    )
+
+    args = parser.parse_args()
+
+    if not os.path.exists(args.zip_path):
+        logger.error(f"File not found: {args.zip_path}")
         sys.exit(1)
 
-    zip_path = sys.argv[1]
+    # Handle --list-nucleos
+    if args.list_nucleos:
+        with zipfile.ZipFile(args.zip_path, 'r') as zf:
+            nucleos = list_nucleos(zf)
+            print_nucleos(nucleos)
+        sys.exit(0)
 
-    if not os.path.exists(zip_path):
-        logger.error(f"File not found: {zip_path}")
-        sys.exit(1)
+    # Parse nucleo filter
+    nucleo_filter = None
+    if args.nucleo:
+        nucleo_filter = parse_nucleo_arg(args.nucleo)
+        if nucleo_filter is None:
+            sys.exit(1)
 
     db = SessionLocal()
 
     try:
-        logger.info(f"Opening {zip_path}...")
+        logger.info(f"Opening {args.zip_path}...")
 
-        with zipfile.ZipFile(zip_path, 'r') as zf:
+        with zipfile.ZipFile(args.zip_path, 'r') as zf:
             start_time = datetime.now()
 
-            # Build route mapping first
-            route_mapping = build_route_mapping(db, zf)
+            # Build route mapping (filtered if nucleo specified)
+            route_mapping = build_route_mapping(db, zf, nucleo_filter)
 
-            # Clear existing data in reverse FK order (commit each to satisfy FK checks)
-            logger.info("Clearing existing schedule data...")
-            db.execute(text("DELETE FROM gtfs_stop_times"))
-            db.commit()
-            logger.info("  Cleared stop_times")
-            db.execute(text("DELETE FROM gtfs_trips"))
-            db.commit()
-            logger.info("  Cleared trips")
-            db.execute(text("DELETE FROM gtfs_calendar"))
-            db.commit()
-            logger.info("Cleared existing data")
+            if not route_mapping:
+                logger.error("No routes mapped - check if routes exist in database")
+                sys.exit(1)
 
-            # Import in order due to foreign key constraints
-            calendar_count = import_calendar(db, zf)
-            logger.info(f"Imported {calendar_count} calendar entries")
+            # Clear existing data
+            if nucleo_filter:
+                # Only clear data for specific nucleo
+                clear_nucleo_data(db, nucleo_filter)
+            else:
+                # Clear all data
+                clear_all_data(db)
+
+            # Import calendar (only for full import, not per-nucleo)
+            calendar_count = 0
+            if not nucleo_filter:
+                calendar_count = import_calendar(db, zf)
+                logger.info(f"Imported {calendar_count} calendar entries")
+            else:
+                logger.info("Skipping calendar import (nucleo-specific import)")
 
             trips_count = import_trips(db, zf, route_mapping)
             logger.info(f"Imported {trips_count:,} trips")
@@ -356,7 +557,11 @@ def main():
             logger.info("\n" + "="*60)
             logger.info("Import Summary")
             logger.info("="*60)
-            logger.info(f"Calendar entries: {calendar_count:,}")
+            if nucleo_filter:
+                logger.info(f"Núcleo: {nucleo_filter} ({NUCLEO_NAMES.get(nucleo_filter, 'Unknown')})")
+            else:
+                logger.info("Scope: All núcleos")
+                logger.info(f"Calendar entries: {calendar_count:,}")
             logger.info(f"Trips: {trips_count:,}")
             logger.info(f"Stop times: {stop_times_count:,}")
             logger.info(f"Elapsed time: {elapsed}")

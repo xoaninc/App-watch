@@ -27,6 +27,10 @@ from src.gtfs_bc.stop.infrastructure.models import StopModel
 from src.gtfs_bc.route.infrastructure.models import RouteModel, RouteFrequencyModel
 from src.gtfs_bc.agency.infrastructure.models import AgencyModel
 from src.gtfs_bc.stop_route_sequence.infrastructure.models import StopRouteSequenceModel
+from src.gtfs_bc.network.infrastructure.models import NetworkModel
+
+# Import connection population function
+from scripts.populate_stop_connections import populate_connections_for_nucleo
 
 logging.basicConfig(
     level=logging.INFO,
@@ -39,6 +43,17 @@ SEVILLA_NUCLEO_ID = 30
 
 # Consistent agency ID
 TRANVIA_SEVILLA_AGENCY_ID = 'TRANVIA_SEVILLA'
+
+# Network configuration for tranvia
+NETWORK_CONFIG = {
+    'code': 'TRANVIA_SEV',  # Must match route ID prefix
+    'name': 'Tranvía de Sevilla (MetroCentro)',
+    'city': 'Sevilla',
+    'region': 'Andalucía',
+    'color': 'E4002B',  # Red
+    'text_color': 'FFFFFF',
+    'description': 'Servicio de tranvía en el centro de Sevilla',
+}
 
 # MetroCentro T1 route configuration
 TRANVIA_CONFIG = {
@@ -59,6 +74,36 @@ def read_csv(file_path: Path) -> list:
     with open(file_path, 'r', encoding='utf-8-sig') as f:
         reader = csv.DictReader(f)
         return list(reader)
+
+
+def import_network(db: Session) -> str:
+    """Create/update the network entry for route_count to work."""
+    network_code = NETWORK_CONFIG['code']
+
+    existing = db.query(NetworkModel).filter(NetworkModel.code == network_code).first()
+    if existing:
+        logger.info(f"Network {network_code} already exists, updating...")
+        existing.name = NETWORK_CONFIG['name']
+        existing.city = NETWORK_CONFIG['city']
+        existing.region = NETWORK_CONFIG['region']
+        existing.color = NETWORK_CONFIG['color']
+        existing.text_color = NETWORK_CONFIG['text_color']
+        existing.description = NETWORK_CONFIG['description']
+    else:
+        network = NetworkModel(
+            code=network_code,
+            name=NETWORK_CONFIG['name'],
+            city=NETWORK_CONFIG['city'],
+            region=NETWORK_CONFIG['region'],
+            color=NETWORK_CONFIG['color'],
+            text_color=NETWORK_CONFIG['text_color'],
+            description=NETWORK_CONFIG['description'],
+        )
+        db.add(network)
+        logger.info(f"Created network: {network_code}")
+
+    db.flush()
+    return network_code
 
 
 def import_agency(db: Session, gtfs_path: Path) -> str:
@@ -171,6 +216,7 @@ def import_stops(db: Session, gtfs_path: Path) -> dict:
             existing.name = name
             existing.lat = float(stop_data['stop_lat'])
             existing.lon = float(stop_data['stop_lon'])
+            existing.location_type = 1  # Station
             existing.lineas = "T1"
             existing.nucleo_id = SEVILLA_NUCLEO_ID
             existing.nucleo_name = "Sevilla"
@@ -181,7 +227,7 @@ def import_stops(db: Session, gtfs_path: Path) -> dict:
                 lat=float(stop_data['stop_lat']),
                 lon=float(stop_data['stop_lon']),
                 code=stop_data.get('stop_code', ''),
-                location_type=0,  # Stop/Platform
+                location_type=1,  # Station (not Stop/Platform)
                 lineas="T1",
                 nucleo_id=SEVILLA_NUCLEO_ID,
                 nucleo_name="Sevilla",
@@ -303,42 +349,6 @@ def import_frequencies(db: Session, route_id: str):
     db.flush()
 
 
-def add_correspondences(db: Session, stop_mapping: dict):
-    """Add correspondences with Metro and Cercanías."""
-    # San Bernardo tranvia stop connects with Metro and Cercanías
-    san_bernardo_tranvia = None
-    for old_id, new_id in stop_mapping.items():
-        if 'SAN_BERNARDO' in new_id:
-            san_bernardo_tranvia = new_id
-            break
-
-    if san_bernardo_tranvia:
-        # Update RENFE San Bernardo to include tranvia
-        renfe_stop = db.query(StopModel).filter(StopModel.id == 'RENFE_51100').first()
-        if renfe_stop:
-            # Add cor_tranvia or update cor_ml (using cor_ml for tram)
-            # Note: There's no cor_tranvia field, so we might need to add it
-            # For now, log the connection
-            logger.info(f"San Bernardo Tranvía connects with RENFE_51100 (Cercanías)")
-
-        # Update Metro Sevilla San Bernardo
-        metro_stop = db.query(StopModel).filter(StopModel.id == 'METRO_SEV_L1_E10').first()
-        if metro_stop:
-            logger.info(f"San Bernardo Tranvía connects with METRO_SEV_L1_E10 (Metro)")
-
-    # Prado San Sebastián connects with Metro
-    prado_tranvia = None
-    for old_id, new_id in stop_mapping.items():
-        if 'PRADO' in new_id:
-            prado_tranvia = new_id
-            break
-
-    if prado_tranvia:
-        metro_prado = db.query(StopModel).filter(StopModel.id == 'METRO_SEV_L1_E9').first()
-        if metro_prado:
-            logger.info(f"Prado San Sebastián Tranvía connects with METRO_SEV_L1_E9 (Metro)")
-
-
 def main():
     """Main import function."""
     if len(sys.argv) < 2:
@@ -364,21 +374,27 @@ def main():
         logger.info(f"Using nucleo: {nucleo.name} (id={nucleo.id})")
 
         # Import data
+        network_code = import_network(db)
         agency_id = import_agency(db, gtfs_path)
         route_id = import_route(db, agency_id)
         stop_mapping = import_stops(db, gtfs_path)
         import_stop_sequences(db, gtfs_path, route_id, stop_mapping)
         import_frequencies(db, route_id)
-        add_correspondences(db, stop_mapping)
 
         db.commit()
+
+        # Automatically calculate correspondences with other transit systems in the same núcleo
+        logger.info("Calculating correspondences with Metro Sevilla and Cercanías...")
+        populate_connections_for_nucleo(db, SEVILLA_NUCLEO_ID)
 
         logger.info("=" * 60)
         logger.info("TRANVÍA DE SEVILLA IMPORT COMPLETE")
         logger.info("=" * 60)
+        logger.info(f"Network: {network_code}")
         logger.info(f"Agency: {agency_id}")
         logger.info(f"Route: {route_id} ({TRANVIA_CONFIG['short_name']})")
-        logger.info(f"Stops: {len(set(stop_mapping.values()))}")
+        logger.info(f"Stops: {len(set(stop_mapping.values()))} (location_type=1)")
+        logger.info("Correspondences: automatically calculated from Metro Sevilla and Cercanías")
 
     except Exception as e:
         logger.error(f"Import failed: {e}")
