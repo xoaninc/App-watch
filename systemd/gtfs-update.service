@@ -1,0 +1,18 @@
+[Unit]
+Description=GTFS Auto-Update Service
+After=network.target postgresql.service
+
+[Service]
+Type=oneshot
+User=root
+WorkingDirectory=/var/www/renfeserver
+Environment="PATH=/var/www/renfeserver/.venv/bin:/usr/local/bin:/usr/bin"
+ExecStart=/var/www/renfeserver/.venv/bin/python /var/www/renfeserver/scripts/auto_update_gtfs.py
+StandardOutput=append:/var/log/renfeserver/gtfs_update.log
+StandardError=append:/var/log/renfeserver/gtfs_update.log
+
+# Restart API after successful update
+ExecStartPost=/bin/systemctl restart renfeserver
+
+[Install]
+WantedBy=multi-user.target
