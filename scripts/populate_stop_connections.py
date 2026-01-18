@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Script to populate cor_metro, cor_ml, cor_cercanias fields based on stop proximity AND name matching.
+"""Script to populate cor_metro, cor_ml, cor_cercanias fields based on stop proximity.
 
 Handles:
 - RENFE_ (Cercanías)
@@ -8,9 +8,8 @@ Handles:
 - METRO_SEV_ (Metro Sevilla)
 - TRAM_SEV_ (Tranvía Sevilla)
 
-Matching methods:
-1. Proximity (default 150m) - stops within distance are considered connected
-2. Name matching - stops with same/similar normalized names are considered connected
+Matching method:
+- Proximity (default 100m) - stops within distance are considered connected
 """
 
 import sys
@@ -157,10 +156,12 @@ def haversine_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> fl
 
 
 def is_metro_line(line: str) -> bool:
-    """Check if a line is a valid Metro line (1-12, L1-L12, or R)."""
+    """Check if a line is a valid Metro line (1-12, L1-L12, L7B, L9B, L10B, or R)."""
     line = line.strip()
-    # Metro lines: 1-12, L1-L12, R
+    # Metro lines: 1-12, L1-L12, R, and B variants (L7B, L9B, L10B)
     if line == 'R':
+        return True
+    if line in ('L7B', 'L9B', 'L10B', '7B', '9B', '10B'):
         return True
     if line.isdigit() and 1 <= int(line) <= 12:
         return True
@@ -183,10 +184,13 @@ def is_ml_line(line: str) -> bool:
 def normalize_metro_line(line: str) -> str:
     """Normalize metro line to have L prefix.
 
-    '1' -> 'L1', 'L1' -> 'L1', 'R' -> 'R'
+    '1' -> 'L1', 'L1' -> 'L1', 'R' -> 'R', '7B' -> 'L7B', 'L7B' -> 'L7B'
     Non-metro lines are filtered out in sort_lines when add_l_prefix=True
     """
     line = line.strip()
+    # B variants without L prefix
+    if line in ('7B', '9B', '10B'):
+        return f'L{line}'
     # If it's a plain number (Metro Madrid line), add L prefix
     if line.isdigit() and 1 <= int(line) <= 12:
         return f'L{line}'
@@ -295,31 +299,21 @@ def populate_connections(db: Session, max_distance_meters: float = DEFAULT_MAX_D
             check_same_nucleo: If True, only consider stops in the same núcleo
         """
         lines = set()
-        matched_by_name = set()  # Track which stops matched by name for logging
 
         for target in target_stops:
             # Skip if different núcleo (for cross-system in same city)
             if check_same_nucleo and source_stop.nucleo_id != target.nucleo_id:
                 continue
 
-            # Check proximity
+            # Check proximity only (name matching removed to avoid false positives)
             dist = haversine_distance(source_stop.lat, source_stop.lon, target.lat, target.lon)
             is_near = dist <= max_distance_meters
 
-            # Check name match
-            is_name_match = names_match(source_stop.name, target.name)
-
-            if (is_near or is_name_match) and target.lineas:
+            if is_near and target.lineas:
                 for line in target.lineas.split(','):
                     line = line.strip()
                     if line:
                         lines.add(line)
-                if is_name_match and not is_near:
-                    matched_by_name.add(target.name)
-
-        # Log name-based matches for visibility
-        if matched_by_name:
-            logger.debug(f"  Name match: {source_stop.name} -> {matched_by_name}")
 
         return lines
 
@@ -462,9 +456,8 @@ def populate_connections_for_nucleo(db: Session, nucleo_id: int, max_distance_me
         for target in target_stops:
             dist = haversine_distance(source_stop.lat, source_stop.lon, target.lat, target.lon)
             is_near = dist <= max_distance_meters
-            is_name_match = names_match(source_stop.name, target.name)
 
-            if (is_near or is_name_match) and target.lineas:
+            if is_near and target.lineas:
                 for line in target.lineas.split(','):
                     line = line.strip()
                     if line:

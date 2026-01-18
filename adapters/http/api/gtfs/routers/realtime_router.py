@@ -545,8 +545,8 @@ def get_route_frequencies(
 
     periods = [
         FrequencyPeriodResponse(
-            start_time=f.start_time.strftime("%H:%M"),
-            end_time=f.end_time.strftime("%H:%M"),
+            start_time=f.start_time.strftime("%H:%M") if hasattr(f.start_time, 'strftime') else str(f.start_time)[:5],
+            end_time=f.end_time.strftime("%H:%M") if hasattr(f.end_time, 'strftime') else str(f.end_time)[:5],
             headway_minutes=f.headway_minutes,
             headway_secs=f.headway_secs,
         )
@@ -621,7 +621,9 @@ def get_current_frequency(
         )
 
     headway = frequency.headway_minutes
-    period = f"{frequency.start_time.strftime('%H:%M')}-{frequency.end_time.strftime('%H:%M')}"
+    start_str = frequency.start_time.strftime('%H:%M') if hasattr(frequency.start_time, 'strftime') else str(frequency.start_time)[:5]
+    end_str = frequency.end_time.strftime('%H:%M') if hasattr(frequency.end_time, 'strftime') else str(frequency.end_time)[:5]
+    period = f"{start_str}-{end_str}"
 
     return CurrentFrequencyResponse(
         route_id=route.id,

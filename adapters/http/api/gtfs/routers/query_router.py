@@ -139,6 +139,7 @@ class RouteResponse(BaseModel):
     agency_id: str
     nucleo_id: Optional[int]
     nucleo_name: Optional[str]
+    description: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -406,8 +407,13 @@ def get_routes(
 
     Optionally filter by agency, núcleo, or search by name.
 
-    Note: When a base route (e.g., C4) has variants (C4A, C4B), only the variants
-    are returned. Base routes without variants are also returned.
+    Filtering logic for routes with variants:
+    - CERCANÍAS (C4, C4a, C4b): Base routes (C4) are hidden, only variants shown (C4a, C4b)
+      because C4/C8 don't exist as real services - only C4a/C4b and C8a/C8b do.
+    - METRO (L7, L7B): Both are returned because they are INDEPENDENT services
+      with different terminals and transfer required between them.
+
+    See: scripts/GTFS_IMPORT_CHANGES.md for full documentation.
     """
     query = db.query(RouteModel)
 
@@ -431,20 +437,27 @@ def get_routes(
 
     routes = query.order_by(RouteModel.short_name).all()
 
-    # Filter out base routes that have variants
+    # Filter out base routes that have variants (ONLY for Cercanías, not Metro)
     # e.g., if C4A and C4B exist, exclude C4
+    # But L7 and L7B in Metro are independent lines - don't filter them
     filtered_routes = []
     base_routes_with_variants = set()
 
     # Normalize route names for comparison (strip whitespace)
     routes_by_name = {}
+    routes_by_id = {}
     for route in routes:
         short_name = route.short_name.strip() if route.short_name else ""
         if short_name:
             routes_by_name[short_name] = route
+            routes_by_id[route.id] = route
 
-    # First pass: identify base routes that have variants
-    for short_name in routes_by_name.keys():
+    # First pass: identify base routes that have variants (Cercanías only)
+    for short_name, route in routes_by_name.items():
+        # Only apply this logic to Cercanías (routes starting with C)
+        # Metro lines (L7, L7B) are independent and should NOT be filtered
+        if not short_name.upper().startswith('C'):
+            continue
         # Check if this is a variant (ends with a single letter A-Z)
         if short_name and short_name[-1].isalpha() and len(short_name) > 1:
             # Extract base name (e.g., "C4" from "C4A")
@@ -1430,8 +1443,8 @@ def get_route_frequencies(route_id: str, db: Session = Depends(get_db)):
         RouteFrequencyResponse(
             route_id=freq.route_id,
             day_type=freq.day_type,
-            start_time=freq.start_time.strftime("%H:%M:%S"),
-            end_time=freq.end_time.strftime("%H:%M:%S"),
+            start_time=freq.start_time.strftime("%H:%M:%S") if hasattr(freq.start_time, 'strftime') else str(freq.start_time),
+            end_time=freq.end_time.strftime("%H:%M:%S") if hasattr(freq.end_time, 'strftime') else str(freq.end_time),
             headway_secs=freq.headway_secs,
             headway_minutes=round(freq.headway_secs / 60, 1),
         )
@@ -1482,17 +1495,19 @@ def get_route_operating_hours(route_id: str, db: Session = Depends(get_db)):
                 if not day_freqs:
                     return None
 
+                def format_time(t) -> str:
+                    """Format time object or string to HH:MM:SS."""
+                    if hasattr(t, 'strftime'):
+                        return t.strftime("%H:%M:%S")
+                    return str(t)
+
+                def get_end_time_for_sort(f) -> str:
+                    """Get end_time as string for sorting (GTFS format already handles 24+)."""
+                    return str(f.end_time)
+
                 # Separate morning frequencies (start >= 05:00) from late-night (start < 05:00)
                 morning_cutoff = time(5, 0, 0)
                 morning_freqs = [f for f in day_freqs if f.start_time >= morning_cutoff]
-                late_night_freqs = [f for f in day_freqs if f.start_time < morning_cutoff]
-
-                # Also check for frequencies that CROSS midnight (end_time < start_time)
-                # This includes frequencies like 07:00-01:30 or 23:00-02:00
-                midnight_crossing_freqs = [
-                    f for f in day_freqs
-                    if f.end_time < f.start_time
-                ]
 
                 # First departure: earliest morning frequency start time
                 if morning_freqs:
@@ -1500,23 +1515,12 @@ def get_route_operating_hours(route_id: str, db: Session = Depends(get_db)):
                 else:
                     first_dep = min(f.start_time for f in day_freqs)
 
-                # Last departure: check for late-night service (continues past midnight)
-                # Priority: late_night_freqs > midnight_crossing_freqs > normal
-                if late_night_freqs:
-                    # Late night service exists - find the latest end time
-                    late_night_end = max(f.end_time for f in late_night_freqs)
-                    # Format as 24+ hour for clarity (e.g., 02:00 becomes 26:00)
-                    last_dep_str = f"{late_night_end.hour + 24}:{late_night_end.minute:02d}:{late_night_end.second:02d}"
-                elif midnight_crossing_freqs:
-                    # Frequencies that cross midnight - use the end_time as 24+ hour
-                    crossing_end = max(f.end_time for f in midnight_crossing_freqs)
-                    last_dep_str = f"{crossing_end.hour + 24}:{crossing_end.minute:02d}:{crossing_end.second:02d}"
-                else:
-                    last_dep = max(f.end_time for f in day_freqs)
-                    last_dep_str = last_dep.strftime("%H:%M:%S") if last_dep else None
+                # Last departure: find max end_time (GTFS format: 25:30:00 > 23:00:00)
+                # String comparison works because GTFS format is sortable
+                last_dep_str = max(get_end_time_for_sort(f) for f in day_freqs)
 
                 return DayOperatingHours(
-                    first_departure=first_dep.strftime("%H:%M:%S") if first_dep else None,
+                    first_departure=format_time(first_dep) if first_dep else None,
                     last_departure=last_dep_str,
                     total_trips=0,  # Not applicable for frequency-based
                 )
@@ -1561,6 +1565,7 @@ def get_route_operating_hours(route_id: str, db: Session = Depends(get_db)):
         from sqlalchemy import func as sqlfunc
 
         # Get min/max departure times across all stop_times for these trips
+        # Note: Renfe can have late-night services (00:10, etc.) as last departures
         result = (
             db.query(
                 sqlfunc.min(StopTimeModel.departure_time).label("first_dep"),
@@ -1575,8 +1580,8 @@ def get_route_operating_hours(route_id: str, db: Session = Depends(get_db)):
             return None
 
         return DayOperatingHours(
-            first_departure=result.first_dep,
-            last_departure=result.last_dep,
+            first_departure=str(result.first_dep),
+            last_departure=str(result.last_dep),
             total_trips=result.trip_count or 0,
         )
 

@@ -35,8 +35,43 @@ class GTFSRealtimeFetcher:
     def __init__(self, db: Session):
         self.db = db
 
+    # Madrid Cercanías routes that need variant detection based on destination
+    # C4 and C8 don't exist as services - only C4a/C4b and C8a/C8b do
+    # See: scripts/GTFS_IMPORT_CHANGES.md for documentation
+
+    # Destinations that indicate variant "b" (if not matched, default to "a")
+    ROUTE_B_DESTINATIONS = {
+        'C4': ['colmenar', 'viejo'],           # C4b: Colmenar Viejo
+        'C8': ['cercedilla'],                   # C8b: Cercedilla (Cotos es C9)
+    }
+
     @staticmethod
-    def _extract_route_short_name(route_id: Optional[str]) -> Optional[str]:
+    def _determine_route_variant(short_name: str, headsign: Optional[str]) -> str:
+        """Determine the correct route variant (a/b) based on destination.
+
+        Madrid C4 and C8 lines split into variants:
+        - C4a: Alcobendas-San Sebastián de los Reyes
+        - C4b: Colmenar Viejo
+        - C8a: Santa María de la Alameda-Peguerinos / El Escorial
+        - C8b: Cercedilla / Cotos
+
+        Returns the correct variant (C4a, C4b, C8a, C8b) or original if not C4/C8.
+        """
+        if short_name not in GTFSRealtimeFetcher.ROUTE_B_DESTINATIONS:
+            return short_name
+
+        # Check if headsign matches any "b" variant destination
+        if headsign:
+            headsign_lower = headsign.lower()
+            for dest_keyword in GTFSRealtimeFetcher.ROUTE_B_DESTINATIONS[short_name]:
+                if dest_keyword in headsign_lower:
+                    return f"{short_name}b"
+
+        # Default to "a" variant
+        return f"{short_name}a"
+
+    @staticmethod
+    def _extract_route_short_name(route_id: Optional[str], headsign: Optional[str] = None) -> Optional[str]:
         """Extract route short_name from GTFS-RT route_id.
 
         GTFS-RT route_id formats:
@@ -44,13 +79,19 @@ class GTFSRealtimeFetcher:
         - {nucleo}T{code}T{line} (e.g., 31T0009T1 -> T1) for Tranvía/other lines
         - {nucleo}T{code}R{line} (e.g., 51T0025R2 -> R2) for Rodalies Catalunya
         Returns the line name like C1, C5, C8a, T1, R2, etc.
+
+        For C4 and C8 (Madrid), determines variant based on headsign:
+        - C4 + "Colmenar" → C4b, otherwise C4a
+        - C8 + "Cercedilla" → C8b, otherwise C8a (Cotos es C9)
         """
         if not route_id:
             return None
         # Match pattern ending with C, T, or R followed by line number/letter
         match = re.search(r'([CTR])([0-9]+[a-z]?)$', route_id, re.IGNORECASE)
         if match:
-            return f"{match.group(1).upper()}{match.group(2)}"
+            short_name = f"{match.group(1).upper()}{match.group(2)}"
+            # Determine variant for C4/C8 based on headsign
+            return GTFSRealtimeFetcher._determine_route_variant(short_name, headsign)
         return None
 
     async def fetch_and_store_vehicle_positions(self) -> int:
@@ -164,6 +205,9 @@ class GTFSRealtimeFetcher:
             # Get headsign from trip (ensure never None)
             trip = self.db.query(TripModel).filter(TripModel.id == vp.trip_id).first()
             headsign = (trip.headsign if trip and trip.headsign else None) or "Unknown"
+
+            # Determine variant for C4/C8 based on headsign
+            route_short_name = self._determine_route_variant(route_short_name, headsign)
 
             # Normalize stop_id
             stop_id = vp.stop_id

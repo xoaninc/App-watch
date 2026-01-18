@@ -726,3 +726,157 @@ if frequencies:
     # Es frequency-based (Metro, Tranvía)
     headway = frequencies[0]["headway_secs"]  # 300 = 5 minutos
 ```
+
+---
+
+## IMPORTANTE: Diferencias Metro vs Cercanías
+
+### Rutas con Variantes (A/B)
+
+| Sistema | Comportamiento | Ejemplo |
+|---------|---------------|---------|
+| **Cercanías** | Base + Variantes = mismo servicio | C4, C4a, C4b → Solo mostrar C4a, C4b |
+| **Metro** | Base + Variantes = servicios independientes | L7, L7B → Mostrar AMBAS |
+
+**Cercanías Madrid:** Las líneas C4 y C8 NO existen como servicio real. Solo existen:
+- C4a: Alcobendas-San Sebastián de los Reyes
+- C4b: Colmenar Viejo
+- C8a: Santa María de la Alameda-Peguerinos / El Escorial
+- C8b: Cercedilla (Cotos es C9)
+
+⚠️ **Base de datos:** Las rutas RENFE_C4_37 y RENFE_C8_40 existen pero:
+- NO deben tener entradas en `gtfs_stop_route_sequence`
+- NO deben aparecer en campo `lineas` de paradas
+- La API las filtra automáticamente del listado de rutas
+
+**GTFS-RT:** Cuando Renfe envía C4/C8, se determina la variante por el destino:
+```python
+# En gtfs_rt_fetcher.py
+ROUTE_B_DESTINATIONS = {
+    'C4': ['colmenar', 'viejo'],      # → C4b
+    'C8': ['cercedilla'],              # → C8b (Cotos es C9)
+}
+# Si no coincide, default a C4a/C8a
+```
+
+**Nota:** C8 SÍ existe en Asturias (núcleo 20) como línea única.
+
+**Metro Madrid:** Las líneas L7, L9, L10 SÍ existen como servicios independientes:
+- L7 (Pitis - Estadio Metropolitano) ← Línea principal
+- L7B (Estadio Metropolitano - Hospital del Henares) ← Extensión independiente
+- L9 (Paco de Lucía - Puerta de Arganda) ← Línea principal
+- L9B (Puerta de Arganda - Arganda del Rey) ← TFM, extensión independiente
+- L10 (Tres Olivos - Puerta del Sur) ← Línea principal
+- L10B (Hospital Infanta Sofía - Tres Olivos) ← Extensión independiente
+
+### Correspondencias en Paradas
+
+El campo `cor_cercanias` NO debe incluir líneas base que no existen:
+
+```sql
+-- ❌ INCORRECTO
+cor_cercanias = 'C4, C4a, C4b'
+
+-- ✅ CORRECTO
+cor_cercanias = 'C4a, C4b'
+```
+
+El campo `cor_metro` SÍ debe incluir todas las líneas que pasan por la parada:
+
+```sql
+-- Estadio Metropolitano (conexión L7 ↔ L7B)
+cor_metro = 'L7, L7B'
+
+-- Puerta de Arganda (conexión L9 ↔ L9B)
+cor_metro = 'L9, L9B'
+
+-- Tres Olivos (conexión L10 ↔ L10B)
+cor_metro = 'L10, L10B'
+```
+
+### Lógica de Filtrado en API
+
+La API (`query_router.py`) filtra rutas base con variantes **SOLO para Cercanías**:
+
+```python
+# Solo aplica a rutas que empiezan por 'C' (Cercanías)
+if not short_name.upper().startswith('C'):
+    continue  # Metro, ML, Tranvía no se filtran
+```
+
+---
+
+## Formato GTFS para Horarios Nocturnos
+
+### Horarios que cruzan medianoche
+
+Cuando un servicio termina después de medianoche, usar formato GTFS con horas > 24:
+
+| Hora real | Formato GTFS |
+|-----------|--------------|
+| 00:00 | `24:00:00` |
+| 00:30 | `24:30:00` |
+| 00:45 | `24:45:00` |
+| 01:00 | `25:00:00` |
+| 01:30 | `25:30:00` |
+| 02:00 | `26:00:00` |
+
+**Ejemplo en base de datos:**
+
+```sql
+-- Metro Madrid cierra a las 01:30 (todas las líneas, todos los días)
+INSERT INTO gtfs_route_frequencies (route_id, day_type, start_time, end_time, headway_secs)
+VALUES ('METRO_1', 'weekday', '22:00:00', '25:30:00', 450);
+--                                         ^^^^^^^^ = 01:30 del día siguiente
+```
+
+**Columna `end_time`:** Tipo `VARCHAR(10)` para soportar formato GTFS (no TIME).
+
+### Horarios de Cierre
+
+| Sistema | Cierre L-J | Cierre V-S | Cierre D |
+|---------|------------|------------|----------|
+| Metro Madrid | 01:30 | 01:30 | 01:30 |
+| Metro Ligero ML1 | 01:30 | 01:30 | 01:30 |
+| Metro Ligero ML2-3 | 01:30 | 01:30 | 01:30 |
+| Metro Ligero ML4 | 00:45 | 00:45 | 00:45 |
+| Metro Sevilla | 01:30 | 02:00 | 23:00 |
+
+---
+
+## Frecuencias de Metro Madrid (Mantenimiento Manual)
+
+⚠️ **IMPORTANTE:** Las frecuencias de Metro Madrid se mantienen MANUALMENTE desde datos oficiales de metromadrid.es. NO se importan automáticamente desde GTFS de CRTM (datos incorrectos).
+
+### Protección en Importadores
+
+El archivo `metro_frequency_importer.py` tiene protección para evitar sobrescribir datos manuales:
+
+```python
+# PROTECTION: Skip Metro Madrid frequencies (maintained manually)
+if clear_prefix == 'METRO_%':
+    logger.warning("SKIPPING Metro Madrid frequency import!")
+    return {'trips_loaded': 0, 'frequencies_imported': 0, 'skipped': True}
+```
+
+### Actualización de Frecuencias
+
+Para actualizar frecuencias de Metro Madrid, hacerlo directamente en la base de datos:
+
+```sql
+-- Ejemplo: Actualizar frecuencia de L1 en hora punta
+UPDATE gtfs_route_frequencies
+SET headway_secs = 240  -- 4 minutos
+WHERE route_id = 'METRO_1'
+  AND day_type = 'weekday'
+  AND start_time = '07:00:00';
+```
+
+### Tipos de Día (day_type)
+
+| day_type | Días |
+|----------|------|
+| `weekday` | Lunes a Jueves |
+| `friday` | Viernes |
+| `saturday` | Sábado |
+| `sunday` | Domingo y Festivos |
