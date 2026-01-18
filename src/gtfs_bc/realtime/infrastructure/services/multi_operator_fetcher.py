@@ -14,6 +14,7 @@ Usage:
     results = fetcher.fetch_all_operators()
 """
 
+import json
 import logging
 from datetime import datetime, timedelta, date
 import re
@@ -270,13 +271,54 @@ class MultiOperatorFetcher:
             results.append(result)
         return results
 
-    def fetch_all_operators_sync(self) -> List[Dict[str, int]]:
-        """Synchronous version of fetch_all_operators."""
+    def fetch_all_operators_sync(self, parallel: bool = True) -> List[Dict[str, int]]:
+        """Synchronous version of fetch_all_operators.
+
+        Args:
+            parallel: If True, fetch from all operators in parallel using threads.
+        """
+        if not parallel:
+            # Sequential fetching (legacy behavior)
+            results = []
+            for operator_code in GTFS_RT_OPERATORS:
+                result = self.fetch_operator_sync(operator_code)
+                results.append(result)
+            return results
+
+        # Parallel fetching using ThreadPoolExecutor
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+
         results = []
-        for operator_code in GTFS_RT_OPERATORS:
-            result = self.fetch_operator_sync(operator_code)
-            results.append(result)
+        with ThreadPoolExecutor(max_workers=len(GTFS_RT_OPERATORS)) as executor:
+            # Submit all fetch tasks
+            future_to_operator = {
+                executor.submit(self._fetch_operator_in_new_session, op): op
+                for op in GTFS_RT_OPERATORS
+            }
+
+            # Collect results as they complete
+            for future in as_completed(future_to_operator):
+                operator = future_to_operator[future]
+                try:
+                    result = future.result()
+                    results.append(result)
+                except Exception as e:
+                    logger.error(f"Error fetching {operator} in parallel: {e}")
+                    results.append({'operator': operator, 'error': str(e)})
+
         return results
+
+    def _fetch_operator_in_new_session(self, operator_code: str) -> Dict[str, int]:
+        """Fetch operator data using a new database session (for thread safety)."""
+        from core.database import SessionLocal
+
+        db = SessionLocal()
+        try:
+            # Create a new fetcher instance with the new session
+            fetcher = MultiOperatorFetcher(db)
+            return fetcher.fetch_operator_sync(operator_code)
+        finally:
+            db.close()
 
     # -------------------------------------------------------------------------
     # Protobuf fetchers (Metro Bilbao, Euskotren)
@@ -947,6 +989,18 @@ class MultiOperatorFetcher:
                     if arrival_time:
                         # Use codi_via as platform (1=direction A, 2=direction B)
                         platform = str(via) if via else None
+
+                        # Extract occupancy data from info_tren
+                        occupancy = None
+                        occupancy_per_car = None
+                        info_tren = train.get('info_tren', {})
+                        if info_tren:
+                            if 'percentatge_ocupacio' in info_tren:
+                                occupancy = info_tren.get('percentatge_ocupacio')
+                            if 'percentatge_ocupacio_cotxes' in info_tren:
+                                # Store as JSON string
+                                occupancy_per_car = json.dumps(info_tren.get('percentatge_ocupacio_cotxes'))
+
                         stop_time_model = StopTimeUpdateModel(
                             trip_id=trip_id,
                             stop_id=stop_id,
@@ -955,6 +1009,9 @@ class MultiOperatorFetcher:
                             departure_delay=None,
                             departure_time=None,
                             platform=platform,
+                            occupancy_percent=occupancy,
+                            occupancy_per_car=occupancy_per_car,
+                            headsign=destination,  # Store destination as headsign
                         )
                         self.db.add(stop_time_model)
 

@@ -115,11 +115,11 @@ from src.gtfs_bc.trip.infrastructure.models import TripModel
 from src.gtfs_bc.stop_time.infrastructure.models import StopTimeModel
 from src.gtfs_bc.calendar.infrastructure.models import CalendarModel, CalendarDateModel
 from src.gtfs_bc.agency.infrastructure.models import AgencyModel
-from src.gtfs_bc.nucleo.infrastructure.models import NucleoModel
+from src.gtfs_bc.network.infrastructure.models import NetworkModel
 from src.gtfs_bc.realtime.infrastructure.models import TripUpdateModel, StopTimeUpdateModel, VehiclePositionModel, PlatformHistoryModel
 from src.gtfs_bc.province.province_lookup import (
     get_province_by_coordinates,
-    get_province_and_nucleo_by_coordinates,
+    get_province_and_networks_by_coordinates,
 )
 from src.gtfs_bc.realtime.infrastructure.services.estimated_positions import EstimatedPositionsService
 from src.gtfs_bc.stop_route_sequence.infrastructure.models import StopRouteSequenceModel
@@ -137,8 +137,7 @@ class RouteResponse(BaseModel):
     color: Optional[str]
     text_color: Optional[str]
     agency_id: str
-    nucleo_id: Optional[int]
-    nucleo_name: Optional[str]
+    network_id: Optional[str]
     description: Optional[str] = None
 
     class Config:
@@ -186,8 +185,6 @@ class StopResponse(BaseModel):
     parent_station_id: Optional[str]
     zone_id: Optional[str]
     province: Optional[str]
-    nucleo_id: Optional[int]
-    nucleo_name: Optional[str]
     lineas: Optional[str]
     parking_bicis: Optional[str]
     accesibilidad: Optional[str]
@@ -212,8 +209,6 @@ class RouteStopResponse(BaseModel):
     parent_station_id: Optional[str]
     zone_id: Optional[str]
     province: Optional[str]
-    nucleo_id: Optional[int]
-    nucleo_name: Optional[str]
     lineas: Optional[str]
     parking_bicis: Optional[str]
     accesibilidad: Optional[str]
@@ -296,23 +291,6 @@ class AgencyResponse(BaseModel):
         from_attributes = True
 
 
-class NucleoResponse(BaseModel):
-    id: int
-    name: str
-    color: Optional[str]
-    bounding_box_min_lat: Optional[float]
-    bounding_box_max_lat: Optional[float]
-    bounding_box_min_lon: Optional[float]
-    bounding_box_max_lon: Optional[float]
-    center_lat: Optional[float]
-    center_lon: Optional[float]
-    stations_count: Optional[int]
-    lines_count: Optional[int]
-
-    class Config:
-        from_attributes = True
-
-
 @router.get("/agencies", response_model=List[AgencyResponse])
 def get_agencies(db: Session = Depends(get_db)):
     """Get all agencies."""
@@ -320,92 +298,16 @@ def get_agencies(db: Session = Depends(get_db)):
     return agencies
 
 
-@router.get("/nucleos", response_model=List[NucleoResponse])
-def get_nucleos(db: Session = Depends(get_db)):
-    """Get all Renfe regional networks (núcleos)."""
-    # Get counts in a single query using subqueries to avoid N+1
-    stops_count_subq = (
-        db.query(StopModel.nucleo_id, func.count(StopModel.id).label('count'))
-        .group_by(StopModel.nucleo_id)
-        .subquery()
-    )
-    routes_count_subq = (
-        db.query(RouteModel.nucleo_id, func.count(RouteModel.id).label('count'))
-        .group_by(RouteModel.nucleo_id)
-        .subquery()
-    )
-
-    nucleos_with_counts = (
-        db.query(
-            NucleoModel,
-            func.coalesce(stops_count_subq.c.count, 0).label('stations_count'),
-            func.coalesce(routes_count_subq.c.count, 0).label('lines_count'),
-        )
-        .outerjoin(stops_count_subq, NucleoModel.id == stops_count_subq.c.nucleo_id)
-        .outerjoin(routes_count_subq, NucleoModel.id == routes_count_subq.c.nucleo_id)
-        .order_by(NucleoModel.id)
-        .all()
-    )
-
-    return [
-        NucleoResponse(
-            id=nucleo.id,
-            name=nucleo.name,
-            color=nucleo.color,
-            bounding_box_min_lat=nucleo.bounding_box_min_lat,
-            bounding_box_max_lat=nucleo.bounding_box_max_lat,
-            bounding_box_min_lon=nucleo.bounding_box_min_lon,
-            bounding_box_max_lon=nucleo.bounding_box_max_lon,
-            center_lat=nucleo.center_lat,
-            center_lon=nucleo.center_lon,
-            stations_count=stations_count,
-            lines_count=lines_count,
-        )
-        for nucleo, stations_count, lines_count in nucleos_with_counts
-    ]
-
-
-@router.get("/nucleos/{nucleo_id}", response_model=NucleoResponse)
-def get_nucleo(nucleo_id: int, db: Session = Depends(get_db)):
-    """Get a specific núcleo by ID."""
-    nucleo = db.query(NucleoModel).filter(NucleoModel.id == nucleo_id).first()
-    if not nucleo:
-        raise HTTPException(status_code=404, detail=f"Nucleo {nucleo_id} not found")
-
-    # Count associated stops and routes
-    stations_count = db.query(func.count(StopModel.id)).filter(
-        StopModel.nucleo_id == nucleo_id
-    ).scalar()
-    lines_count = db.query(func.count(RouteModel.id)).filter(
-        RouteModel.nucleo_id == nucleo_id
-    ).scalar()
-
-    return NucleoResponse(
-        id=nucleo.id,
-        name=nucleo.name,
-        color=nucleo.color,
-        bounding_box_min_lat=nucleo.bounding_box_min_lat,
-        bounding_box_max_lat=nucleo.bounding_box_max_lat,
-        bounding_box_min_lon=nucleo.bounding_box_min_lon,
-        bounding_box_max_lon=nucleo.bounding_box_max_lon,
-        center_lat=nucleo.center_lat,
-        center_lon=nucleo.center_lon,
-        stations_count=stations_count,
-        lines_count=lines_count,
-    )
-
-
 @router.get("/routes", response_model=List[RouteResponse])
 def get_routes(
     agency_id: Optional[str] = Query(None, description="Filter by agency ID"),
-    nucleo_id: Optional[int] = Query(None, description="Filter by núcleo ID"),
-    nucleo_name: Optional[str] = Query(None, description="Filter by núcleo name"),
+    network_id: Optional[str] = Query(None, description="Filter by network ID"),
     search: Optional[str] = Query(None, description="Search by name"),
     db: Session = Depends(get_db),
 ):
     """Get all routes/lines.
 
-    Optionally filter by agency, núcleo, or search by name.
+    Optionally filter by agency, network, or search by name.
 
     Filtering logic for routes with variants:
     - CERCANÍAS (C4, C4a, C4b): Base routes (C4) are hidden, only variants shown (C4a, C4b)
@@ -420,11 +322,8 @@ def get_routes(
     if agency_id:
         query = query.filter(RouteModel.agency_id == agency_id)
 
-    if nucleo_id:
-        query = query.filter(RouteModel.nucleo_id == nucleo_id)
-
-    if nucleo_name:
-        query = query.filter(RouteModel.nucleo_name.ilike(f"%{nucleo_name}%"))
+    if network_id:
+        query = query.filter(RouteModel.network_id == network_id)
 
     if search:
         search_term = f"%{search}%"

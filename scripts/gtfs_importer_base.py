@@ -28,7 +28,6 @@ project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
 from core.database import SessionLocal
-from src.gtfs_bc.nucleo.infrastructure.models import NucleoModel
 from src.gtfs_bc.stop.infrastructure.models import StopModel
 from src.gtfs_bc.route.infrastructure.models import RouteModel, RouteFrequencyModel
 from src.gtfs_bc.agency.infrastructure.models import AgencyModel
@@ -44,13 +43,13 @@ class NetworkConfig:
     """Configuration for a transit network."""
     code: str  # Must match route ID prefix for route_count to work
     name: str
-    city: str
     region: str
-    color: str  # Hex color without #
-    text_color: str = "FFFFFF"
+    color: str  # Hex color with # (e.g., "#E30613")
+    text_color: str = "#FFFFFF"
     description: Optional[str] = None
     logo_url: Optional[str] = None
     wikipedia_url: Optional[str] = None
+    nucleo_id_renfe: Optional[int] = None  # Solo para redes de Cercanías
 
 
 @dataclass
@@ -104,7 +103,6 @@ class GTFSImporterBase(ABC):
     Subclasses must implement:
     - NETWORK_CONFIG: NetworkConfig instance
     - AGENCY_CONFIG: AgencyConfig instance
-    - NUCLEO_ID: int - The nucleo ID for this transit system
     - import_routes(): Import routes from GTFS data
     - import_stops(): Import stops from GTFS data
     """
@@ -112,7 +110,6 @@ class GTFSImporterBase(ABC):
     # Subclasses must define these
     NETWORK_CONFIG: NetworkConfig = None
     AGENCY_CONFIG: AgencyConfig = None
-    NUCLEO_ID: int = None
 
     def __init__(self, db: Session, gtfs_path: Optional[Path] = None):
         self.db = db
@@ -134,18 +131,15 @@ class GTFSImporterBase(ABC):
             raise ValueError(f"{self.__class__.__name__} must define NETWORK_CONFIG")
         if self.AGENCY_CONFIG is None:
             raise ValueError(f"{self.__class__.__name__} must define AGENCY_CONFIG")
-        if self.NUCLEO_ID is None:
-            raise ValueError(f"{self.__class__.__name__} must define NUCLEO_ID")
 
-    def check_nucleo(self) -> NucleoModel:
-        """Check that the nucleo exists in the database."""
-        nucleo = self.db.query(NucleoModel).filter(
-            NucleoModel.id == self.NUCLEO_ID
+    def check_network(self) -> NetworkModel:
+        """Check that the network exists in the database."""
+        network = self.db.query(NetworkModel).filter(
+            NetworkModel.code == self.NETWORK_CONFIG.code
         ).first()
-        if not nucleo:
-            raise ValueError(f"Nucleo {self.NUCLEO_ID} not found in database")
-        logger.info(f"Using nucleo: {nucleo.name} (id={nucleo.id})")
-        return nucleo
+        if network:
+            logger.info(f"Using network: {network.name} (code={network.code})")
+        return network
 
     def import_network(self) -> str:
         """Create or update the network entry."""
@@ -157,24 +151,24 @@ class GTFSImporterBase(ABC):
         if existing:
             logger.info(f"Network {config.code} already exists, updating...")
             existing.name = config.name
-            existing.city = config.city
             existing.region = config.region
             existing.color = config.color
             existing.text_color = config.text_color
             existing.description = config.description
             existing.logo_url = config.logo_url
             existing.wikipedia_url = config.wikipedia_url
+            existing.nucleo_id_renfe = config.nucleo_id_renfe
         else:
             network = NetworkModel(
                 code=config.code,
                 name=config.name,
-                city=config.city,
                 region=config.region,
                 color=config.color,
                 text_color=config.text_color,
                 description=config.description,
                 logo_url=config.logo_url,
                 wikipedia_url=config.wikipedia_url,
+                nucleo_id_renfe=config.nucleo_id_renfe,
             )
             self.db.add(network)
             self.stats.network_created = True
@@ -232,7 +226,6 @@ class GTFSImporterBase(ABC):
             existing.lon = lon
             existing.lineas = lineas
             existing.location_type = location_type
-            existing.nucleo_id = self.NUCLEO_ID
             for key, value in kwargs.items():
                 if hasattr(existing, key):
                     setattr(existing, key, value)
@@ -246,7 +239,6 @@ class GTFSImporterBase(ABC):
                 lon=lon,
                 lineas=lineas,
                 location_type=location_type,
-                nucleo_id=self.NUCLEO_ID,
                 **kwargs
             )
             self.db.add(stop)
@@ -275,7 +267,7 @@ class GTFSImporterBase(ABC):
             existing.color = color
             existing.text_color = text_color
             existing.agency_id = agency_id
-            existing.nucleo_id = self.NUCLEO_ID
+            existing.network_id = self.NETWORK_CONFIG.code
             for key, value in kwargs.items():
                 if hasattr(existing, key):
                     setattr(existing, key, value)
@@ -290,7 +282,7 @@ class GTFSImporterBase(ABC):
                 color=color,
                 text_color=text_color,
                 agency_id=agency_id,
-                nucleo_id=self.NUCLEO_ID,
+                network_id=self.NETWORK_CONFIG.code,
                 **kwargs
             )
             self.db.add(route)
@@ -335,7 +327,6 @@ class GTFSImporterBase(ABC):
     def run(self) -> ImportStats:
         """Run the full import process."""
         self.validate_config()
-        self.check_nucleo()
 
         logger.info(f"Starting {self.NETWORK_CONFIG.name} import...")
 

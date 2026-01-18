@@ -48,8 +48,7 @@ TRANVIA_SEVILLA_AGENCY_ID = 'TRANVIA_SEVILLA'
 NETWORK_CONFIG = {
     'code': 'TRAM_SEV',  # Must match route ID prefix (max 10 chars)
     'name': 'Tranvía de Sevilla (MetroCentro)',
-    'city': 'Sevilla',
-    'region': 'Andalucía',
+    'region': 'Sevilla',
     'color': '#E4002B',  # Red
     'text_color': '#FFFFFF',
     'description': 'Servicio de tranvía en el centro de Sevilla',
@@ -85,7 +84,6 @@ def import_network(db: Session) -> str:
     if existing:
         logger.info(f"Network {network_code} already exists, updating...")
         existing.name = NETWORK_CONFIG['name']
-        existing.city = NETWORK_CONFIG['city']
         existing.region = NETWORK_CONFIG['region']
         existing.color = NETWORK_CONFIG['color']
         existing.text_color = NETWORK_CONFIG['text_color']
@@ -95,7 +93,6 @@ def import_network(db: Session) -> str:
         network = NetworkModel(
             code=network_code,
             name=NETWORK_CONFIG['name'],
-            city=NETWORK_CONFIG['city'],
             region=NETWORK_CONFIG['region'],
             color=NETWORK_CONFIG['color'],
             text_color=NETWORK_CONFIG['text_color'],

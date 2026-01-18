@@ -30,7 +30,7 @@ from src.gtfs_bc.stop_route_sequence.infrastructure.models import StopRouteSeque
 from src.gtfs_bc.network.infrastructure.models import NetworkModel
 
 # Import connection population function (for automatic correspondences)
-from scripts.populate_stop_connections import populate_connections_for_nucleo
+from scripts.populate_stop_connections import populate_connections_for_network
 
 logger = logging.getLogger(__name__)
 
@@ -123,7 +123,6 @@ ML_LONG_NAMES = {
 METRO_NETWORK_CONFIG = {
     'code': 'METRO',  # Must match route ID prefix (METRO_*)
     'name': 'Metro de Madrid',
-    'city': 'Madrid',
     'region': 'Comunidad de Madrid',
     'color': '#ED1C24',  # Red (Metro corporate color)
     'text_color': '#FFFFFF',
@@ -134,7 +133,6 @@ METRO_NETWORK_CONFIG = {
 ML_NETWORK_CONFIG = {
     'code': 'ML',  # Must match route ID prefix (ML_*)
     'name': 'Metro Ligero de Madrid',
-    'city': 'Madrid',
     'region': 'Comunidad de Madrid',
     'color': '#3A7DDA',  # Blue (ML1 color as default)
     'text_color': '#FFFFFF',
@@ -153,9 +151,9 @@ class CRTMMetroImporter:
     ML_STATIONS_URL = "https://services5.arcgis.com/UxADft6QPcvFyDU1/arcgis/rest/services/M10_Red/FeatureServer/0/query"
     ML_TRAMOS_URL = "https://services5.arcgis.com/UxADft6QPcvFyDU1/arcgis/rest/services/M10_Red/FeatureServer/4/query"
 
-    # Madrid nucleo
-    MADRID_NUCLEO_ID = 10
-    MADRID_NUCLEO_NAME = "Madrid"
+    # Madrid network codes
+    METRO_NETWORK_CODE = '11T'
+    ML_NETWORK_CODE = '12T'
 
     def __init__(self, db: Session):
         self.db = db
@@ -172,7 +170,6 @@ class CRTMMetroImporter:
             if existing:
                 # Update existing
                 existing.name = config['name']
-                existing.city = config['city']
                 existing.region = config['region']
                 existing.color = config['color']
                 existing.text_color = config['text_color']
@@ -184,7 +181,6 @@ class CRTMMetroImporter:
                 network = NetworkModel(
                     code=config['code'],
                     name=config['name'],
-                    city=config['city'],
                     region=config['region'],
                     color=config['color'],
                     text_color=config['text_color'],
@@ -277,9 +273,9 @@ class CRTMMetroImporter:
             self.db.commit()
             logger.info("Successfully imported all Metro data")
 
-            # Automatically calculate correspondences with Cercanías in the same núcleo
+            # Automatically calculate correspondences with Cercanías in the same area
             logger.info("Calculating correspondences with Cercanías Madrid...")
-            populate_connections_for_nucleo(self.db, self.MADRID_NUCLEO_ID)
+            populate_connections_for_network(self.db, self.METRO_NETWORK_CODE)
 
         except Exception as e:
             logger.error(f"Error during Metro import: {e}")
@@ -436,9 +432,7 @@ class CRTMMetroImporter:
                 route_type=1,  # Metro/Subway
                 color=METRO_COLORS.get(line_num),
                 text_color=METRO_TEXT_COLORS.get(line_num, '#FFFFFF'),
-                nucleo_id=self.MADRID_NUCLEO_ID,
-                nucleo_name=self.MADRID_NUCLEO_NAME,
-                description=METRO_DESCRIPTIONS.get(line_num),
+                                description=METRO_DESCRIPTIONS.get(line_num),
             )
             self.db.add(route)
             created += 1
@@ -465,9 +459,7 @@ class CRTMMetroImporter:
                 route_type=0,  # Tram/Light Rail
                 color=ML_COLORS.get(line_num),
                 text_color='#FFFFFF',
-                nucleo_id=self.MADRID_NUCLEO_ID,
-                nucleo_name=self.MADRID_NUCLEO_NAME,
-            )
+                            )
             self.db.add(route)
             created += 1
 
@@ -555,9 +547,7 @@ class CRTMMetroImporter:
                 location_type=1,  # Station
                 wheelchair_boarding=wheelchair,
                 lineas=data['lineas'],
-                nucleo_id=self.MADRID_NUCLEO_ID,
-                nucleo_name=self.MADRID_NUCLEO_NAME,
-            )
+                            )
             self.db.add(stop)
             created += 1
 
@@ -643,9 +633,7 @@ class CRTMMetroImporter:
                 code=codigo,
                 location_type=1,  # Station
                 lineas=data['lineas'],
-                nucleo_id=self.MADRID_NUCLEO_ID,
-                nucleo_name=self.MADRID_NUCLEO_NAME,
-            )
+                            )
             self.db.add(stop)
             created += 1
 
