@@ -870,6 +870,36 @@ def get_stop_departures(
     # Get trip IDs for realtime delay lookup
     trip_ids = [trip.id for _, trip, _ in results]
 
+    # Get last stop names for trips (to use as headsign when trip.headsign is null)
+    # The headsign should be the final destination of the train
+    last_stop_names = {}
+    if trip_ids:
+        # Subquery to get max stop_sequence for each trip
+        max_seq_subq = (
+            db.query(
+                StopTimeModel.trip_id,
+                func.max(StopTimeModel.stop_sequence).label("max_seq")
+            )
+            .filter(StopTimeModel.trip_id.in_(trip_ids))
+            .group_by(StopTimeModel.trip_id)
+            .subquery()
+        )
+
+        # Get the stop name at max_seq for each trip
+        last_stops = (
+            db.query(StopTimeModel.trip_id, StopModel.name)
+            .join(StopModel, StopTimeModel.stop_id == StopModel.id)
+            .join(
+                max_seq_subq,
+                and_(
+                    StopTimeModel.trip_id == max_seq_subq.c.trip_id,
+                    StopTimeModel.stop_sequence == max_seq_subq.c.max_seq
+                )
+            )
+            .all()
+        )
+        last_stop_names = {trip_id: name for trip_id, name in last_stops}
+
     # Get trip-level delays
     trip_delays = {}
     if trip_ids:
@@ -1003,6 +1033,9 @@ def get_stop_departures(
         # Get train position (from GTFS-RT or estimated)
         train_position = train_positions.get(trip.id)
 
+        # Get headsign: prefer trip.headsign, fall back to last stop name (destination)
+        headsign = trip.headsign or last_stop_names.get(trip.id)
+
         # Get platform from GTFS-RT (prefer stop_time_update, then vehicle_position)
         platform = stop_platforms.get(trip.id) or vehicle_platforms.get(trip.id)
         platform_estimated = False
@@ -1010,7 +1043,7 @@ def get_stop_departures(
         # If no real platform, try to get estimated from history
         if not platform:
             route_short = route.short_name.strip() if route.short_name else ""
-            estimated = get_estimated_platform(route_short, trip.headsign or "")
+            estimated = get_estimated_platform(route_short, headsign or "")
             if estimated:
                 platform = estimated
                 platform_estimated = True
@@ -1021,7 +1054,7 @@ def get_stop_departures(
                 route_id=route.id,
                 route_short_name=route.short_name.strip() if route.short_name else "",
                 route_color=route.color,
-                headsign=trip.headsign,
+                headsign=headsign,
                 departure_time=stop_time.departure_time,
                 departure_seconds=stop_time.departure_seconds,
                 minutes_until=minutes_until,
@@ -1077,13 +1110,18 @@ def get_trip(trip_id: str, db: Session = Depends(get_db)):
         for stop_time, stop in stop_times
     ]
 
+    # Get headsign: prefer trip.headsign, fall back to last stop name (destination)
+    headsign = trip.headsign
+    if not headsign and stops:
+        headsign = stops[-1].stop_name
+
     return TripDetailResponse(
         id=trip.id,
         route_id=trip.route_id,
         route_short_name=route.short_name.strip() if route and route.short_name else "",
         route_long_name=route.long_name.strip() if route and route.long_name else "",
         route_color=route.color if route else None,
-        headsign=trip.headsign,
+        headsign=headsign,
         direction_id=trip.direction_id,
         stops=stops,
     )
