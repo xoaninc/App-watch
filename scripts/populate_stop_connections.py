@@ -156,11 +156,46 @@ def haversine_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> fl
     return R * c
 
 
-def sort_lines(lines: set) -> str:
-    """Sort lines: numbers first (numerically), then letters."""
-    numeric = sorted([x for x in lines if x.isdigit()], key=int)
-    alpha = sorted([x for x in lines if not x.isdigit()])
-    return ', '.join(numeric + alpha)
+def normalize_metro_line(line: str) -> str:
+    """Normalize metro line to have L prefix.
+
+    '1' -> 'L1', 'L1' -> 'L1', 'R' -> 'R', 'C1' -> 'C1'
+    """
+    line = line.strip()
+    # If it's a plain number (Metro Madrid line), add L prefix
+    if line.isdigit() and 1 <= int(line) <= 12:
+        return f'L{line}'
+    return line
+
+
+def sort_lines(lines: set, add_l_prefix: bool = False) -> str:
+    """Sort lines: L-lines first (numerically), then others.
+
+    Args:
+        lines: Set of line names
+        add_l_prefix: If True, add 'L' prefix to numeric lines (for Metro)
+    """
+    if add_l_prefix:
+        lines = {normalize_metro_line(x) for x in lines}
+
+    # Separate L-lines (L1, L2, etc.) from others
+    l_lines = []
+    r_line = []
+    others = []
+
+    for line in lines:
+        if line.startswith('L') and line[1:].isdigit():
+            l_lines.append(line)
+        elif line == 'R':
+            r_line.append(line)
+        else:
+            others.append(line)
+
+    # Sort L-lines numerically, others alphabetically
+    l_lines.sort(key=lambda x: int(x[1:]))
+    others.sort()
+
+    return ', '.join(l_lines + r_line + others)
 
 
 def populate_connections(db: Session, max_distance_meters: float = DEFAULT_MAX_DISTANCE) -> dict:
@@ -250,7 +285,7 @@ def populate_connections(db: Session, max_distance_meters: float = DEFAULT_MAX_D
         ml_lines = get_matching_lines(renfe, stops_by_type['ml'])
 
         if metro_lines or ml_lines:
-            renfe.cor_metro = sort_lines(metro_lines) if metro_lines else renfe.cor_metro
+            renfe.cor_metro = sort_lines(metro_lines, add_l_prefix=True) if metro_lines else renfe.cor_metro
             renfe.cor_ml = sort_lines(ml_lines) if ml_lines else renfe.cor_ml
             stats['renfe_updated'] += 1
             logger.info(f"  {renfe.name}: Metro={renfe.cor_metro}, ML={renfe.cor_ml}")
@@ -298,7 +333,7 @@ def populate_connections(db: Session, max_distance_meters: float = DEFAULT_MAX_D
 
         updated = False
         if metro_lines:
-            tranvia.cor_metro = sort_lines(metro_lines)
+            tranvia.cor_metro = sort_lines(metro_lines, add_l_prefix=True)
             updated = True
         if cercanias:
             tranvia.cor_cercanias = sort_lines(cercanias)
@@ -319,7 +354,7 @@ def populate_connections(db: Session, max_distance_meters: float = DEFAULT_MAX_D
             # Append to existing cor_metro if present
             existing = set(renfe.cor_metro.split(', ')) if renfe.cor_metro else set()
             all_lines = existing | metro_sev_lines
-            renfe.cor_metro = sort_lines(all_lines)
+            renfe.cor_metro = sort_lines(all_lines, add_l_prefix=True)
             updated = True
         if tranvia_lines:
             renfe.cor_tranvia = sort_lines(tranvia_lines)
@@ -397,7 +432,7 @@ def populate_connections_for_nucleo(db: Session, nucleo_id: int, max_distance_me
             metro_lines = get_lines(renfe, stops_by_type['metro'])
             ml_lines = get_lines(renfe, stops_by_type['ml'])
             if metro_lines:
-                renfe.cor_metro = sort_lines(metro_lines)
+                renfe.cor_metro = sort_lines(metro_lines, add_l_prefix=True)
             if ml_lines:
                 renfe.cor_ml = sort_lines(ml_lines)
             if metro_lines or ml_lines:
@@ -440,7 +475,7 @@ def populate_connections_for_nucleo(db: Session, nucleo_id: int, max_distance_me
             cercanias = get_lines(tranvia, stops_by_type['renfe'])
             updated = False
             if metro_lines:
-                tranvia.cor_metro = sort_lines(metro_lines)
+                tranvia.cor_metro = sort_lines(metro_lines, add_l_prefix=True)
                 updated = True
             if cercanias:
                 tranvia.cor_cercanias = sort_lines(cercanias)
@@ -457,7 +492,7 @@ def populate_connections_for_nucleo(db: Session, nucleo_id: int, max_distance_me
             if metro_lines:
                 existing = set(renfe.cor_metro.split(', ')) if renfe.cor_metro else set()
                 all_lines = existing | metro_lines
-                renfe.cor_metro = sort_lines(all_lines)
+                renfe.cor_metro = sort_lines(all_lines, add_l_prefix=True)
                 updated = True
             if tranvia_lines:
                 renfe.cor_tranvia = sort_lines(tranvia_lines)
