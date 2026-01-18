@@ -37,6 +37,9 @@ logger = logging.getLogger(__name__)
 # Sevilla nucleo ID
 SEVILLA_NUCLEO_ID = 30
 
+# Consistent agency ID (matching METRO_MADRID, METRO_LIGERO pattern)
+METRO_SEVILLA_AGENCY_ID = 'METRO_SEVILLA'
+
 # Metro Sevilla route long names (terminus to terminus)
 METRO_SEV_LONG_NAMES = {
     'L1': 'Ciudad Expo - Olivar de Quintos',
@@ -54,13 +57,16 @@ def read_csv(file_path: Path) -> list:
 
 
 def import_agency(db: Session, gtfs_path: Path) -> str:
-    """Import agency from GTFS."""
+    """Import agency from GTFS.
+
+    Uses consistent agency_id METRO_SEVILLA (matching METRO_MADRID pattern).
+    """
     agencies = read_csv(gtfs_path / 'agency.txt')
     if not agencies:
         raise ValueError("No agencies found in agency.txt")
 
     agency_data = agencies[0]
-    agency_id = f"METRO_SEV_{agency_data['agency_id']}"
+    agency_id = METRO_SEVILLA_AGENCY_ID  # Use consistent ID
 
     existing = db.query(AgencyModel).filter(AgencyModel.id == agency_id).first()
     if existing:
