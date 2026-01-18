@@ -457,3 +457,140 @@ GROUP BY route_id, day_type;
 3. ✅ Verificar que `start_time` y `end_time` son correctos
 4. ✅ El `headway_secs` debe ser razonable (60-1200 segundos)
 5. ✅ La API mostrará salidas desde `start_time` si se consulta antes
+
+### API Endpoint: GET /routes/{route_id}/frequencies
+
+Endpoint para obtener los horarios de operación y frecuencias de una línea:
+
+```bash
+# Metro Madrid L1
+curl https://juanmacias.com/api/v1/gtfs/routes/METRO_1/frequencies
+
+# Metro Sevilla L1
+curl https://juanmacias.com/api/v1/gtfs/routes/METRO_SEV_L1_CE_OQ/frequencies
+
+# Tranvía Sevilla T1
+curl https://juanmacias.com/api/v1/gtfs/routes/TRAM_SEV_T1/frequencies
+
+# Cercanías (devuelve [] porque usa stop_times)
+curl https://juanmacias.com/api/v1/gtfs/routes/RENFE_C1_19/frequencies
+```
+
+**Respuesta:**
+```json
+[
+  {
+    "route_id": "METRO_1",
+    "day_type": "weekday",
+    "start_time": "06:05:00",
+    "end_time": "07:00:00",
+    "headway_secs": 540,
+    "headway_minutes": 9.0
+  },
+  {
+    "route_id": "METRO_1",
+    "day_type": "weekday",
+    "start_time": "07:00:00",
+    "end_time": "22:00:00",
+    "headway_secs": 300,
+    "headway_minutes": 5.0
+  }
+]
+```
+
+**Obtener inicio/fin del servicio por día:**
+```python
+# El primer start_time del día es el inicio del servicio
+# El último end_time del día es el fin del servicio
+
+# Ejemplo: Para obtener horario de apertura/cierre de Metro L1 en weekday:
+frequencies = requests.get(".../routes/METRO_1/frequencies").json()
+weekday_freqs = [f for f in frequencies if f["day_type"] == "weekday"]
+service_start = min(f["start_time"] for f in weekday_freqs)  # "06:05:00"
+service_end = max(f["end_time"] for f in weekday_freqs)      # "01:00:00" (siguiente día)
+```
+
+### Cómo se Obtienen los Horarios de Servicio
+
+Los horarios provienen de **dos fuentes**:
+
+#### 1. GTFS frequencies.txt (Fuente principal)
+
+Los datos GTFS de Metro/Tranvía incluyen `frequencies.txt`:
+
+```csv
+trip_id,start_time,end_time,headway_secs
+trip_001,06:05:00,07:00:00,540
+trip_001,07:00:00,10:00:00,420
+trip_001,22:00:00,25:00:00,450  # 25:00 = 01:00 del día siguiente
+```
+
+**Proceso de import:**
+1. Leer `trips.txt` → mapear trip_id a route_id y service_id
+2. Leer `calendar.txt` → mapear service_id a day_type (weekday/saturday/sunday)
+3. Leer `frequencies.txt` → extraer start_time, end_time, headway_secs
+4. Agrupar por (route_id, day_type, start_time, end_time)
+5. Guardar en `gtfs_route_frequencies`
+
+```python
+# En import_metro_sevilla.py, import_tranvia_sevilla.py
+def import_frequencies(db, gtfs_path, route_mapping):
+    frequencies = read_csv(gtfs_path / 'frequencies.txt')
+    trips = read_csv(gtfs_path / 'trips.txt')
+    calendars = read_csv(gtfs_path / 'calendar.txt')
+
+    # Mapear service_id → day_type
+    service_days = {}
+    for cal in calendars:
+        if cal['saturday'] == '1' and cal['sunday'] != '1':
+            service_days[cal['service_id']] = 'saturday'
+        elif cal['sunday'] == '1':
+            service_days[cal['service_id']] = 'sunday'
+        else:
+            service_days[cal['service_id']] = 'weekday'
+
+    # Procesar frequencies
+    for freq in frequencies:
+        trip_id = freq['trip_id']
+        service_id = trip_info[trip_id]['service_id']
+        day_type = service_days.get(service_id, 'weekday')
+
+        # Guardar en BD
+        RouteFrequencyModel(
+            route_id=route_id,
+            day_type=day_type,
+            start_time=parse_time(freq['start_time']),
+            end_time=parse_time(freq['end_time']),
+            headway_secs=int(freq['headway_secs']),
+        )
+```
+
+#### 2. Valores por Defecto (Fallback)
+
+Si el GTFS no tiene `frequencies.txt`, los scripts usan horarios predefinidos:
+
+```python
+# En import_tranvia_sevilla.py
+default_frequencies = [
+    # Weekday: 06:30 - 23:30
+    {'day_type': 'weekday', 'start': (6, 30), 'end': (9, 0), 'headway': 360},
+    {'day_type': 'weekday', 'start': (9, 0), 'end': (14, 0), 'headway': 480},
+    {'day_type': 'weekday', 'start': (21, 0), 'end': (23, 30), 'headway': 600},
+
+    # Saturday: 07:00 - 23:30
+    {'day_type': 'saturday', 'start': (7, 0), 'end': (14, 0), 'headway': 480},
+
+    # Sunday: 08:00 - 22:00
+    {'day_type': 'sunday', 'start': (8, 0), 'end': (14, 0), 'headway': 600},
+]
+```
+
+### Resumen de Horarios Actuales
+
+| Sistema | Weekday | Saturday | Sunday |
+|---------|---------|----------|--------|
+| Metro Madrid | 06:05 - 01:30 | 06:05 - 02:00 | 06:05 - 02:00 |
+| Metro Ligero ML1 | 06:00 - 01:30 | 06:00 - 01:30 | 06:00 - 01:30 |
+| Metro Ligero ML2-4 | 06:00 - 00:00 | 07:00 - 00:00 | 07:00 - 00:00 |
+| Metro Sevilla | 06:30 - 02:00 | 07:30 - 02:00 | 07:30 - 23:00 |
+| Tranvía Sevilla | 06:30 - 23:30 | 07:00 - 23:30 | 08:00 - 22:00 |
