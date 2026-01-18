@@ -48,8 +48,7 @@ METRO_SEVILLA_AGENCY_ID = 'METRO_SEVILLA'
 NETWORK_CONFIG = {
     'code': 'METRO_SEV',  # Must match route ID prefix for route_count to work
     'name': 'Metro de Sevilla',
-    'city': 'Sevilla',
-    'region': 'Andalucía',
+    'region': 'Sevilla',
     'color': '#0D6928',  # Green - official Metro Sevilla color
     'text_color': '#FFFFFF',
     'description': 'Red de metro de Sevilla',
@@ -80,7 +79,6 @@ def import_network(db: Session) -> str:
     if existing:
         logger.info(f"Network {network_code} already exists, updating...")
         existing.name = NETWORK_CONFIG['name']
-        existing.city = NETWORK_CONFIG['city']
         existing.region = NETWORK_CONFIG['region']
         existing.color = NETWORK_CONFIG['color']
         existing.text_color = NETWORK_CONFIG['text_color']
@@ -89,7 +87,6 @@ def import_network(db: Session) -> str:
         network = NetworkModel(
             code=network_code,
             name=NETWORK_CONFIG['name'],
-            city=NETWORK_CONFIG['city'],
             region=NETWORK_CONFIG['region'],
             color=NETWORK_CONFIG['color'],
             text_color=NETWORK_CONFIG['text_color'],

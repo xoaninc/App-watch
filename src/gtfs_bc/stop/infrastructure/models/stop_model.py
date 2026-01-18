@@ -23,10 +23,6 @@ class StopModel(Base):
     platform_code = Column(String(50), nullable=True)
     province = Column(String(50), nullable=True)
 
-    # Nucleo fields
-    nucleo_id = Column(Integer, ForeignKey("gtfs_nucleos.id"), nullable=True)
-    nucleo_name = Column(String(100), nullable=True)
-
     # Renfe station metadata
     renfe_codigo_estacion = Column(Integer, nullable=True)
     color = Column(String(50), nullable=True)
@@ -41,6 +37,3 @@ class StopModel(Base):
 
     # Self-referential relationship for parent station
     parent_station = relationship("StopModel", remote_side=[id], backref="child_stops")
-
-    # Nucleo relationship
-    nucleo = relationship("NucleoModel", back_populates="stops", foreign_keys=[nucleo_id])

@@ -87,7 +87,7 @@ class EstimatedPositionsService:
 
     def get_estimated_positions(
         self,
-        nucleo_id: Optional[int] = None,
+        network_id: Optional[str] = None,
         route_id: Optional[str] = None,
         trip_ids: Optional[List[str]] = None,
         limit: int = 100
@@ -95,7 +95,7 @@ class EstimatedPositionsService:
         """Get estimated positions of trains currently in service.
 
         Args:
-            nucleo_id: Filter by nucleo (network area)
+            network_id: Filter by network (e.g., '51T', 'TMB_METRO')
             route_id: Filter by specific route
             trip_ids: Filter by specific trip IDs
             limit: Maximum number of results
@@ -122,6 +122,7 @@ class EstimatedPositionsService:
                     t.headsign,
                     r.short_name as route_short_name,
                     r.color as route_color,
+                    r.network_id,
                     MIN(st.departure_seconds) as first_departure,
                     MAX(st.arrival_seconds) as last_arrival
                 FROM gtfs_trips t
@@ -130,7 +131,8 @@ class EstimatedPositionsService:
                 WHERE t.service_id = ANY(:service_ids)
                     AND (:route_id IS NULL OR t.route_id = :route_id)
                     AND (:trip_ids IS NULL OR t.id = ANY(:trip_ids))
-                GROUP BY t.id, t.route_id, t.headsign, r.short_name, r.color
+                    AND (:network_id IS NULL OR r.network_id = :network_id)
+                GROUP BY t.id, t.route_id, t.headsign, r.short_name, r.color, r.network_id
                 HAVING MIN(st.departure_seconds) <= :current_seconds
                     AND MAX(st.arrival_seconds) >= :current_seconds
                 LIMIT :limit
@@ -161,7 +163,6 @@ class EstimatedPositionsService:
                 JOIN gtfs_stops s_next ON st_next.stop_id = s_next.id
                 WHERE st_prev.departure_seconds <= :current_seconds
                     AND st_next.arrival_seconds >= :current_seconds
-                    AND (:nucleo_id IS NULL OR s_prev.nucleo_id = :nucleo_id OR s_next.nucleo_id = :nucleo_id)
                 ORDER BY at.trip_id, st_prev.stop_sequence DESC
             )
             SELECT * FROM trip_positions
@@ -170,7 +171,7 @@ class EstimatedPositionsService:
         results = self.db.execute(query, {
             "service_ids": active_services,
             "current_seconds": current_seconds,
-            "nucleo_id": nucleo_id,
+            "network_id": network_id,
             "route_id": route_id,
             "trip_ids": list(trip_ids) if trip_ids else None,
             "limit": limit
@@ -286,10 +287,10 @@ class EstimatedPositionsService:
         """Get estimated positions for a specific route."""
         return self.get_estimated_positions(route_id=route_id, limit=limit)
 
-    def get_estimated_positions_for_nucleo(
+    def get_estimated_positions_for_network(
         self,
-        nucleo_id: int,
+        network_id: str,
         limit: int = 100
     ) -> List[EstimatedPosition]:
-        """Get estimated positions for a specific nucleo (network area)."""
-        return self.get_estimated_positions(nucleo_id=nucleo_id, limit=limit)
+        """Get estimated positions for a specific network (e.g., '51T', 'TMB_METRO')."""
+        return self.get_estimated_positions(network_id=network_id, limit=limit)

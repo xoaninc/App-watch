@@ -28,7 +28,6 @@ from sqlalchemy.orm import Session
 from core.database import SessionLocal
 
 # Import all models to ensure relationships are configured
-from src.gtfs_bc.nucleo.infrastructure.models import NucleoModel
 from src.gtfs_bc.stop.infrastructure.models import StopModel
 from src.gtfs_bc.route.infrastructure.models import RouteModel
 
@@ -407,16 +406,16 @@ def populate_connections(db: Session, max_distance_meters: float = DEFAULT_MAX_D
     return stats
 
 
-def populate_connections_for_nucleo(db: Session, nucleo_id: int, max_distance_meters: float = DEFAULT_MAX_DISTANCE) -> dict:
-    """Populate connections for stops in a specific núcleo.
+def populate_connections_for_network(db: Session, network_id: str, max_distance_meters: float = DEFAULT_MAX_DISTANCE) -> dict:
+    """Populate connections for stops in a specific network area.
 
     This function is meant to be called automatically after importing GTFS data
     for a specific transit system. It will find all connections between the
-    newly imported stops and existing stops from other systems in the same núcleo.
+    newly imported stops and existing stops from other systems in the same area.
 
     Args:
         db: Database session (will commit changes)
-        nucleo_id: The núcleo ID to populate connections for
+        network_id: The network ID (e.g., '11T' for Metro Madrid, '12T' for ML Madrid)
         max_distance_meters: Maximum distance for proximity matching
 
     Returns:
@@ -424,11 +423,31 @@ def populate_connections_for_nucleo(db: Session, nucleo_id: int, max_distance_me
     """
     stats = {'stops_updated': 0, 'connections_found': 0}
 
-    # Get all stops for this nucleo
-    nucleo_stops = db.query(StopModel).filter(StopModel.nucleo_id == nucleo_id).all()
+    # Map network_id to stop prefixes to search for
+    # Networks in the same area should find connections
+    NETWORK_STOP_PREFIXES = {
+        '11T': ['METRO_', 'RENFE_10', 'RENFE_90', 'ML_'],  # Metro Madrid area
+        '12T': ['ML_', 'RENFE_10', 'RENFE_90', 'METRO_'],  # Metro Ligero Madrid area
+        '10T': ['RENFE_10', 'METRO_', 'ML_'],  # Cercanías Madrid area
+        '90T': ['RENFE_90', 'METRO_', 'ML_'],  # C-9 Madrid area
+        '32T': ['METRO_SEV_', 'RENFE_30', 'TRAM_SEV_'],  # Metro Sevilla area
+        '31T': ['TRAM_SEV_', 'RENFE_30', 'METRO_SEV_'],  # Tram Sevilla area
+        '30T': ['RENFE_30', 'METRO_SEV_', 'TRAM_SEV_'],  # Cercanías Sevilla area
+    }
 
-    if not nucleo_stops:
-        logger.info(f"No stops found for nucleo {nucleo_id}")
+    prefixes = NETWORK_STOP_PREFIXES.get(network_id)
+    if not prefixes:
+        logger.info(f"No stop prefix mapping for network {network_id}")
+        return stats
+
+    # Get all stops matching any of the prefixes
+    all_stops = []
+    for prefix in prefixes:
+        stops = db.query(StopModel).filter(StopModel.id.like(f'{prefix}%')).all()
+        all_stops.extend(stops)
+
+    if not all_stops:
+        logger.info(f"No stops found for network {network_id}")
         return stats
 
     # Group by type
@@ -440,12 +459,12 @@ def populate_connections_for_nucleo(db: Session, nucleo_id: int, max_distance_me
         'tranvia_sev': [],
     }
 
-    for stop in nucleo_stops:
+    for stop in all_stops:
         stop_type = get_stop_type(stop.id)
         if stop_type in stops_by_type:
             stops_by_type[stop_type].append(stop)
 
-    logger.info(f"Núcleo {nucleo_id}: RENFE={len(stops_by_type['renfe'])}, "
+    logger.info(f"Network {network_id}: RENFE={len(stops_by_type['renfe'])}, "
                 f"METRO={len(stops_by_type['metro'])}, ML={len(stops_by_type['ml'])}, "
                 f"METRO_SEV={len(stops_by_type['metro_sev'])}, "
                 f"TRAM_SEV={len(stops_by_type['tranvia_sev'])}")
@@ -464,8 +483,8 @@ def populate_connections_for_nucleo(db: Session, nucleo_id: int, max_distance_me
                         lines.add(line)
         return lines
 
-    # Madrid logic (nucleo_id = 10)
-    if nucleo_id == 10:
+    # Madrid logic (networks 10T, 11T, 12T, 90T)
+    if network_id in ('10T', '11T', '12T', '90T'):
         # RENFE -> Metro/ML
         for renfe in stops_by_type['renfe']:
             metro_lines = get_lines(renfe, stops_by_type['metro'])
@@ -491,8 +510,8 @@ def populate_connections_for_nucleo(db: Session, nucleo_id: int, max_distance_me
                 ml.cor_cercanias = sort_lines(cercanias)
                 stats['stops_updated'] += 1
 
-    # Sevilla logic (nucleo_id = 30)
-    elif nucleo_id == 30:
+    # Sevilla logic (networks 30T, 31T, 32T)
+    elif network_id in ('30T', '31T', '32T'):
         # Metro Sevilla -> Cercanías and Tranvía
         for metro_sev in stops_by_type['metro_sev']:
             cercanias = get_lines(metro_sev, stops_by_type['renfe'])
@@ -541,8 +560,22 @@ def populate_connections_for_nucleo(db: Session, nucleo_id: int, max_distance_me
                 logger.info(f"  {renfe.name} (RENFE): Metro={renfe.cor_metro}, Tranvía={renfe.cor_tranvia}")
 
     db.commit()
-    logger.info(f"Populated connections for {stats['stops_updated']} stops in núcleo {nucleo_id}")
+    logger.info(f"Populated connections for {stats['stops_updated']} stops in network {network_id}")
     return stats
+
+
+# Backwards compatibility wrapper
+def populate_connections_for_nucleo(db: Session, nucleo_id: int, max_distance_meters: float = DEFAULT_MAX_DISTANCE) -> dict:
+    """Deprecated: Use populate_connections_for_network instead.
+
+    This wrapper maps old nucleo IDs to new network IDs.
+    """
+    NUCLEO_TO_NETWORK = {
+        10: '10T',  # Madrid Cercanías -> can use 11T/12T for Metro
+        30: '30T',  # Sevilla Cercanías
+    }
+    network_id = NUCLEO_TO_NETWORK.get(nucleo_id, f'{nucleo_id}T')
+    return populate_connections_for_network(db, network_id, max_distance_meters)
 
 
 def main():

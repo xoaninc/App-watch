@@ -16,6 +16,14 @@ branch_labels = None
 depends_on = None
 
 
+def _postgis_available(connection):
+    """Check if PostGIS extension is installed."""
+    result = connection.execute(text(
+        "SELECT 1 FROM pg_extension WHERE extname = 'postgis'"
+    ))
+    return result.fetchone() is not None
+
+
 def upgrade() -> None:
     """Create spanish_provinces table with geometry column."""
     # Create provinces table
@@ -31,28 +39,32 @@ def upgrade() -> None:
         sa.Column('created_at', sa.DateTime, server_default=sa.func.now()),
     )
 
-    # Add geometry column using PostGIS function
-    # SRID 4326 = WGS84 (standard lat/lon coordinate system)
-    op.execute(
-        text("""
-            SELECT AddGeometryColumn(
-                'spanish_provinces',
-                'geometry',
-                4326,
-                'MULTIPOLYGON',
-                2
-            )
-        """)
-    )
+    connection = op.get_bind()
+    if _postgis_available(connection):
+        # Add geometry column using PostGIS function
+        # SRID 4326 = WGS84 (standard lat/lon coordinate system)
+        op.execute(
+            text("""
+                SELECT AddGeometryColumn(
+                    'spanish_provinces',
+                    'geometry',
+                    4326,
+                    'MULTIPOLYGON',
+                    2
+                )
+            """)
+        )
 
-    # Create spatial index for fast point-in-polygon queries
-    op.execute(
-        text("""
-            CREATE INDEX idx_spanish_provinces_geometry
-            ON spanish_provinces
-            USING GIST (geometry)
-        """)
-    )
+        # Create spatial index for fast point-in-polygon queries
+        op.execute(
+            text("""
+                CREATE INDEX idx_spanish_provinces_geometry
+                ON spanish_provinces
+                USING GIST (geometry)
+            """)
+        )
+    else:
+        print("PostGIS not available, skipping geometry column for spanish_provinces")
 
 
 def downgrade() -> None:

@@ -69,15 +69,15 @@ def get_province_by_coordinates(
         return None
 
 
-def get_province_and_nucleo_by_coordinates(
+def get_province_and_networks_by_coordinates(
     db: Session,
     lat: float,
     lon: float
-) -> Optional[tuple]:
-    """Get province name and nucleo for given coordinates.
+) -> Optional[dict]:
+    """Get province and all networks operating there for given coordinates.
 
     Uses PostGIS spatial queries to determine which province contains
-    the given coordinates, then returns both province and its mapped nucleo.
+    the given coordinates, then finds all networks operating in that province.
 
     Args:
         db: SQLAlchemy database session
@@ -85,14 +85,24 @@ def get_province_and_nucleo_by_coordinates(
         lon: Longitude in decimal degrees (-180 to 180)
 
     Returns:
-        Tuple of (province_name, nucleo_name) if found, None otherwise
+        Dict with province info and list of networks if found, None otherwise
+        {
+            'province_code': 'BAR',
+            'province_name': 'Barcelona',
+            'networks': [
+                {'code': '51T', 'name': 'Rodalies de Catalunya'},
+                {'code': 'TMB_METRO', 'name': 'Metro de Barcelona'},
+                {'code': 'FGC', 'name': 'FGC'},
+                ...
+            ]
+        }
 
     Raises:
         ValueError: If latitude or longitude are out of valid range
 
     Example:
-        >>> get_province_and_nucleo_by_coordinates(db, 40.4168, -3.7038)
-        ('Madrid', 'Madrid')
+        >>> get_province_and_networks_by_coordinates(db, 41.3851, 2.1734)
+        {'province_code': 'BAR', 'province_name': 'Barcelona', 'networks': [...]}
     """
     if not (-90 <= lat <= 90):
         raise ValueError(f"Invalid latitude: {lat}")
@@ -100,10 +110,10 @@ def get_province_and_nucleo_by_coordinates(
         raise ValueError(f"Invalid longitude: {lon}")
 
     try:
-        # Query province and its nucleo mapping
-        result = db.execute(
+        # First find the province
+        province_result = db.execute(
             text("""
-                SELECT name, nucleo_name
+                SELECT code, name
                 FROM spanish_provinces
                 WHERE ST_Contains(
                     geometry,
@@ -114,15 +124,34 @@ def get_province_and_nucleo_by_coordinates(
             {'lat': lat, 'lon': lon}
         ).fetchone()
 
-        if result:
-            province_name, nucleo_name = result
-            return (province_name, nucleo_name)
+        if not province_result:
+            logger.debug(f"No province found for coordinates ({lat}, {lon})")
+            return None
 
-        logger.debug(f"No province found for coordinates ({lat}, {lon})")
-        return None
+        province_code, province_name = province_result
+
+        # Then find all networks operating in that province
+        networks_result = db.execute(
+            text("""
+                SELECT n.code, n.name
+                FROM gtfs_networks n
+                JOIN network_provinces np ON np.network_id = n.code
+                WHERE np.province_code = :province_code
+                ORDER BY n.name
+            """),
+            {'province_code': province_code}
+        ).fetchall()
+
+        networks = [{'code': r[0], 'name': r[1]} for r in networks_result]
+
+        return {
+            'province_code': province_code,
+            'province_name': province_name,
+            'networks': networks
+        }
 
     except Exception as e:
-        logger.error(f"Error querying province/nucleo for ({lat}, {lon}): {e}")
+        logger.error(f"Error querying province/networks for ({lat}, {lon}): {e}")
         return None
 
 

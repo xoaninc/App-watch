@@ -10,7 +10,6 @@ from src.gtfs_bc.stop_time.infrastructure.models import StopTimeModel
 from src.gtfs_bc.calendar.infrastructure.models import CalendarModel, CalendarDateModel
 from src.gtfs_bc.shape.infrastructure.models import ShapeModel, ShapePointModel
 from src.gtfs_bc.feed.infrastructure.models import FeedImportModel
-from src.gtfs_bc.nucleo.infrastructure.models import NucleoModel
 from src.gtfs_bc.stop_route_sequence.infrastructure.models import StopRouteSequenceModel
 
 # GTFS-RT models
@@ -28,7 +27,7 @@ from src.gtfs_bc.eta.infrastructure.models import (
 )
 
 # Network models
-from src.gtfs_bc.network.infrastructure.models import NetworkModel
+from src.gtfs_bc.network.infrastructure.models import NetworkModel, NetworkProvinceModel
 
 __all__ = [
     # GTFS BC
@@ -42,7 +41,6 @@ __all__ = [
     "ShapeModel",
     "ShapePointModel",
     "FeedImportModel",
-    "NucleoModel",
     "StopRouteSequenceModel",
     # GTFS-RT
     "VehiclePositionModel",
@@ -54,4 +52,5 @@ __all__ = [
     "VehiclePositionHistoryModel",
     # Network
     "NetworkModel",
+    "NetworkProvinceModel",
 ]

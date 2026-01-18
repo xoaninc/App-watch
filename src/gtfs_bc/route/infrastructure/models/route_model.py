@@ -21,9 +21,8 @@ class RouteModel(Base):
     url = Column(String(500), nullable=True)
     sort_order = Column(Integer, nullable=True)
 
-    # Nucleo fields
-    nucleo_id = Column(Integer, ForeignKey("gtfs_nucleos.id"), nullable=True)
-    nucleo_name = Column(String(100), nullable=True)
+    # Network relationship
+    network_id = Column(String(20), ForeignKey("gtfs_networks.code", ondelete="SET NULL"), nullable=True, index=True)
 
     # Renfe line metadata
     renfe_idlinea = Column(Integer, nullable=True)
@@ -33,6 +32,4 @@ class RouteModel(Base):
 
     # Relationships
     agency = relationship(AgencyModel, backref="routes")
-
-    # Nucleo relationship
-    nucleo = relationship("NucleoModel", back_populates="routes", foreign_keys=[nucleo_id])
+    network = relationship("NetworkModel", back_populates="routes")

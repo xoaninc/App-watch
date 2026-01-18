@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy import Column, String, Integer, DateTime, Boolean, ForeignKey, Index
+from sqlalchemy import Column, String, Integer, DateTime, Boolean, ForeignKey, Index, Text
 from sqlalchemy.orm import relationship
 from core.base import Base
 
@@ -61,6 +61,9 @@ class StopTimeUpdateModel(Base):
     departure_delay = Column(Integer, nullable=True)  # Delay in seconds
     departure_time = Column(DateTime, nullable=True)  # Predicted departure
     platform = Column(String(20), nullable=True)  # Platform/track number from GTFS-RT
+    occupancy_percent = Column(Integer, nullable=True)  # Train occupancy percentage (TMB Metro)
+    occupancy_per_car = Column(Text, nullable=True)  # Per-car occupancy JSON array (TMB Metro)
+    headsign = Column(String(200), nullable=True)  # Destination/headsign (TMB Metro)
 
     # Relationship to parent trip update
     trip_update = relationship("TripUpdateModel", back_populates="stop_time_updates")

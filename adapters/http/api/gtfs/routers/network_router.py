@@ -30,13 +30,13 @@ class NetworkResponse(BaseModel):
 
     code: str
     name: str
-    city: str
     region: str
     color: str
     text_color: str
     logo_url: Optional[str] = None
     wikipedia_url: Optional[str] = None
     description: Optional[str] = None
+    nucleo_id_renfe: Optional[int] = None
     route_count: int = 0
 
     class Config:
@@ -66,32 +66,24 @@ async def get_networks(db: Session = Depends(get_db)):
 
     results = []
     for network in networks:
-        # Count routes for this network
-        # Use nucleo_id for Cercanías networks, prefix matching for others
-        if network.nucleo_id is not None:
-            route_count = (
-                db.query(RouteModel)
-                .filter(RouteModel.nucleo_id == network.nucleo_id)
-                .count()
-            )
-        else:
-            route_count = (
-                db.query(RouteModel)
-                .filter(RouteModel.id.like(f"{network.code}%"))
-                .count()
-            )
+        # Count routes directly via network_id
+        route_count = (
+            db.query(RouteModel)
+            .filter(RouteModel.network_id == network.code)
+            .count()
+        )
 
         results.append(
             NetworkResponse(
                 code=network.code,
                 name=network.name,
-                city=network.city,
                 region=network.region,
                 color=network.color,
                 text_color=network.text_color,
                 logo_url=network.logo_url,
                 wikipedia_url=network.wikipedia_url,
                 description=network.description,
+                nucleo_id_renfe=network.nucleo_id_renfe,
                 route_count=route_count,
             )
         )
@@ -107,10 +99,10 @@ async def get_network(code: str, db: Session = Depends(get_db)):
     if not network:
         raise HTTPException(status_code=404, detail=f"Network {code} not found")
 
-    # Get all routes for this network
+    # Get all routes for this network via network_id
     routes = (
         db.query(RouteModel)
-        .filter(RouteModel.id.like(f"{code}%"))
+        .filter(RouteModel.network_id == code)
         .order_by(RouteModel.short_name)
         .all()
     )
@@ -152,13 +144,13 @@ async def get_network(code: str, db: Session = Depends(get_db)):
     return NetworkDetailResponse(
         code=network.code,
         name=network.name,
-        city=network.city,
         region=network.region,
         color=network.color,
         text_color=network.text_color,
         logo_url=network.logo_url,
         wikipedia_url=network.wikipedia_url,
         description=network.description,
+        nucleo_id_renfe=network.nucleo_id_renfe,
         route_count=len(routes),
         lines=lines,
     )
@@ -172,10 +164,10 @@ async def get_network_lines(code: str, db: Session = Depends(get_db)):
     if not network:
         raise HTTPException(status_code=404, detail=f"Network {code} not found")
 
-    # Get all routes for this network
+    # Get all routes for this network via network_id
     routes = (
         db.query(RouteModel)
-        .filter(RouteModel.id.like(f"{code}%"))
+        .filter(RouteModel.network_id == code)
         .order_by(RouteModel.short_name)
         .all()
     )
