@@ -1487,10 +1487,11 @@ def get_route_operating_hours(route_id: str, db: Session = Depends(get_db)):
                 morning_freqs = [f for f in day_freqs if f.start_time >= morning_cutoff]
                 late_night_freqs = [f for f in day_freqs if f.start_time < morning_cutoff]
 
-                # Also check for frequencies that CROSS midnight (end_time < start_time and start >= 20:00)
+                # Also check for frequencies that CROSS midnight (end_time < start_time)
+                # This includes frequencies like 07:00-01:30 or 23:00-02:00
                 midnight_crossing_freqs = [
                     f for f in day_freqs
-                    if f.start_time >= time(20, 0, 0) and f.end_time < f.start_time
+                    if f.end_time < f.start_time
                 ]
 
                 # First departure: earliest morning frequency start time
