@@ -1417,7 +1417,14 @@ def get_route_stops(route_id: str, db: Session = Depends(get_db)):
     short_name = route.short_name
 
     # Build filter based on stop ID prefix matching route's network
-    route_prefix = route.id.split('_')[0] if '_' in route.id else None
+    # Use more specific prefix for routes like TRAM_BARCELONA_1 -> TRAM_BARCELONA
+    # or TMB_METRO_1.1.1 -> TMB_METRO
+    route_parts = route.id.split('_')
+    if len(route_parts) >= 2:
+        # Use first two parts: TRAM_BARCELONA, TMB_METRO, TRAM_SEV, etc.
+        route_prefix = f"{route_parts[0]}_{route_parts[1]}"
+    else:
+        route_prefix = route_parts[0] if route_parts else None
 
     stops = (
         db.query(StopModel)
