@@ -594,3 +594,80 @@ default_frequencies = [
 | Metro Ligero ML2-4 | 06:00 - 00:00 | 07:00 - 00:00 | 07:00 - 00:00 |
 | Metro Sevilla | 06:30 - 02:00 | 07:30 - 02:00 | 07:30 - 23:00 |
 | Tranvía Sevilla | 06:30 - 23:30 | 07:00 - 23:30 | 08:00 - 22:00 |
+
+## Schedule-Based Services (Cercanías)
+
+Renfe Cercanías usa horarios fijos (`stop_times`) en lugar de frecuencias.
+
+### API Endpoint: GET /routes/{route_id}/operating-hours
+
+Endpoint para obtener el primer y último tren de cada día:
+
+```bash
+# Cercanías Sevilla C1
+curl https://juanmacias.com/api/v1/gtfs/routes/RENFE_C1_19/operating-hours
+
+# Cercanías Madrid C1
+curl https://juanmacias.com/api/v1/gtfs/routes/RENFE_C1_34/operating-hours
+```
+
+**Respuesta:**
+```json
+{
+  "route_id": "RENFE_C1_19",
+  "route_short_name": "C1",
+  "weekday": {
+    "first_departure": "05:08:00",
+    "last_departure": "24:20:00",
+    "total_trips": 864
+  },
+  "saturday": {
+    "first_departure": "05:20:00",
+    "last_departure": "24:38:00",
+    "total_trips": 202
+  },
+  "sunday": {
+    "first_departure": "05:20:00",
+    "last_departure": "24:20:00",
+    "total_trips": 160
+  }
+}
+```
+
+**Nota:** Para rutas frequency-based (Metro, Tranvía), este endpoint devuelve `null` en todos los campos. Usar `/frequencies` en su lugar.
+
+### Cómo se Calculan los Horarios
+
+Los horarios se derivan de `stop_times` + `calendar`:
+
+```
+1. trips.txt      → trip_id → route_id, service_id
+2. calendar.txt   → service_id → day_type (weekday/saturday/sunday)
+3. stop_times.txt → trip_id → departure_time (todas las paradas)
+4. Calcular       → MIN(departure_time) = primer tren
+                  → MAX(departure_time) = último tren
+                  → COUNT(DISTINCT trip_id) = total trenes
+```
+
+### Diferencia entre Endpoints
+
+| Endpoint | Tipo de Ruta | Datos |
+|----------|--------------|-------|
+| `/routes/{id}/frequencies` | Metro, ML, Tranvía | Frecuencias por período |
+| `/routes/{id}/operating-hours` | Cercanías | Primer/último tren del día |
+
+```python
+# Ejemplo: Determinar qué endpoint usar
+route_id = "RENFE_C1_34"
+
+# Primero intentar frequencies
+frequencies = requests.get(f".../routes/{route_id}/frequencies").json()
+
+if frequencies:
+    # Es frequency-based (Metro, Tranvía)
+    service_start = min(f["start_time"] for f in frequencies if f["day_type"] == "weekday")
+else:
+    # Es schedule-based (Cercanías)
+    hours = requests.get(f".../routes/{route_id}/operating-hours").json()
+    service_start = hours["weekday"]["first_departure"]
+```

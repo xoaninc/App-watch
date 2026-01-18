@@ -57,6 +57,22 @@ class RouteFrequencyResponse(BaseModel):
         from_attributes = True
 
 
+class DayOperatingHours(BaseModel):
+    """Operating hours for a single day type."""
+    first_departure: Optional[str]  # HH:MM:SS format
+    last_departure: Optional[str]  # HH:MM:SS format
+    total_trips: int
+
+
+class RouteOperatingHoursResponse(BaseModel):
+    """Operating hours for a route (derived from stop_times for Cercanías)."""
+    route_id: str
+    route_short_name: str
+    weekday: Optional[DayOperatingHours]
+    saturday: Optional[DayOperatingHours]
+    sunday: Optional[DayOperatingHours]
+
+
 class StopResponse(BaseModel):
     id: str
     name: str
@@ -1298,3 +1314,86 @@ def get_route_frequencies(route_id: str, db: Session = Depends(get_db)):
         )
         for freq in frequencies
     ]
+
+
+@router.get("/routes/{route_id}/operating-hours", response_model=RouteOperatingHoursResponse)
+def get_route_operating_hours(route_id: str, db: Session = Depends(get_db)):
+    """Get operating hours for a route (first/last departure times).
+
+    For schedule-based routes (Cercanías), this derives operating hours from
+    stop_times data. For frequency-based routes (Metro, Tranvía), use the
+    /frequencies endpoint instead.
+
+    Returns first and last departure times for each day type (weekday,
+    saturday, sunday) along with total trip count.
+    """
+    # Verify route exists
+    route = db.query(RouteModel).filter(RouteModel.id == route_id).first()
+    if not route:
+        raise HTTPException(status_code=404, detail=f"Route {route_id} not found")
+
+    # Get all trips for this route with their calendar info
+    trips_with_calendar = (
+        db.query(TripModel, CalendarModel)
+        .join(CalendarModel, TripModel.service_id == CalendarModel.service_id)
+        .filter(TripModel.route_id == route_id)
+        .all()
+    )
+
+    if not trips_with_calendar:
+        # No schedule data - might be frequency-based route
+        return RouteOperatingHoursResponse(
+            route_id=route_id,
+            route_short_name=route.short_name or "",
+            weekday=None,
+            saturday=None,
+            sunday=None,
+        )
+
+    # Group trips by day type
+    trips_by_day = {"weekday": [], "saturday": [], "sunday": []}
+
+    for trip, calendar in trips_with_calendar:
+        # Determine day type from calendar
+        if calendar.saturday and not calendar.sunday:
+            trips_by_day["saturday"].append(trip.id)
+        elif calendar.sunday:
+            trips_by_day["sunday"].append(trip.id)
+        elif calendar.monday or calendar.tuesday or calendar.wednesday:
+            trips_by_day["weekday"].append(trip.id)
+
+    def get_day_hours(trip_ids: list) -> Optional[DayOperatingHours]:
+        if not trip_ids:
+            return None
+
+        # Get first departure (min) and last departure (max) for these trips
+        # We use departure_time from the first stop of each trip (stop_sequence = 1 or min)
+        from sqlalchemy import func as sqlfunc
+
+        # Get min/max departure times across all stop_times for these trips
+        result = (
+            db.query(
+                sqlfunc.min(StopTimeModel.departure_time).label("first_dep"),
+                sqlfunc.max(StopTimeModel.departure_time).label("last_dep"),
+                sqlfunc.count(sqlfunc.distinct(StopTimeModel.trip_id)).label("trip_count"),
+            )
+            .filter(StopTimeModel.trip_id.in_(trip_ids))
+            .first()
+        )
+
+        if not result or not result.first_dep:
+            return None
+
+        return DayOperatingHours(
+            first_departure=result.first_dep,
+            last_departure=result.last_dep,
+            total_trips=result.trip_count or 0,
+        )
+
+    return RouteOperatingHoursResponse(
+        route_id=route_id,
+        route_short_name=route.short_name.strip() if route.short_name else "",
+        weekday=get_day_hours(trips_by_day["weekday"]),
+        saturday=get_day_hours(trips_by_day["saturday"]),
+        sunday=get_day_hours(trips_by_day["sunday"]),
+    )
