@@ -1,0 +1,392 @@
+#!/usr/bin/env python3
+"""Import Tranvía de Sevilla (MetroCentro T1) from TUSSAM GTFS data.
+
+Usage:
+    python scripts/import_tranvia_sevilla.py <gtfs_folder_path>
+
+Example:
+    python scripts/import_tranvia_sevilla.py /path/to/20260109_090033_TUSSAM
+"""
+
+import sys
+import csv
+import logging
+from pathlib import Path
+from datetime import time
+
+# Add project root to path
+project_root = Path(__file__).parent.parent
+sys.path.insert(0, str(project_root))
+
+from sqlalchemy.orm import Session
+from core.database import SessionLocal
+
+# Import all models
+from src.gtfs_bc.nucleo.infrastructure.models import NucleoModel
+from src.gtfs_bc.stop.infrastructure.models import StopModel
+from src.gtfs_bc.route.infrastructure.models import RouteModel, RouteFrequencyModel
+from src.gtfs_bc.agency.infrastructure.models import AgencyModel
+from src.gtfs_bc.stop_route_sequence.infrastructure.models import StopRouteSequenceModel
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+# Sevilla nucleo ID
+SEVILLA_NUCLEO_ID = 30
+
+# Consistent agency ID
+TRANVIA_SEVILLA_AGENCY_ID = 'TRANVIA_SEVILLA'
+
+# MetroCentro T1 route configuration
+TRANVIA_CONFIG = {
+    'route_id': 'TRANVIA_SEV_T1',
+    'short_name': 'T1',
+    'long_name': 'Archivo de Indias - Luis de Morales',
+    'route_type': 0,  # Tram/Light Rail
+    'color': 'E4002B',  # Red (typical tram color)
+    'text_color': 'FFFFFF',
+}
+
+# TUSSAM route_id for tranvia
+TUSSAM_TRANVIA_ROUTE_ID = '60'
+
+
+def read_csv(file_path: Path) -> list:
+    """Read CSV file and return list of dicts."""
+    with open(file_path, 'r', encoding='utf-8-sig') as f:
+        reader = csv.DictReader(f)
+        return list(reader)
+
+
+def import_agency(db: Session, gtfs_path: Path) -> str:
+    """Import/create tranvia agency."""
+    agencies = read_csv(gtfs_path / 'agency.txt')
+    if not agencies:
+        raise ValueError("No agencies found in agency.txt")
+
+    agency_data = agencies[0]
+    agency_id = TRANVIA_SEVILLA_AGENCY_ID
+
+    existing = db.query(AgencyModel).filter(AgencyModel.id == agency_id).first()
+    if existing:
+        logger.info(f"Agency {agency_id} already exists, updating...")
+        existing.name = 'Tranvía de Sevilla (MetroCentro)'
+        existing.url = agency_data.get('agency_url', 'https://www.tussam.es')
+        existing.timezone = 'Europe/Madrid'
+        existing.lang = 'es'
+        existing.phone = agency_data.get('agency_phone', '')
+    else:
+        agency = AgencyModel(
+            id=agency_id,
+            name='Tranvía de Sevilla (MetroCentro)',
+            url=agency_data.get('agency_url', 'https://www.tussam.es'),
+            timezone='Europe/Madrid',
+            lang='es',
+            phone=agency_data.get('agency_phone', ''),
+        )
+        db.add(agency)
+        logger.info(f"Created agency: {agency_id}")
+
+    db.flush()
+    return agency_id
+
+
+def import_route(db: Session, agency_id: str) -> str:
+    """Import/create the tranvia route."""
+    route_id = TRANVIA_CONFIG['route_id']
+
+    existing = db.query(RouteModel).filter(RouteModel.id == route_id).first()
+
+    if existing:
+        logger.info(f"Route {route_id} already exists, updating...")
+        existing.short_name = TRANVIA_CONFIG['short_name']
+        existing.long_name = TRANVIA_CONFIG['long_name']
+        existing.route_type = TRANVIA_CONFIG['route_type']
+        existing.color = TRANVIA_CONFIG['color']
+        existing.text_color = TRANVIA_CONFIG['text_color']
+        existing.agency_id = agency_id
+        existing.nucleo_id = SEVILLA_NUCLEO_ID
+        existing.nucleo_name = "Sevilla"
+    else:
+        route = RouteModel(
+            id=route_id,
+            short_name=TRANVIA_CONFIG['short_name'],
+            long_name=TRANVIA_CONFIG['long_name'],
+            route_type=TRANVIA_CONFIG['route_type'],
+            color=TRANVIA_CONFIG['color'],
+            text_color=TRANVIA_CONFIG['text_color'],
+            agency_id=agency_id,
+            nucleo_id=SEVILLA_NUCLEO_ID,
+            nucleo_name="Sevilla",
+        )
+        db.add(route)
+        logger.info(f"Created route: {route_id} ({TRANVIA_CONFIG['short_name']})")
+
+    db.flush()
+    return route_id
+
+
+def import_stops(db: Session, gtfs_path: Path) -> dict:
+    """Import tranvia stops from GTFS, deduplicating by name."""
+    stops = read_csv(gtfs_path / 'stops.txt')
+    trips = read_csv(gtfs_path / 'trips.txt')
+    stop_times = read_csv(gtfs_path / 'stop_times.txt')
+
+    # Get all trip_ids for tranvia route
+    tranvia_trip_ids = {t['trip_id'] for t in trips if t['route_id'] == TUSSAM_TRANVIA_ROUTE_ID}
+
+    # Get all stop_ids used by tranvia trips
+    tranvia_stop_ids = set()
+    for st in stop_times:
+        if st['trip_id'] in tranvia_trip_ids:
+            tranvia_stop_ids.add(st['stop_id'])
+
+    logger.info(f"Found {len(tranvia_stop_ids)} stop IDs used by tranvia")
+
+    # Filter stops to only tranvia stops
+    tranvia_stops = [s for s in stops if s['stop_id'] in tranvia_stop_ids]
+
+    # Deduplicate by name (keep first occurrence with best data)
+    stops_by_name = {}
+    for stop_data in tranvia_stops:
+        name = stop_data['stop_name'].strip()
+        if name not in stops_by_name:
+            stops_by_name[name] = stop_data
+
+    stop_mapping = {}  # old_id -> new_id (for all variants)
+
+    for name, stop_data in stops_by_name.items():
+        old_stop_id = stop_data['stop_id']
+        # Create clean stop ID
+        clean_name = name.upper().replace(' ', '_').replace('.', '')
+        new_stop_id = f"TRANVIA_SEV_{clean_name}"
+
+        existing = db.query(StopModel).filter(StopModel.id == new_stop_id).first()
+
+        if existing:
+            logger.info(f"Stop {new_stop_id} already exists, updating...")
+            existing.name = name
+            existing.lat = float(stop_data['stop_lat'])
+            existing.lon = float(stop_data['stop_lon'])
+            existing.lineas = "T1"
+            existing.nucleo_id = SEVILLA_NUCLEO_ID
+            existing.nucleo_name = "Sevilla"
+        else:
+            stop = StopModel(
+                id=new_stop_id,
+                name=name,
+                lat=float(stop_data['stop_lat']),
+                lon=float(stop_data['stop_lon']),
+                code=stop_data.get('stop_code', ''),
+                location_type=0,  # Stop/Platform
+                lineas="T1",
+                nucleo_id=SEVILLA_NUCLEO_ID,
+                nucleo_name="Sevilla",
+            )
+            db.add(stop)
+            logger.info(f"Created stop: {new_stop_id} ({name})")
+
+        stop_mapping[old_stop_id] = new_stop_id
+
+    # Map all stop variants to their deduplicated version
+    for stop_data in tranvia_stops:
+        name = stop_data['stop_name'].strip()
+        old_id = stop_data['stop_id']
+        if old_id not in stop_mapping:
+            # Find the deduplicated ID for this name
+            clean_name = name.upper().replace(' ', '_').replace('.', '')
+            stop_mapping[old_id] = f"TRANVIA_SEV_{clean_name}"
+
+    db.flush()
+    return stop_mapping
+
+
+def import_stop_sequences(db: Session, gtfs_path: Path, route_id: str, stop_mapping: dict):
+    """Create stop sequences for the tranvia route."""
+    trips = read_csv(gtfs_path / 'trips.txt')
+    stop_times = read_csv(gtfs_path / 'stop_times.txt')
+
+    # Get all trip_ids for tranvia
+    tranvia_trips = [t for t in trips if t['route_id'] == TUSSAM_TRANVIA_ROUTE_ID]
+
+    if not tranvia_trips:
+        logger.warning("No tranvia trips found")
+        return
+
+    # Find the longest trip (full route) to use as template
+    trip_stop_counts = {}
+    for st in stop_times:
+        trip_id = st['trip_id']
+        if any(t['trip_id'] == trip_id for t in tranvia_trips):
+            trip_stop_counts[trip_id] = trip_stop_counts.get(trip_id, 0) + 1
+
+    if not trip_stop_counts:
+        logger.warning("No stop times found for tranvia")
+        return
+
+    # Get trip with most stops
+    template_trip_id = max(trip_stop_counts, key=trip_stop_counts.get)
+    logger.info(f"Using trip {template_trip_id} as template ({trip_stop_counts[template_trip_id]} stops)")
+
+    # Get stop sequence for template trip
+    trip_stops = [st for st in stop_times if st['trip_id'] == template_trip_id]
+    trip_stops.sort(key=lambda x: int(x['stop_sequence']))
+
+    # Delete existing sequences
+    db.query(StopRouteSequenceModel).filter(
+        StopRouteSequenceModel.route_id == route_id
+    ).delete()
+
+    # Create sequences (deduplicated)
+    seen_stops = set()
+    seq = 1
+    for st in trip_stops:
+        old_stop_id = st['stop_id']
+        new_stop_id = stop_mapping.get(old_stop_id)
+        if not new_stop_id or new_stop_id in seen_stops:
+            continue
+
+        seen_stops.add(new_stop_id)
+        sequence = StopRouteSequenceModel(
+            route_id=route_id,
+            stop_id=new_stop_id,
+            sequence=seq,
+        )
+        db.add(sequence)
+        seq += 1
+
+    logger.info(f"Created {seq - 1} stop sequences for {route_id}")
+    db.flush()
+
+
+def import_frequencies(db: Session, route_id: str):
+    """Add default frequency data for tranvia.
+
+    MetroCentro typically runs every 5-7 minutes during peak hours.
+    """
+    # Delete existing frequencies
+    db.query(RouteFrequencyModel).filter(
+        RouteFrequencyModel.route_id == route_id
+    ).delete()
+
+    # Default frequencies based on typical tram service
+    frequencies = [
+        # Weekday
+        {'day_type': 'weekday', 'start': (6, 30), 'end': (9, 0), 'headway': 360},   # 6min peak
+        {'day_type': 'weekday', 'start': (9, 0), 'end': (14, 0), 'headway': 480},   # 8min
+        {'day_type': 'weekday', 'start': (14, 0), 'end': (17, 0), 'headway': 420},  # 7min
+        {'day_type': 'weekday', 'start': (17, 0), 'end': (21, 0), 'headway': 360},  # 6min peak
+        {'day_type': 'weekday', 'start': (21, 0), 'end': (23, 30), 'headway': 600}, # 10min
+        # Saturday
+        {'day_type': 'saturday', 'start': (7, 0), 'end': (14, 0), 'headway': 480},  # 8min
+        {'day_type': 'saturday', 'start': (14, 0), 'end': (21, 0), 'headway': 420}, # 7min
+        {'day_type': 'saturday', 'start': (21, 0), 'end': (23, 30), 'headway': 600},# 10min
+        # Sunday
+        {'day_type': 'sunday', 'start': (8, 0), 'end': (14, 0), 'headway': 600},    # 10min
+        {'day_type': 'sunday', 'start': (14, 0), 'end': (22, 0), 'headway': 540},   # 9min
+    ]
+
+    for freq in frequencies:
+        freq_model = RouteFrequencyModel(
+            route_id=route_id,
+            start_time=time(freq['start'][0], freq['start'][1]),
+            end_time=time(freq['end'][0], freq['end'][1]),
+            headway_secs=freq['headway'],
+            day_type=freq['day_type'],
+        )
+        db.add(freq_model)
+
+    logger.info(f"Created {len(frequencies)} frequency entries for {route_id}")
+    db.flush()
+
+
+def add_correspondences(db: Session, stop_mapping: dict):
+    """Add correspondences with Metro and Cercanías."""
+    # San Bernardo tranvia stop connects with Metro and Cercanías
+    san_bernardo_tranvia = None
+    for old_id, new_id in stop_mapping.items():
+        if 'SAN_BERNARDO' in new_id:
+            san_bernardo_tranvia = new_id
+            break
+
+    if san_bernardo_tranvia:
+        # Update RENFE San Bernardo to include tranvia
+        renfe_stop = db.query(StopModel).filter(StopModel.id == 'RENFE_51100').first()
+        if renfe_stop:
+            # Add cor_tranvia or update cor_ml (using cor_ml for tram)
+            # Note: There's no cor_tranvia field, so we might need to add it
+            # For now, log the connection
+            logger.info(f"San Bernardo Tranvía connects with RENFE_51100 (Cercanías)")
+
+        # Update Metro Sevilla San Bernardo
+        metro_stop = db.query(StopModel).filter(StopModel.id == 'METRO_SEV_L1_E10').first()
+        if metro_stop:
+            logger.info(f"San Bernardo Tranvía connects with METRO_SEV_L1_E10 (Metro)")
+
+    # Prado San Sebastián connects with Metro
+    prado_tranvia = None
+    for old_id, new_id in stop_mapping.items():
+        if 'PRADO' in new_id:
+            prado_tranvia = new_id
+            break
+
+    if prado_tranvia:
+        metro_prado = db.query(StopModel).filter(StopModel.id == 'METRO_SEV_L1_E9').first()
+        if metro_prado:
+            logger.info(f"Prado San Sebastián Tranvía connects with METRO_SEV_L1_E9 (Metro)")
+
+
+def main():
+    """Main import function."""
+    if len(sys.argv) < 2:
+        print("Usage: python import_tranvia_sevilla.py <gtfs_folder_path>")
+        print("Example: python import_tranvia_sevilla.py ./data/20260109_090033_TUSSAM")
+        sys.exit(1)
+
+    gtfs_path = Path(sys.argv[1])
+    if not gtfs_path.exists():
+        print(f"Error: Path not found: {gtfs_path}")
+        sys.exit(1)
+
+    logger.info(f"Starting Tranvía de Sevilla import from {gtfs_path}...")
+
+    db = SessionLocal()
+    try:
+        # Check nucleo exists
+        nucleo = db.query(NucleoModel).filter(NucleoModel.id == SEVILLA_NUCLEO_ID).first()
+        if not nucleo:
+            logger.error(f"Nucleo Sevilla (id={SEVILLA_NUCLEO_ID}) not found!")
+            return
+
+        logger.info(f"Using nucleo: {nucleo.name} (id={nucleo.id})")
+
+        # Import data
+        agency_id = import_agency(db, gtfs_path)
+        route_id = import_route(db, agency_id)
+        stop_mapping = import_stops(db, gtfs_path)
+        import_stop_sequences(db, gtfs_path, route_id, stop_mapping)
+        import_frequencies(db, route_id)
+        add_correspondences(db, stop_mapping)
+
+        db.commit()
+
+        logger.info("=" * 60)
+        logger.info("TRANVÍA DE SEVILLA IMPORT COMPLETE")
+        logger.info("=" * 60)
+        logger.info(f"Agency: {agency_id}")
+        logger.info(f"Route: {route_id} ({TRANVIA_CONFIG['short_name']})")
+        logger.info(f"Stops: {len(set(stop_mapping.values()))}")
+
+    except Exception as e:
+        logger.error(f"Import failed: {e}")
+        db.rollback()
+        raise
+    finally:
+        db.close()
+
+
+if __name__ == "__main__":
+    main()
