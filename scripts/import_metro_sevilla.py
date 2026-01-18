@@ -27,6 +27,10 @@ from src.gtfs_bc.stop.infrastructure.models import StopModel
 from src.gtfs_bc.route.infrastructure.models import RouteModel, RouteFrequencyModel
 from src.gtfs_bc.agency.infrastructure.models import AgencyModel
 from src.gtfs_bc.stop_route_sequence.infrastructure.models import StopRouteSequenceModel
+from src.gtfs_bc.network.infrastructure.models import NetworkModel
+
+# Import connection population function
+from scripts.populate_stop_connections import populate_connections_for_nucleo
 
 logging.basicConfig(
     level=logging.INFO,
@@ -40,13 +44,25 @@ SEVILLA_NUCLEO_ID = 30
 # Consistent agency ID (matching METRO_MADRID, METRO_LIGERO pattern)
 METRO_SEVILLA_AGENCY_ID = 'METRO_SEVILLA'
 
+# Network configuration
+NETWORK_CONFIG = {
+    'code': 'METRO_SEV',  # Must match route ID prefix for route_count to work
+    'name': 'Metro de Sevilla',
+    'city': 'Sevilla',
+    'region': 'Andalucía',
+    'color': '0D6928',  # Green - official Metro Sevilla color
+    'text_color': 'FFFFFF',
+    'description': 'Red de metro de Sevilla',
+}
+
 # Metro Sevilla route long names (terminus to terminus)
 METRO_SEV_LONG_NAMES = {
     'L1': 'Ciudad Expo - Olivar de Quintos',
 }
 
-# Default text color for routes (black text on yellow background)
-DEFAULT_TEXT_COLOR = '000000'
+# Default colors for Metro Sevilla (green)
+DEFAULT_ROUTE_COLOR = '0D6928'  # Green - official Metro Sevilla color
+DEFAULT_TEXT_COLOR = 'FFFFFF'  # White text on green background
 
 
 def read_csv(file_path: Path) -> list:
@@ -54,6 +70,36 @@ def read_csv(file_path: Path) -> list:
     with open(file_path, 'r', encoding='utf-8-sig') as f:
         reader = csv.DictReader(f)
         return list(reader)
+
+
+def import_network(db: Session) -> str:
+    """Create/update the network entry for route_count to work."""
+    network_code = NETWORK_CONFIG['code']
+
+    existing = db.query(NetworkModel).filter(NetworkModel.code == network_code).first()
+    if existing:
+        logger.info(f"Network {network_code} already exists, updating...")
+        existing.name = NETWORK_CONFIG['name']
+        existing.city = NETWORK_CONFIG['city']
+        existing.region = NETWORK_CONFIG['region']
+        existing.color = NETWORK_CONFIG['color']
+        existing.text_color = NETWORK_CONFIG['text_color']
+        existing.description = NETWORK_CONFIG['description']
+    else:
+        network = NetworkModel(
+            code=network_code,
+            name=NETWORK_CONFIG['name'],
+            city=NETWORK_CONFIG['city'],
+            region=NETWORK_CONFIG['region'],
+            color=NETWORK_CONFIG['color'],
+            text_color=NETWORK_CONFIG['text_color'],
+            description=NETWORK_CONFIG['description'],
+        )
+        db.add(network)
+        logger.info(f"Created network: {network_code}")
+
+    db.flush()
+    return network_code
 
 
 def import_agency(db: Session, gtfs_path: Path) -> str:
@@ -127,7 +173,7 @@ def import_routes(db: Session, gtfs_path: Path, agency_id: str) -> tuple:
             existing.short_name = short_name
             existing.long_name = long_name
             existing.route_type = int(route_data.get('route_type', 1))
-            existing.color = route_data.get('route_color', 'F8B500')
+            existing.color = route_data.get('route_color', DEFAULT_ROUTE_COLOR)
             existing.text_color = text_color
             existing.agency_id = agency_id
             existing.nucleo_id = SEVILLA_NUCLEO_ID
@@ -138,7 +184,7 @@ def import_routes(db: Session, gtfs_path: Path, agency_id: str) -> tuple:
                 short_name=short_name,
                 long_name=long_name,
                 route_type=int(route_data.get('route_type', 1)),
-                color=route_data.get('route_color', 'F8B500'),
+                color=route_data.get('route_color', DEFAULT_ROUTE_COLOR),
                 text_color=text_color,
                 agency_id=agency_id,
                 nucleo_id=SEVILLA_NUCLEO_ID,
@@ -386,6 +432,7 @@ def main():
         logger.info(f"Using nucleo: {nucleo.name} (id={nucleo.id})")
 
         # Import data
+        network_code = import_network(db)
         agency_id = import_agency(db, gtfs_path)
         route_mapping, route_short_names = import_routes(db, gtfs_path, agency_id)
         stop_mapping = import_stops(db, gtfs_path, route_short_names)
@@ -394,12 +441,18 @@ def main():
 
         db.commit()
 
+        # Automatically calculate correspondences with Cercanías and Tranvía in the same núcleo
+        logger.info("Calculating correspondences with Cercanías and Tranvía Sevilla...")
+        populate_connections_for_nucleo(db, SEVILLA_NUCLEO_ID)
+
         logger.info("=" * 60)
         logger.info("METRO DE SEVILLA IMPORT COMPLETE")
         logger.info("=" * 60)
+        logger.info(f"Network: {network_code}")
         logger.info(f"Agency: {agency_id}")
         logger.info(f"Routes: {len(route_mapping)}")
         logger.info(f"Stops: {len(stop_mapping)}")
+        logger.info("Correspondences: automatically calculated")
 
     except Exception as e:
         logger.error(f"Import failed: {e}")
