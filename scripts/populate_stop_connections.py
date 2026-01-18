@@ -6,7 +6,7 @@ Handles:
 - METRO_ (Metro Madrid)
 - ML_ (Metro Ligero Madrid)
 - METRO_SEV_ (Metro Sevilla)
-- TRANVIA_SEV_ (Tranvía Sevilla)
+- TRAM_SEV_ (Tranvía Sevilla)
 
 Matching methods:
 1. Proximity (default 150m) - stops within distance are considered connected
@@ -49,7 +49,7 @@ STOP_PREFIXES = {
     'metro': 'METRO_',  # Metro Madrid (but not METRO_SEV_)
     'ml': 'ML_',  # Metro Ligero Madrid
     'metro_sev': 'METRO_SEV_',  # Metro Sevilla
-    'tranvia_sev': 'TRANVIA_SEV_',  # Tranvía Sevilla
+    'tranvia_sev': 'TRAM_SEV_',  # Tranvía Sevilla
 }
 
 
@@ -58,7 +58,7 @@ def get_stop_type(stop_id: str) -> str:
     # Order matters - check more specific prefixes first
     if stop_id.startswith('METRO_SEV_'):
         return 'metro_sev'
-    if stop_id.startswith('TRANVIA_SEV_'):
+    if stop_id.startswith('TRAM_SEV_'):
         return 'tranvia_sev'
     if stop_id.startswith('METRO_'):
         return 'metro'
@@ -168,7 +168,7 @@ def populate_connections(db: Session, max_distance_meters: float = DEFAULT_MAX_D
 
     Handles:
     - Madrid: RENFE, METRO, ML stops
-    - Sevilla: RENFE, METRO_SEV, TRANVIA_SEV stops
+    - Sevilla: RENFE, METRO_SEV, TRAM_SEV stops
 
     Returns:
         Dictionary with statistics about updates made.
@@ -202,7 +202,7 @@ def populate_connections(db: Session, max_distance_meters: float = DEFAULT_MAX_D
     logger.info(f"Found: RENFE={len(stops_by_type['renfe'])}, "
                 f"METRO={len(stops_by_type['metro'])}, ML={len(stops_by_type['ml'])}, "
                 f"METRO_SEV={len(stops_by_type['metro_sev'])}, "
-                f"TRANVIA_SEV={len(stops_by_type['tranvia_sev'])}")
+                f"TRAM_SEV={len(stops_by_type['tranvia_sev'])}")
 
     # Helper to get lines from nearby stops OR stops with matching names
     def get_matching_lines(source_stop, target_stops, check_same_nucleo: bool = True):
@@ -373,7 +373,7 @@ def populate_connections_for_nucleo(db: Session, nucleo_id: int, max_distance_me
     logger.info(f"Núcleo {nucleo_id}: RENFE={len(stops_by_type['renfe'])}, "
                 f"METRO={len(stops_by_type['metro'])}, ML={len(stops_by_type['ml'])}, "
                 f"METRO_SEV={len(stops_by_type['metro_sev'])}, "
-                f"TRANVIA_SEV={len(stops_by_type['tranvia_sev'])}")
+                f"TRAM_SEV={len(stops_by_type['tranvia_sev'])}")
 
     # Helper function (same logic as populate_connections)
     def get_lines(source_stop, target_stops):

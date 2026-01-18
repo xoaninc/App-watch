@@ -46,7 +46,7 @@ TRANVIA_SEVILLA_AGENCY_ID = 'TRANVIA_SEVILLA'
 
 # Network configuration for tranvia
 NETWORK_CONFIG = {
-    'code': 'TRANVIA_SEV',  # Must match route ID prefix
+    'code': 'TRAM_SEV',  # Must match route ID prefix (max 10 chars)
     'name': 'Tranvía de Sevilla (MetroCentro)',
     'city': 'Sevilla',
     'region': 'Andalucía',
@@ -58,7 +58,7 @@ NETWORK_CONFIG = {
 
 # MetroCentro T1 route configuration
 TRANVIA_CONFIG = {
-    'route_id': 'TRANVIA_SEV_T1',
+    'route_id': 'TRAM_SEV_T1',
     'short_name': 'T1',
     'long_name': 'Archivo de Indias - Luis de Morales',
     'route_type': 0,  # Tram/Light Rail
@@ -210,7 +210,7 @@ def import_stops(db: Session, gtfs_path: Path) -> dict:
         old_stop_id = stop_data['stop_id']
         # Create clean stop ID
         clean_name = name.upper().replace(' ', '_').replace('.', '')
-        new_stop_id = f"TRANVIA_SEV_{clean_name}"
+        new_stop_id = f"TRAM_SEV_{clean_name}"
 
         existing = db.query(StopModel).filter(StopModel.id == new_stop_id).first()
 
@@ -247,7 +247,7 @@ def import_stops(db: Session, gtfs_path: Path) -> dict:
         if old_id not in stop_mapping:
             # Find the deduplicated ID for this name
             clean_name = name.upper().replace(' ', '_').replace('.', '')
-            stop_mapping[old_id] = f"TRANVIA_SEV_{clean_name}"
+            stop_mapping[old_id] = f"TRAM_SEV_{clean_name}"
 
     db.flush()
     return stop_mapping
@@ -311,18 +311,122 @@ def import_stop_sequences(db: Session, gtfs_path: Path, route_id: str, stop_mapp
     db.flush()
 
 
-def import_frequencies(db: Session, route_id: str):
-    """Add default frequency data for tranvia.
+def import_frequencies(db: Session, gtfs_path: Path, route_id: str):
+    """Import frequency data from GTFS, or use defaults if not available.
 
-    MetroCentro typically runs every 5-7 minutes during peak hours.
+    Reads frequencies.txt and calendar.txt to get real service frequencies.
+    Falls back to hardcoded defaults if no frequency data in GTFS.
     """
     # Delete existing frequencies
     db.query(RouteFrequencyModel).filter(
         RouteFrequencyModel.route_id == route_id
     ).delete()
 
-    # Default frequencies based on typical tram service
-    frequencies = [
+    frequencies_file = gtfs_path / 'frequencies.txt'
+    if frequencies_file.exists():
+        # Import from GTFS
+        count = _import_frequencies_from_gtfs(db, gtfs_path, route_id)
+        if count > 0:
+            logger.info(f"Imported {count} frequency entries from GTFS for {route_id}")
+            db.flush()
+            return
+
+    # Fall back to defaults if no GTFS frequencies
+    logger.info("No GTFS frequencies found, using defaults")
+    _import_default_frequencies(db, route_id)
+    db.flush()
+
+
+def _import_frequencies_from_gtfs(db: Session, gtfs_path: Path, route_id: str) -> int:
+    """Import frequencies from GTFS frequencies.txt and calendar.txt."""
+    frequencies = read_csv(gtfs_path / 'frequencies.txt')
+    trips = read_csv(gtfs_path / 'trips.txt')
+    calendar_file = gtfs_path / 'calendar.txt'
+
+    if not calendar_file.exists():
+        logger.warning("No calendar.txt found")
+        return 0
+
+    calendars = read_csv(calendar_file)
+
+    # Get trip -> service_id mapping for tranvia route only
+    trip_info = {}
+    for t in trips:
+        if t['route_id'] == TUSSAM_TRANVIA_ROUTE_ID:
+            trip_info[t['trip_id']] = t['service_id']
+
+    if not trip_info:
+        logger.warning("No tranvia trips found")
+        return 0
+
+    # Get service_id -> day_type mapping
+    service_days = {}
+    for cal in calendars:
+        service_id = cal['service_id']
+        # Determine day type based on service days
+        sat = cal.get('saturday', '0') == '1'
+        sun = cal.get('sunday', '0') == '1'
+        mon = cal.get('monday', '0') == '1'
+
+        if sat and not sun:
+            service_days[service_id] = 'saturday'
+        elif sun and not sat:
+            service_days[service_id] = 'sunday'
+        elif mon:
+            service_days[service_id] = 'weekday'
+        else:
+            service_days[service_id] = 'weekday'
+
+    # Group frequencies by time period and day type
+    route_frequencies = {}  # (day_type, start, end) -> headway_secs
+
+    for freq in frequencies:
+        trip_id = freq['trip_id']
+        service_id = trip_info.get(trip_id)
+        if not service_id:
+            continue  # Not a tranvia trip
+
+        day_type = service_days.get(service_id, 'weekday')
+        start_time = freq['start_time']
+        end_time = freq['end_time']
+        headway_secs = int(freq['headway_secs'])
+
+        key = (day_type, start_time, end_time)
+        # Use minimum headway for same period (more frequent = better)
+        if key not in route_frequencies or headway_secs < route_frequencies[key]:
+            route_frequencies[key] = headway_secs
+
+    # Insert frequencies
+    count = 0
+    for (day_type, start_str, end_str), headway_secs in route_frequencies.items():
+        # Parse time strings (handle >24h for overnight service)
+        start_parts = start_str.split(':')
+        end_parts = end_str.split(':')
+
+        start_hour = int(start_parts[0]) % 24
+        start_min = int(start_parts[1])
+        end_hour = int(end_parts[0]) % 24
+        end_min = int(end_parts[1])
+
+        freq_model = RouteFrequencyModel(
+            route_id=route_id,
+            start_time=time(start_hour, start_min),
+            end_time=time(end_hour, end_min),
+            headway_secs=headway_secs,
+            day_type=day_type,
+        )
+        db.add(freq_model)
+        count += 1
+
+    return count
+
+
+def _import_default_frequencies(db: Session, route_id: str):
+    """Add default frequency data for tranvia when GTFS data not available.
+
+    MetroCentro typically runs every 5-7 minutes during peak hours.
+    """
+    default_frequencies = [
         # Weekday
         {'day_type': 'weekday', 'start': (6, 30), 'end': (9, 0), 'headway': 360},   # 6min peak
         {'day_type': 'weekday', 'start': (9, 0), 'end': (14, 0), 'headway': 480},   # 8min
@@ -338,7 +442,7 @@ def import_frequencies(db: Session, route_id: str):
         {'day_type': 'sunday', 'start': (14, 0), 'end': (22, 0), 'headway': 540},   # 9min
     ]
 
-    for freq in frequencies:
+    for freq in default_frequencies:
         freq_model = RouteFrequencyModel(
             route_id=route_id,
             start_time=time(freq['start'][0], freq['start'][1]),
@@ -348,8 +452,7 @@ def import_frequencies(db: Session, route_id: str):
         )
         db.add(freq_model)
 
-    logger.info(f"Created {len(frequencies)} frequency entries for {route_id}")
-    db.flush()
+    logger.info(f"Created {len(default_frequencies)} default frequency entries for {route_id}")
 
 
 def main():
@@ -382,7 +485,7 @@ def main():
         route_id = import_route(db, agency_id)
         stop_mapping = import_stops(db, gtfs_path)
         import_stop_sequences(db, gtfs_path, route_id, stop_mapping)
-        import_frequencies(db, route_id)
+        import_frequencies(db, gtfs_path, route_id)
 
         db.commit()
 

@@ -61,17 +61,25 @@ class NetworkDetailResponse(NetworkResponse):
 
 @router.get("", response_model=List[NetworkResponse])
 async def get_networks(db: Session = Depends(get_db)):
-    """Get all Cercanías networks with route counts."""
+    """Get all transit networks with route counts."""
     networks = db.query(NetworkModel).all()
 
     results = []
     for network in networks:
         # Count routes for this network
-        route_count = (
-            db.query(RouteModel)
-            .filter(RouteModel.id.like(f"{network.code}%"))
-            .count()
-        )
+        # Use nucleo_id for Cercanías networks, prefix matching for others
+        if network.nucleo_id is not None:
+            route_count = (
+                db.query(RouteModel)
+                .filter(RouteModel.nucleo_id == network.nucleo_id)
+                .count()
+            )
+        else:
+            route_count = (
+                db.query(RouteModel)
+                .filter(RouteModel.id.like(f"{network.code}%"))
+                .count()
+            )
 
         results.append(
             NetworkResponse(

@@ -63,6 +63,27 @@ class StopResponse(BaseModel):
     cor_metro: Optional[str]
     cor_ml: Optional[str]
     cor_cercanias: Optional[str]
+    cor_tranvia: Optional[str]
+
+    class Config:
+        from_attributes = True
+
+
+class RouteStopResponse(BaseModel):
+    """Stop response with route sequence information."""
+    id: str
+    name: str
+    lat: float
+    lon: float
+    code: Optional[str]
+    location_type: int
+    parent_station_id: Optional[str]
+    zone_id: Optional[str]
+    province: Optional[str]
+    nucleo_id: Optional[int]
+    nucleo_name: Optional[str]
+    lineas: Optional[str]
+    stop_sequence: int  # Position in the route (1-based)
 
     class Config:
         from_attributes = True
@@ -565,11 +586,17 @@ def _get_frequency_based_departures(
             else:
                 search_name = line_name
 
-            # Try to find route by short_name
-            route = db.query(RouteModel).filter(
+            # Try to find route by short_name AND same nucleo as the stop
+            # This prevents matching Madrid Metro L1 for a Sevilla Metro stop
+            route_query = db.query(RouteModel).filter(
                 RouteModel.short_name == search_name,
-                RouteModel.id.like("METRO_%") | RouteModel.id.like("ML_%")
-            ).first()
+                RouteModel.id.like("METRO_%") | RouteModel.id.like("ML_%") | RouteModel.id.like("TRAM_SEV_%")
+            )
+            # Filter by nucleo_id if stop has one
+            if stop.nucleo_id is not None:
+                route_query = route_query.filter(RouteModel.nucleo_id == stop.nucleo_id)
+
+            route = route_query.first()
             if route:
                 if not route_id or route.id == route_id:
                     routes.append(route)
@@ -803,7 +830,11 @@ def get_stop_departures(
     )
 
     # If no stop_times results, check if this is a Metro/ML/Tranvia stop and use frequency-based departures
-    is_metro_stop = stop_id.startswith("METRO_") or stop_id.startswith("ML_") or stop_id.startswith("TRANVIA_")
+    is_metro_stop = (
+        stop_id.startswith("METRO_") or
+        stop_id.startswith("ML_") or
+        stop_id.startswith("TRAM_SEV_")
+    )
     if not results and is_metro_stop:
         return _get_frequency_based_departures(db, stop, route_id, limit, now, current_seconds)
 
@@ -1058,12 +1089,11 @@ def get_trip(trip_id: str, db: Session = Depends(get_db)):
     )
 
 
-@router.get("/routes/{route_id}/stops", response_model=List[StopResponse])
+@router.get("/routes/{route_id}/stops", response_model=List[RouteStopResponse])
 def get_route_stops(route_id: str, db: Session = Depends(get_db)):
     """Get all stops served by a route, ordered by their position along the route.
 
-    Stops are ordered by their sequence position based on the closest point on the
-    route's LineString geometry from the Renfe GeoJSON data.
+    Returns stops with their stop_sequence number indicating position in the route.
     """
     from src.gtfs_bc.stop_route_sequence.infrastructure.models import StopRouteSequenceModel
 
@@ -1072,9 +1102,9 @@ def get_route_stops(route_id: str, db: Session = Depends(get_db)):
     if not route:
         raise HTTPException(status_code=404, detail=f"Route {route_id} not found")
 
-    # Query stops using the stop_route_sequence table to get proper ordering
-    stops = (
-        db.query(StopModel)
+    # Query stops with sequence using the stop_route_sequence table
+    results = (
+        db.query(StopModel, StopRouteSequenceModel.sequence)
         .join(
             StopRouteSequenceModel,
             StopModel.id == StopRouteSequenceModel.stop_id
@@ -1084,25 +1114,62 @@ def get_route_stops(route_id: str, db: Session = Depends(get_db)):
         .all()
     )
 
+    if results:
+        return [
+            RouteStopResponse(
+                id=stop.id,
+                name=stop.name,
+                lat=stop.lat,
+                lon=stop.lon,
+                code=stop.code,
+                location_type=stop.location_type,
+                parent_station_id=stop.parent_station_id,
+                zone_id=stop.zone_id,
+                province=stop.province,
+                nucleo_id=stop.nucleo_id,
+                nucleo_name=stop.nucleo_name,
+                lineas=stop.lineas,
+                stop_sequence=sequence,
+            )
+            for stop, sequence in results
+        ]
+
     # If no sequences found, fallback to lineas-based search with alphabetical order
-    if not stops:
-        short_name = route.short_name
-        stops = (
-            db.query(StopModel)
-            .filter(
-                and_(
-                    StopModel.nucleo_id == route.nucleo_id,
-                    StopModel.lineas.isnot(None),
-                    or_(
-                        StopModel.lineas == short_name,
-                        StopModel.lineas.startswith(f"{short_name},"),
-                        StopModel.lineas.endswith(f",{short_name}"),
-                        StopModel.lineas.contains(f",{short_name},"),
-                    )
+    short_name = route.short_name
+    stops = (
+        db.query(StopModel)
+        .filter(
+            and_(
+                StopModel.nucleo_id == route.nucleo_id,
+                StopModel.lineas.isnot(None),
+                or_(
+                    StopModel.lineas == short_name,
+                    StopModel.lineas.startswith(f"{short_name},"),
+                    StopModel.lineas.endswith(f",{short_name}"),
+                    StopModel.lineas.contains(f",{short_name},"),
                 )
             )
-            .order_by(StopModel.name)
-            .all()
         )
+        .order_by(StopModel.name)
+        .all()
+    )
 
-    return stops
+    # Return with generated sequence numbers for fallback
+    return [
+        RouteStopResponse(
+            id=stop.id,
+            name=stop.name,
+            lat=stop.lat,
+            lon=stop.lon,
+            code=stop.code,
+            location_type=stop.location_type,
+            parent_station_id=stop.parent_station_id,
+            zone_id=stop.zone_id,
+            province=stop.province,
+            nucleo_id=stop.nucleo_id,
+            nucleo_name=stop.nucleo_name,
+            lineas=stop.lineas,
+            stop_sequence=idx + 1,
+        )
+        for idx, stop in enumerate(stops)
+    ]
