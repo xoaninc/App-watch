@@ -1,5 +1,8 @@
+from pathlib import Path
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from core.config import settings
 from src.gtfs_bc.realtime.infrastructure.services.gtfs_rt_scheduler import lifespan_with_scheduler
@@ -35,6 +38,11 @@ def create_app() -> FastAPI:
     app.include_router(query_router, prefix="/api/v1")
     app.include_router(eta_router, prefix="/api/v1")
     app.include_router(network_router, prefix="/api/v1")
+
+    # Static files (logos, etc.)
+    static_dir = Path(__file__).parent / "static"
+    if static_dir.exists():
+        app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 
     @app.get("/health")
     async def health_check():
