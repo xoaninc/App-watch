@@ -1,4 +1,22 @@
-"""Service for importing Metro Madrid data from CRTM Feature Service."""
+"""Service for importing Metro Madrid data from CRTM Feature Service.
+
+IMPORTANT: Metro lines with "B" variants are INDEPENDENT services (unlike Cercanías).
+
+Metro Madrid lines with branches:
+- L7 (Pitis - Estadio Metropolitano) + L7B (Estadio Metropolitano - Hospital del Henares)
+  → Transfer at Estadio Metropolitano
+- L9 (Paco de Lucía - Puerta de Arganda) + L9B (Puerta de Arganda - Arganda del Rey)
+  → Transfer at Puerta de Arganda (L9B = TFM - Tren de Arganda)
+- L10 (Tres Olivos - Puerta del Sur) + L10B (Hospital Infanta Sofía - Tres Olivos)
+  → Transfer at Tres Olivos
+
+These are stored as separate routes (METRO_7, METRO_7B, etc.) because they have:
+- Different terminals
+- Separate frequency schedules
+- Physical transfer required between them
+
+See: scripts/GTFS_IMPORT_CHANGES.md for full documentation.
+"""
 
 import logging
 from typing import Dict, List, Optional, Tuple
@@ -26,9 +44,12 @@ METRO_COLORS = {
     '5': '#8FD400',
     '6': '#98989B',
     '7': '#EE7518',
+    '7B': '#EE7518',  # Same as L7
     '8': '#EC82B1',
     '9': '#A60084',
+    '9B': '#A60084',  # Same as L9
     '10': '#005AA9',
+    '10B': '#005AA9',  # Same as L10
     '11': '#009B3A',
     '12': '#A49800',
     'R': '#005AA9',
@@ -42,9 +63,12 @@ METRO_TEXT_COLORS = {
     '5': '#FFFFFF',
     '6': '#FFFFFF',
     '7': '#FFFFFF',
+    '7B': '#FFFFFF',
     '8': '#FFFFFF',
     '9': '#FFFFFF',
+    '9B': '#FFFFFF',
     '10': '#FFFFFF',
+    '10B': '#FFFFFF',
     '11': '#FFFFFF',
     '12': '#FFFFFF',
     'R': '#FFFFFF',
@@ -57,13 +81,27 @@ METRO_LONG_NAMES = {
     '4': 'Argüelles - Pinar de Chamartín',
     '5': 'Alameda de Osuna - Casa de Campo',
     '6': 'Circular',
-    '7': 'Hospital del Henares - Pitis',
+    '7': 'Pitis - Estadio Metropolitano',
+    '7B': 'Estadio Metropolitano - Hospital del Henares',
     '8': 'Nuevos Ministerios - Aeropuerto T4',
-    '9': 'Paco de Lucía - Arganda del Rey',
-    '10': 'Hospital Infanta Sofía - Puerta del Sur',
+    '9': 'Paco de Lucía - Puerta de Arganda',
+    '9B': 'Puerta de Arganda - Arganda del Rey',
+    '10': 'Tres Olivos - Puerta del Sur',
+    '10B': 'Hospital Infanta Sofía - Tres Olivos',
     '11': 'Plaza Elíptica - La Fortuna',
     '12': 'MetroSur (Circular)',
     'R': 'Ópera - Príncipe Pío',
+}
+
+METRO_DESCRIPTIONS = {
+    '6': 'Andén 1: Sentido horario | Andén 2: Sentido antihorario',
+    '7': 'Correspondencia con L7B en Estadio Metropolitano',
+    '7B': 'Correspondencia con L7 en Estadio Metropolitano',
+    '9': 'Correspondencia con L9B/TFM en Puerta de Arganda',
+    '9B': 'Correspondencia con L9 en Puerta de Arganda',
+    '10': 'Correspondencia con L10B en Tres Olivos',
+    '10B': 'Correspondencia con L10 en Tres Olivos',
+    '12': 'Andén 1: Sentido horario | Andén 2: Sentido antihorario',
 }
 
 # Metro Ligero colors (with # prefix for CSS compatibility)
@@ -370,15 +408,25 @@ class CRTMMetroImporter:
         """Create Metro Madrid routes."""
         created = 0
 
-        for line_num in ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', 'R']:
+        # Include B variants for lines with separate branches
+        for line_num in ['1', '2', '3', '4', '5', '6', '7', '7B', '8', '9', '9B', '10', '10B', '11', '12', 'R']:
             route_id = f"METRO_{line_num}"
 
             existing = self.db.query(RouteModel).filter(RouteModel.id == route_id).first()
             if existing:
+                # Update long_name and description if they changed
+                existing.long_name = METRO_LONG_NAMES.get(line_num, existing.long_name)
+                if line_num in METRO_DESCRIPTIONS:
+                    existing.description = METRO_DESCRIPTIONS[line_num]
                 continue
 
             # Add L prefix for numbered lines (L1, L2, etc.), keep R as-is
-            short_name = f"L{line_num}" if line_num.isdigit() else line_num
+            if line_num.isdigit():
+                short_name = f"L{line_num}"
+            elif line_num.endswith('B'):
+                short_name = f"L{line_num}"  # L7B, L9B, L10B
+            else:
+                short_name = line_num
 
             route = RouteModel(
                 id=route_id,
@@ -390,6 +438,7 @@ class CRTMMetroImporter:
                 text_color=METRO_TEXT_COLORS.get(line_num, '#FFFFFF'),
                 nucleo_id=self.MADRID_NUCLEO_ID,
                 nucleo_name=self.MADRID_NUCLEO_NAME,
+                description=METRO_DESCRIPTIONS.get(line_num),
             )
             self.db.add(route)
             created += 1

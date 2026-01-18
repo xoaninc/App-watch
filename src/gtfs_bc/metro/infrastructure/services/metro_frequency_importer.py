@@ -1,4 +1,18 @@
-"""Service to import Metro Madrid frequencies from GTFS."""
+"""Service to import Metro Madrid frequencies from GTFS.
+
+WARNING: Metro Madrid frequencies are now maintained MANUALLY from official
+metromadrid.es data, NOT from CRTM GTFS (which has incorrect data).
+
+DO NOT run this importer for Metro Madrid lines (METRO_*).
+This importer may still be used for Metro Ligero (ML_*) if needed.
+
+The following routes have manually curated frequencies:
+- METRO_1 through METRO_12, METRO_R
+- METRO_7B, METRO_9B, METRO_10B (branch lines)
+
+Manual frequency updates are done directly in the database.
+See: scripts/import_metro_frequencies.py (DO NOT USE for METRO_*)
+"""
 import csv
 import logging
 import zipfile
@@ -66,6 +80,10 @@ class MetroFrequencyImporter:
     def import_from_gtfs_zip(self, gtfs_zip_path: str, clear_prefix: str = 'METRO_%') -> Dict[str, int]:
         """Import frequencies from a GTFS zip file.
 
+        WARNING: Metro Madrid frequencies (METRO_*) are maintained manually.
+        This method will SKIP Metro Madrid to protect manual frequency data.
+        Only Metro Ligero (ML_*) frequencies will be imported.
+
         Args:
             gtfs_zip_path: Path to the GTFS zip file (e.g., google_transit_M4.zip)
             clear_prefix: SQL LIKE pattern for routes to clear before importing
@@ -73,6 +91,15 @@ class MetroFrequencyImporter:
         Returns:
             Dict with import statistics
         """
+        # PROTECTION: Skip Metro Madrid frequencies (maintained manually)
+        if clear_prefix == 'METRO_%':
+            logger.warning("=" * 60)
+            logger.warning("SKIPPING Metro Madrid frequency import!")
+            logger.warning("Metro Madrid frequencies are maintained MANUALLY from")
+            logger.warning("official metromadrid.es data. CRTM GTFS data is incorrect.")
+            logger.warning("=" * 60)
+            return {'trips_loaded': 0, 'frequencies_imported': 0, 'skipped': True}
+
         logger.info(f"Importing frequencies from {gtfs_zip_path}")
 
         # Load trip → route mapping
