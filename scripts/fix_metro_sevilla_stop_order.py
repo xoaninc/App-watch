@@ -14,9 +14,6 @@ sys.path.insert(0, str(project_root))
 
 from sqlalchemy import text
 from core.database import SessionLocal
-from src.gtfs_bc.stop.infrastructure.models import StopModel
-from src.gtfs_bc.route.infrastructure.models import RouteModel
-from src.gtfs_bc.stop_route_sequence.infrastructure.models import StopRouteSequenceModel
 
 # Correct station order for Metro Sevilla Line 1
 # From Ciudad Expo (west) to Olivar de Quintos (southeast)
@@ -46,13 +43,12 @@ METRO_SEV_L1_STATION_ORDER = [
 
 
 def fix_metro_sevilla_sequences():
-    """Fix stop sequences for Metro Sevilla routes."""
+    """Fix stop sequences for Metro Sevilla routes using raw SQL."""
     db = SessionLocal()
     try:
-        # Get all Metro Sevilla routes
-        routes = db.query(RouteModel).filter(
-            RouteModel.id.like("METRO_SEV_%")
-        ).all()
+        # Get all Metro Sevilla routes using raw SQL
+        result = db.execute(text("SELECT id, short_name FROM gtfs_routes WHERE id LIKE 'METRO_SEV_%'"))
+        routes = result.fetchall()
 
         if not routes:
             print("No Metro Sevilla routes found!")
@@ -61,27 +57,27 @@ def fix_metro_sevilla_sequences():
         print(f"Found {len(routes)} Metro Sevilla routes")
 
         # Get all Metro Sevilla stops
-        stops = db.query(StopModel).filter(
-            StopModel.id.like("METRO_SEV_%")
-        ).all()
+        result = db.execute(text("SELECT id, name FROM gtfs_stops WHERE id LIKE 'METRO_SEV_%'"))
+        stops = result.fetchall()
 
         print(f"Found {len(stops)} Metro Sevilla stops")
 
         # Create name -> stop_id mapping
         name_to_stop = {}
-        for stop in stops:
-            name_to_stop[stop.name] = stop.id
-            print(f"  - {stop.name}: {stop.id}")
+        for stop_id, name in stops:
+            name_to_stop[name] = stop_id
+            print(f"  - {name}: {stop_id}")
 
         # Process each route
-        for route in routes:
-            print(f"\nFixing sequences for route {route.id} ({route.short_name})")
+        for route_id, short_name in routes:
+            print(f"\nFixing sequences for route {route_id} ({short_name})")
 
             # Delete existing sequences for this route
-            deleted = db.query(StopRouteSequenceModel).filter(
-                StopRouteSequenceModel.route_id == route.id
-            ).delete()
-            print(f"  Deleted {deleted} existing sequences")
+            result = db.execute(
+                text("DELETE FROM gtfs_stop_route_sequence WHERE route_id = :route_id"),
+                {"route_id": route_id}
+            )
+            print(f"  Deleted {result.rowcount} existing sequences")
 
             # Create new sequences in correct order
             created = 0
@@ -91,12 +87,10 @@ def fix_metro_sevilla_sequences():
                     print(f"  WARNING: Stop '{station_name}' not found in database!")
                     continue
 
-                sequence = StopRouteSequenceModel(
-                    route_id=route.id,
-                    stop_id=stop_id,
-                    sequence=seq,
+                db.execute(
+                    text("INSERT INTO gtfs_stop_route_sequence (route_id, stop_id, sequence) VALUES (:route_id, :stop_id, :seq)"),
+                    {"route_id": route_id, "stop_id": stop_id, "seq": seq}
                 )
-                db.add(sequence)
                 created += 1
                 print(f"  {seq}. {station_name} -> {stop_id}")
 
