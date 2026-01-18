@@ -40,10 +40,20 @@ CRTM_TO_METRO_ROUTE = {
 # Mapping from CRTM service IDs to day types
 # I12 = Laborables (weekday), I13 = Sabados (saturday), I14 = Domingos (sunday), I15 = Festivos (holiday)
 SERVICE_TO_DAY_TYPE = {
-    'I12': 'weekday',
+    'I12': 'weekday',  # Will be split into weekday (L-J) and friday (V)
     'I13': 'saturday',
     'I14': 'sunday',
     'I15': 'sunday',  # Treat holidays as Sunday schedule
+}
+
+# Official Metro Madrid closing times (used to split weekday/friday)
+# Metro Madrid: L-J cierra 01:30, V-S cierra 02:00, D cierra 01:30
+# Metro Ligero: L-V cierra 01:30, S-D cierra 01:30 (ML1) o 00:00 (ML2-4)
+METRO_CLOSING_TIMES = {
+    'weekday': time(1, 30, 0),   # L-J: 01:30
+    'friday': time(2, 0, 0),     # V: 02:00
+    'saturday': time(2, 0, 0),   # S: 02:00
+    'sunday': time(1, 30, 0),    # D: 01:30
 }
 
 
@@ -161,7 +171,10 @@ class MetroFrequencyImporter:
     def _load_frequencies(
         self, gtfs_zip_path: str, trip_to_route: Dict[str, dict]
     ) -> List[dict]:
-        """Load and deduplicate frequencies from frequencies.txt."""
+        """Load and deduplicate frequencies from frequencies.txt.
+
+        Splits weekday (I12) into weekday (L-J) and friday (V) based on closing times.
+        """
         # Use dict to deduplicate by (route_id, day_type, start_time, end_time)
         freq_map: Dict[tuple, dict] = {}
 
@@ -178,33 +191,77 @@ class MetroFrequencyImporter:
                     route_id = trip_info['route_id']
                     service_id = trip_info['service_id']
 
-                    # Determine day type from service_id (e.g., "4_I12" → "I12" → "weekday")
-                    day_type = 'weekday'  # default
+                    # Determine base day type from service_id (e.g., "4_I12" → "I12" → "weekday")
+                    base_day_type = 'weekday'  # default
                     for svc_code, dtype in SERVICE_TO_DAY_TYPE.items():
                         if svc_code in service_id:
-                            day_type = dtype
+                            base_day_type = dtype
                             break
 
-                    # Parse times
+                    # Parse times (keep original for comparison)
                     start_time = self._parse_time(row['start_time'])
                     end_time = self._parse_time(row['end_time'])
+                    raw_end_hours = int(row['end_time'].split(':')[0])
                     headway_secs = int(row['headway_secs'])
 
                     if start_time is None or end_time is None:
                         continue
 
-                    # Create key for deduplication
-                    key = (route_id, day_type, start_time, end_time)
+                    # Determine which day_types this frequency applies to
+                    day_types_to_add = []
 
-                    # Keep the lowest headway (most frequent service)
-                    if key not in freq_map or headway_secs < freq_map[key]['headway_secs']:
-                        freq_map[key] = {
-                            'route_id': route_id,
-                            'day_type': day_type,
-                            'start_time': start_time,
-                            'end_time': end_time,
-                            'headway_secs': headway_secs,
-                        }
+                    if base_day_type == 'weekday':
+                        # Split weekday into weekday (L-J) and friday (V)
+                        # Late night frequencies (start >= 01:00 or raw end > 25) are Friday only
+                        is_late_night = (
+                            start_time >= time(1, 0, 0) and start_time < time(5, 0, 0)
+                        ) or raw_end_hours > 25
+
+                        # Frequencies that end after 01:30 but before 02:00 are for both
+                        # Frequencies that end at/after 02:00 (26:00) are Friday only
+                        is_extended_hours = raw_end_hours >= 26 or (
+                            end_time >= time(1, 30, 0) and end_time < time(5, 0, 0)
+                        )
+
+                        if is_late_night:
+                            # Late night service (01:00-02:00) is Friday only
+                            day_types_to_add = ['friday']
+                        elif is_extended_hours:
+                            # Extended hours - add to both weekday and friday
+                            # But truncate weekday end time to 01:30
+                            day_types_to_add = ['weekday', 'friday']
+                        else:
+                            # Regular daytime service - add to both
+                            day_types_to_add = ['weekday', 'friday']
+                    else:
+                        day_types_to_add = [base_day_type]
+
+                    # Add frequencies for each applicable day type
+                    for day_type in day_types_to_add:
+                        freq_start = start_time
+                        freq_end = end_time
+
+                        # For weekday (L-J), truncate late night to 01:30
+                        if day_type == 'weekday':
+                            # If this frequency goes past 01:30, cap it
+                            if end_time < start_time:  # Crosses midnight
+                                if end_time > time(1, 30, 0):
+                                    freq_end = time(1, 30, 0)
+                            elif start_time >= time(23, 0, 0) and raw_end_hours >= 25:
+                                # 23:00-25:00 becomes 23:00-01:30 for weekday
+                                freq_end = time(1, 30, 0)
+
+                        key = (route_id, day_type, freq_start, freq_end)
+
+                        # Keep the lowest headway (most frequent service)
+                        if key not in freq_map or headway_secs < freq_map[key]['headway_secs']:
+                            freq_map[key] = {
+                                'route_id': route_id,
+                                'day_type': day_type,
+                                'start_time': freq_start,
+                                'end_time': freq_end,
+                                'headway_secs': headway_secs,
+                            }
 
         return list(freq_map.values())
 
