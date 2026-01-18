@@ -802,8 +802,8 @@ def get_stop_departures(
         .all()
     )
 
-    # If no stop_times results, check if this is a Metro/ML stop and use frequency-based departures
-    is_metro_stop = stop_id.startswith("METRO_") or stop_id.startswith("ML_")
+    # If no stop_times results, check if this is a Metro/ML/Tranvia stop and use frequency-based departures
+    is_metro_stop = stop_id.startswith("METRO_") or stop_id.startswith("ML_") or stop_id.startswith("TRANVIA_")
     if not results and is_metro_stop:
         return _get_frequency_based_departures(db, stop, route_id, limit, now, current_seconds)
 
