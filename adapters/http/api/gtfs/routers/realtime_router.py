@@ -366,7 +366,7 @@ def get_alerts_for_stop(
 
 @router.get("/estimated", response_model=List[EstimatedPositionResponse])
 def get_estimated_positions(
-    nucleo_id: Optional[int] = Query(None, description="Filter by nucleo ID (network area)"),
+    network_id: Optional[str] = Query(None, description="Filter by network ID (e.g., 51T, TMB_METRO)"),
     route_id: Optional[str] = Query(None, description="Filter by route ID"),
     limit: int = Query(100, description="Maximum number of results"),
     db: Session = Depends(get_db),
@@ -381,7 +381,7 @@ def get_estimated_positions(
     """
     service = EstimatedPositionsService(db)
     positions = service.get_estimated_positions(
-        nucleo_id=nucleo_id,
+        network_id=network_id,
         route_id=route_id,
         limit=limit
     )
@@ -406,15 +406,15 @@ def get_estimated_positions(
     ]
 
 
-@router.get("/nucleos/{nucleo_id}/estimated", response_model=List[EstimatedPositionResponse])
-def get_estimated_positions_for_nucleo(
-    nucleo_id: int,
+@router.get("/networks/{network_id}/estimated", response_model=List[EstimatedPositionResponse])
+def get_estimated_positions_for_network(
+    network_id: str,
     limit: int = Query(100, description="Maximum number of results"),
     db: Session = Depends(get_db),
 ):
-    """Get estimated train positions for a specific nucleo (network area)."""
+    """Get estimated train positions for a specific network (e.g., 51T, TMB_METRO)."""
     service = EstimatedPositionsService(db)
-    positions = service.get_estimated_positions_for_nucleo(nucleo_id, limit=limit)
+    positions = service.get_estimated_positions_for_network(network_id, limit=limit)
 
     return [
         EstimatedPositionResponse(
