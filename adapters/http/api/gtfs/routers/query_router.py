@@ -1366,12 +1366,33 @@ def get_route_operating_hours(route_id: str, db: Session = Depends(get_db)):
             def get_freq_hours(day_freqs: list) -> Optional[DayOperatingHours]:
                 if not day_freqs:
                     return None
-                # Get earliest start_time and latest end_time
-                first_dep = min(f.start_time for f in day_freqs)
-                last_dep = max(f.end_time for f in day_freqs)
+
+                # Separate morning frequencies (start >= 05:00) from late-night (start < 05:00)
+                morning_cutoff = time(5, 0, 0)
+                morning_freqs = [f for f in day_freqs if f.start_time >= morning_cutoff]
+                late_night_freqs = [f for f in day_freqs if f.start_time < morning_cutoff]
+
+                # First departure: earliest morning frequency start time
+                if morning_freqs:
+                    first_dep = min(f.start_time for f in morning_freqs)
+                else:
+                    first_dep = min(f.start_time for f in day_freqs)
+
+                # Last departure: check for late-night service (continues past midnight)
+                # If there are late-night frequencies, use the max end_time from those
+                # Otherwise use max end_time from all frequencies
+                if late_night_freqs:
+                    # Late night service exists - find the latest end time
+                    late_night_end = max(f.end_time for f in late_night_freqs)
+                    # Format as 24+ hour for clarity (e.g., 02:00 becomes 26:00)
+                    last_dep_str = f"{late_night_end.hour + 24}:{late_night_end.minute:02d}:{late_night_end.second:02d}"
+                else:
+                    last_dep = max(f.end_time for f in day_freqs)
+                    last_dep_str = last_dep.strftime("%H:%M:%S") if last_dep else None
+
                 return DayOperatingHours(
                     first_departure=first_dep.strftime("%H:%M:%S") if first_dep else None,
-                    last_departure=last_dep.strftime("%H:%M:%S") if last_dep else None,
+                    last_departure=last_dep_str,
                     total_trips=0,  # Not applicable for frequency-based
                 )
 
