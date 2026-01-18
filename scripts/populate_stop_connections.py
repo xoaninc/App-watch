@@ -156,10 +156,24 @@ def haversine_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> fl
     return R * c
 
 
+def is_metro_line(line: str) -> bool:
+    """Check if a line is a valid Metro line (1-12, L1-L12, or R)."""
+    line = line.strip()
+    # Metro lines: 1-12, L1-L12, R
+    if line == 'R':
+        return True
+    if line.isdigit() and 1 <= int(line) <= 12:
+        return True
+    if line.startswith('L') and line[1:].isdigit() and 1 <= int(line[1:]) <= 12:
+        return True
+    return False
+
+
 def normalize_metro_line(line: str) -> str:
     """Normalize metro line to have L prefix.
 
-    '1' -> 'L1', 'L1' -> 'L1', 'R' -> 'R', 'C1' -> 'C1'
+    '1' -> 'L1', 'L1' -> 'L1', 'R' -> 'R'
+    Non-metro lines are filtered out in sort_lines when add_l_prefix=True
     """
     line = line.strip()
     # If it's a plain number (Metro Madrid line), add L prefix
@@ -174,9 +188,11 @@ def sort_lines(lines: set, add_l_prefix: bool = False) -> str:
     Args:
         lines: Set of line names
         add_l_prefix: If True, add 'L' prefix to numeric lines (for Metro)
+                      and FILTER OUT non-Metro lines (C1, C4, etc.)
     """
     if add_l_prefix:
-        lines = {normalize_metro_line(x) for x in lines}
+        # Filter to only Metro lines (1-12, L1-L12, R) and normalize
+        lines = {normalize_metro_line(x) for x in lines if is_metro_line(x)}
 
     # Separate L-lines (L1, L2, etc.) from others
     l_lines = []

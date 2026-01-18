@@ -11,40 +11,43 @@ from src.gtfs_bc.route.infrastructure.models import RouteModel
 from src.gtfs_bc.stop_route_sequence.infrastructure.models import StopRouteSequenceModel
 from src.gtfs_bc.network.infrastructure.models import NetworkModel
 
+# Import connection population function (for automatic correspondences)
+from scripts.populate_stop_connections import populate_connections_for_nucleo
+
 logger = logging.getLogger(__name__)
 
 
-# Metro line colors from CRTM
+# Metro line colors from CRTM (with # prefix for CSS compatibility)
 METRO_COLORS = {
-    '1': '2DBEF0',
-    '2': 'ED1C24',
-    '3': 'FFD000',
-    '4': 'B65518',
-    '5': '8FD400',
-    '6': '98989B',
-    '7': 'EE7518',
-    '8': 'EC82B1',
-    '9': 'A60084',
-    '10': '005AA9',
-    '11': '009B3A',
-    '12': 'A49800',
-    'R': '005AA9',
+    '1': '#2DBEF0',
+    '2': '#ED1C24',
+    '3': '#FFD000',
+    '4': '#B65518',
+    '5': '#8FD400',
+    '6': '#98989B',
+    '7': '#EE7518',
+    '8': '#EC82B1',
+    '9': '#A60084',
+    '10': '#005AA9',
+    '11': '#009B3A',
+    '12': '#A49800',
+    'R': '#005AA9',
 }
 
 METRO_TEXT_COLORS = {
-    '1': 'FFFFFF',
-    '2': 'FFFFFF',
-    '3': '000000',
-    '4': 'FFFFFF',
-    '5': 'FFFFFF',
-    '6': 'FFFFFF',
-    '7': 'FFFFFF',
-    '8': 'FFFFFF',
-    '9': 'FFFFFF',
-    '10': 'FFFFFF',
-    '11': 'FFFFFF',
-    '12': 'FFFFFF',
-    'R': 'FFFFFF',
+    '1': '#FFFFFF',
+    '2': '#FFFFFF',
+    '3': '#000000',
+    '4': '#FFFFFF',
+    '5': '#FFFFFF',
+    '6': '#FFFFFF',
+    '7': '#FFFFFF',
+    '8': '#FFFFFF',
+    '9': '#FFFFFF',
+    '10': '#FFFFFF',
+    '11': '#FFFFFF',
+    '12': '#FFFFFF',
+    'R': '#FFFFFF',
 }
 
 METRO_LONG_NAMES = {
@@ -63,12 +66,12 @@ METRO_LONG_NAMES = {
     'R': 'Ópera - Príncipe Pío',
 }
 
-# Metro Ligero colors
+# Metro Ligero colors (with # prefix for CSS compatibility)
 ML_COLORS = {
-    'ML1': '3A7DDA',
-    'ML2': 'A60084',
-    'ML3': 'ED1C24',
-    'ML4': '7DB713',
+    'ML1': '#3A7DDA',
+    'ML2': '#A60084',
+    'ML3': '#ED1C24',
+    'ML4': '#7DB713',
 }
 
 ML_LONG_NAMES = {
@@ -84,8 +87,8 @@ METRO_NETWORK_CONFIG = {
     'name': 'Metro de Madrid',
     'city': 'Madrid',
     'region': 'Comunidad de Madrid',
-    'color': 'ED1C24',  # Red (Metro corporate color)
-    'text_color': 'FFFFFF',
+    'color': '#ED1C24',  # Red (Metro corporate color)
+    'text_color': '#FFFFFF',
     'description': 'Red de metro de Madrid',
     'wikipedia_url': 'https://es.wikipedia.org/wiki/Metro_de_Madrid',
 }
@@ -95,8 +98,8 @@ ML_NETWORK_CONFIG = {
     'name': 'Metro Ligero de Madrid',
     'city': 'Madrid',
     'region': 'Comunidad de Madrid',
-    'color': '3A7DDA',  # Blue (ML1 color as default)
-    'text_color': 'FFFFFF',
+    'color': '#3A7DDA',  # Blue (ML1 color as default)
+    'text_color': '#FFFFFF',
     'description': 'Red de metro ligero de Madrid',
     'logo_url': 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/86/MetroLigeroMadrid.svg/200px-MetroLigeroMadrid.svg.png',
 }
@@ -235,6 +238,10 @@ class CRTMMetroImporter:
 
             self.db.commit()
             logger.info("Successfully imported all Metro data")
+
+            # Automatically calculate correspondences with Cercanías in the same núcleo
+            logger.info("Calculating correspondences with Cercanías Madrid...")
+            populate_connections_for_nucleo(self.db, self.MADRID_NUCLEO_ID)
 
         except Exception as e:
             logger.error(f"Error during Metro import: {e}")
@@ -408,7 +415,7 @@ class CRTMMetroImporter:
                 long_name=ML_LONG_NAMES.get(line_num, f"Línea {line_num}"),
                 route_type=0,  # Tram/Light Rail
                 color=ML_COLORS.get(line_num),
-                text_color='FFFFFF',
+                text_color='#FFFFFF',
                 nucleo_id=self.MADRID_NUCLEO_ID,
                 nucleo_name=self.MADRID_NUCLEO_NAME,
             )
