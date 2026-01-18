@@ -8,10 +8,10 @@ Usage:
 
 Sources:
     - Renfe Cercanías: https://ssl.renfe.com/ftransit/Fichero_CER_FOMENTO/fomento_transit.zip
-    - Metro Madrid: CRTM ArcGIS (manual import from local data)
-    - Metro Ligero: CRTM ArcGIS (manual import from local data)
-    - Metro Sevilla: Manual GTFS download
-    - Tranvía Sevilla: TUSSAM GTFS (manual import from local data)
+    - Metro Madrid: CRTM ArcGIS API (import_metro.py)
+    - Metro Ligero: CRTM ArcGIS API (import_metro.py)
+    - Metro Sevilla: https://metro-sevilla.es/google-transit/google_transit.zip
+    - Tranvía Sevilla: TUSSAM (no public URL - manual import only)
 """
 
 import sys
@@ -46,6 +46,7 @@ GTFS_SOURCES = {
         'url': 'https://ssl.renfe.com/ftransit/Fichero_CER_FOMENTO/fomento_transit.zip',
         'import_script': 'import_gtfs_static.py',
         'description': 'Renfe Cercanías y Rodalies',
+        'is_zip': True,
     },
     # Metro Madrid and Metro Ligero use ArcGIS Feature Service (import_metro.py)
     # They don't have a simple ZIP download - use the existing import_metro.py script
@@ -53,20 +54,23 @@ GTFS_SOURCES = {
         'url': None,  # Uses ArcGIS API directly
         'import_script': 'import_metro.py',
         'description': 'Metro Madrid y Metro Ligero (CRTM)',
+        'is_zip': False,
+    },
+    'metro_sevilla': {
+        'url': 'https://metro-sevilla.es/google-transit/google_transit.zip',
+        'import_script': 'import_metro_sevilla.py',
+        'description': 'Metro de Sevilla',
+        'is_zip': True,
+        'extract_folder': True,  # Script expects folder, not zip
     },
 }
 
-# Additional manual sources (require local files)
+# Additional manual sources (require local files - no public URL)
 MANUAL_SOURCES = {
-    'metro_sevilla': {
-        'import_script': 'import_metro_sevilla.py',
-        'description': 'Metro de Sevilla',
-        'data_folder': 'data/metro_sevilla_gtfs',
-    },
     'tranvia_sevilla': {
         'import_script': 'import_tranvia_sevilla.py',
         'description': 'Tranvía de Sevilla (TUSSAM)',
-        'data_folder': 'data/tussam_gtfs',
+        'note': 'TUSSAM no tiene URL pública de GTFS',
     },
 }
 
@@ -160,6 +164,38 @@ def update_metro_madrid(dry_run: bool = False) -> bool:
     return run_import_script(source['import_script'])
 
 
+def update_metro_sevilla(dry_run: bool = False) -> bool:
+    """Update Metro de Sevilla GTFS data."""
+    import zipfile
+
+    source = GTFS_SOURCES['metro_sevilla']
+    logger.info(f"Updating {source['description']}...")
+
+    if dry_run:
+        logger.info("[DRY RUN] Would download and import Metro Sevilla")
+        return True
+
+    # Download and extract to temp folder
+    with tempfile.TemporaryDirectory() as tmpdir:
+        zip_path = Path(tmpdir) / 'metro_sevilla.zip'
+        extract_path = Path(tmpdir) / 'metro_sevilla_gtfs'
+
+        if not download_file(source['url'], zip_path):
+            return False
+
+        # Extract zip to folder (script expects folder, not zip)
+        try:
+            with zipfile.ZipFile(zip_path, 'r') as zf:
+                zf.extractall(extract_path)
+            logger.info(f"Extracted GTFS to {extract_path}")
+        except Exception as e:
+            logger.error(f"Failed to extract zip: {e}")
+            return False
+
+        # Run import with extracted folder
+        return run_import_script(source['import_script'], str(extract_path))
+
+
 def update_renfe_nucleos(dry_run: bool = False) -> bool:
     """Update Renfe núcleos from GeoJSON."""
     logger.info("Updating Renfe núcleos...")
@@ -204,7 +240,10 @@ def main():
     # 3. Update Metro Madrid/ML
     results['metro_madrid'] = update_metro_madrid(dry_run)
 
-    # 4. Update stop correspondences
+    # 4. Update Metro Sevilla
+    results['metro_sevilla'] = update_metro_sevilla(dry_run)
+
+    # 5. Update stop correspondences
     results['stop_connections'] = update_stop_connections(dry_run)
 
     # Summary
@@ -227,9 +266,9 @@ def main():
         logger.warning("Some updates failed - check logs for details")
 
     # Note about manual sources
-    logger.info("\nNOTE: Metro Sevilla and Tranvía Sevilla require manual GTFS updates.")
+    logger.info("\nNOTE: Tranvía de Sevilla (TUSSAM) requires manual GTFS updates.")
+    logger.info("TUSSAM does not provide a public GTFS download URL.")
     logger.info("When new GTFS files are available, run:")
-    logger.info("  python scripts/import_metro_sevilla.py <gtfs_folder>")
     logger.info("  python scripts/import_tranvia_sevilla.py <gtfs_folder>")
 
     return 0 if all_success else 1
