@@ -169,6 +169,17 @@ def is_metro_line(line: str) -> bool:
     return False
 
 
+def is_ml_line(line: str) -> bool:
+    """Check if a line is a valid Metro Ligero line (1-4, ML1-ML4)."""
+    line = line.strip()
+    # ML lines: 1-4, ML1-ML4
+    if line.isdigit() and 1 <= int(line) <= 4:
+        return True
+    if line.startswith('ML') and line[2:].isdigit() and 1 <= int(line[2:]) <= 4:
+        return True
+    return False
+
+
 def normalize_metro_line(line: str) -> str:
     """Normalize metro line to have L prefix.
 
@@ -182,36 +193,55 @@ def normalize_metro_line(line: str) -> str:
     return line
 
 
-def sort_lines(lines: set, add_l_prefix: bool = False) -> str:
-    """Sort lines: L-lines first (numerically), then others.
+def normalize_ml_line(line: str) -> str:
+    """Normalize Metro Ligero line to have ML prefix.
+
+    '1' -> 'ML1', 'ML1' -> 'ML1'
+    """
+    line = line.strip()
+    # If it's a plain number (1-4), add ML prefix
+    if line.isdigit() and 1 <= int(line) <= 4:
+        return f'ML{line}'
+    return line
+
+
+def sort_lines(lines: set, add_l_prefix: bool = False, add_ml_prefix: bool = False) -> str:
+    """Sort lines: L-lines first (numerically), then ML-lines, then others.
 
     Args:
         lines: Set of line names
-        add_l_prefix: If True, add 'L' prefix to numeric lines (for Metro)
-                      and FILTER OUT non-Metro lines (C1, C4, etc.)
+        add_l_prefix: If True, filter to Metro lines only and add 'L' prefix
+        add_ml_prefix: If True, filter to ML lines only and add 'ML' prefix
     """
     if add_l_prefix:
         # Filter to only Metro lines (1-12, L1-L12, R) and normalize
         lines = {normalize_metro_line(x) for x in lines if is_metro_line(x)}
+    elif add_ml_prefix:
+        # Filter to only ML lines (1-4, ML1-ML4) and normalize
+        lines = {normalize_ml_line(x) for x in lines if is_ml_line(x)}
 
-    # Separate L-lines (L1, L2, etc.) from others
+    # Separate L-lines, ML-lines, R, and others
     l_lines = []
+    ml_lines = []
     r_line = []
     others = []
 
     for line in lines:
-        if line.startswith('L') and line[1:].isdigit():
+        if line.startswith('ML') and line[2:].isdigit():
+            ml_lines.append(line)
+        elif line.startswith('L') and line[1:].isdigit():
             l_lines.append(line)
         elif line == 'R':
             r_line.append(line)
         else:
             others.append(line)
 
-    # Sort L-lines numerically, others alphabetically
+    # Sort numerically
     l_lines.sort(key=lambda x: int(x[1:]))
+    ml_lines.sort(key=lambda x: int(x[2:]))
     others.sort()
 
-    return ', '.join(l_lines + r_line + others)
+    return ', '.join(l_lines + ml_lines + r_line + others)
 
 
 def populate_connections(db: Session, max_distance_meters: float = DEFAULT_MAX_DISTANCE) -> dict:
@@ -302,7 +332,7 @@ def populate_connections(db: Session, max_distance_meters: float = DEFAULT_MAX_D
 
         if metro_lines or ml_lines:
             renfe.cor_metro = sort_lines(metro_lines, add_l_prefix=True) if metro_lines else renfe.cor_metro
-            renfe.cor_ml = sort_lines(ml_lines) if ml_lines else renfe.cor_ml
+            renfe.cor_ml = sort_lines(ml_lines, add_ml_prefix=True) if ml_lines else renfe.cor_ml
             stats['renfe_updated'] += 1
             logger.info(f"  {renfe.name}: Metro={renfe.cor_metro}, ML={renfe.cor_ml}")
 
@@ -450,7 +480,7 @@ def populate_connections_for_nucleo(db: Session, nucleo_id: int, max_distance_me
             if metro_lines:
                 renfe.cor_metro = sort_lines(metro_lines, add_l_prefix=True)
             if ml_lines:
-                renfe.cor_ml = sort_lines(ml_lines)
+                renfe.cor_ml = sort_lines(ml_lines, add_ml_prefix=True)
             if metro_lines or ml_lines:
                 stats['stops_updated'] += 1
 
