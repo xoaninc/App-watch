@@ -11,7 +11,7 @@ This document summarizes the changes made to standardize and improve the GTFS im
 | Metro Madrid | ✅ METRO | ✅ METRO_MADRID | ✅ Por línea | ✅ 1 (station) | ✅ automático |
 | Metro Ligero | ✅ ML | ✅ METRO_LIGERO | ✅ Por línea | ✅ 1 (station) | ✅ automático |
 | Metro Sevilla | ✅ METRO_SEV | ✅ METRO_SEVILLA | ✅ Verde (#0D6928) | ✅ 1 (station) | ✅ automático |
-| Tranvía Sevilla | ✅ TRANVIA_SEV | ✅ TRANVIA_SEVILLA | ✅ Rojo (#E4002B) | ✅ 1 (station) | ✅ automático |
+| Tranvía Sevilla | ✅ TRAM_SEV | ✅ TRANVIA_SEVILLA | ✅ Rojo (#E4002B) | ✅ 1 (station) | ✅ automático |
 | Renfe Cercanías | N/A | N/A | N/A | N/A | ✅ automático |
 
 ## Correspondences System
@@ -135,7 +135,7 @@ python scripts/auto_update_gtfs.py --skip-validation
 Fixed issues reported by app developer.
 
 **Fixes:**
-1. **route_count = 0**: Added `NetworkModel` with code `TRANVIA_SEV`
+1. **route_count = 0**: Added `NetworkModel` with code `TRAM_SEV`
 2. **correspondencias missing**: Added `TRANVIA_CORRESPONDENCES` dict and set `cor_metro`/`cor_cercanias` on stops
 3. **location_type = 0**: Changed to `location_type = 1` (station)
 
@@ -184,7 +184,7 @@ Extended to handle Sevilla transit systems and name-based matching.
 - `METRO_` - Metro Madrid
 - `ML_` - Metro Ligero Madrid
 - `METRO_SEV_` - Metro Sevilla
-- `TRANVIA_SEV_` - Tranvía Sevilla
+- `TRAM_SEV_` - Tranvía Sevilla
 
 **New matching features:**
 - **Proximity matching** (150m default) - unchanged
@@ -270,6 +270,6 @@ Network codes must match route ID prefixes for `route_count` to work:
 | Network Code | Route ID Pattern | Example Route ID |
 |--------------|------------------|------------------|
 | `METRO_SEV` | `METRO_SEV_*` | `METRO_SEV_L1` |
-| `TRANVIA_SEV` | `TRANVIA_SEV_*` | `TRANVIA_SEV_T1` |
+| `TRAM_SEV` | `TRAM_SEV_*` | `TRAM_SEV_T1` |
 | `METRO_` | `METRO_*` | `METRO_L1` |
 | `ML_` | `ML_*` | `ML_ML1` |

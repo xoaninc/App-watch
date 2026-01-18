@@ -50,8 +50,8 @@ NETWORK_CONFIG = {
     'name': 'Metro de Sevilla',
     'city': 'Sevilla',
     'region': 'Andalucía',
-    'color': '0D6928',  # Green - official Metro Sevilla color
-    'text_color': 'FFFFFF',
+    'color': '#0D6928',  # Green - official Metro Sevilla color
+    'text_color': '#FFFFFF',
     'description': 'Red de metro de Sevilla',
 }
 
@@ -61,8 +61,8 @@ METRO_SEV_LONG_NAMES = {
 }
 
 # Default colors for Metro Sevilla (green)
-DEFAULT_ROUTE_COLOR = '0D6928'  # Green - official Metro Sevilla color
-DEFAULT_TEXT_COLOR = 'FFFFFF'  # White text on green background
+DEFAULT_ROUTE_COLOR = '#0D6928'  # Green - official Metro Sevilla color
+DEFAULT_TEXT_COLOR = '#FFFFFF'  # White text on green background
 
 
 def read_csv(file_path: Path) -> list:
