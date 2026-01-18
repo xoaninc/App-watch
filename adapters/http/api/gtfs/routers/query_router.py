@@ -397,23 +397,24 @@ def get_routes_by_coordinates(
 
     For Madrid example: lat=40.42&lon=-3.72
     """
-    # Step 1: Determine province and nucleo from coordinates
-    result = get_province_and_nucleo_by_coordinates(db, lat, lon)
+    # Step 1: Determine province and networks from coordinates
+    result = get_province_and_networks_by_coordinates(db, lat, lon)
 
     if not result:
         # Coordinates are outside Spain - return empty list
         return []
 
-    province_name, nucleo_name = result
+    networks = result.get('networks', [])
 
-    # Step 2: If nucleo_name is None, province has no Renfe service - return empty list
-    if not nucleo_name:
+    # Step 2: If no networks, province has no transit service - return empty list
+    if not networks:
         return []
 
-    # Step 3: Get all routes in the determined nucleo
+    # Step 3: Get all routes in the determined networks
+    network_codes = [n['code'] for n in networks]
     routes = (
         db.query(RouteModel)
-        .filter(RouteModel.nucleo_name == nucleo_name)
+        .filter(RouteModel.network_id.in_(network_codes))
         .order_by(RouteModel.short_name)
         .limit(limit)
         .all()
@@ -547,17 +548,17 @@ def get_stops_by_coordinates(
 
     For Madrid example: lat=40.42&lon=-3.72
     """
-    # Step 1: Determine province and nucleo from coordinates
-    result = get_province_and_nucleo_by_coordinates(db, lat, lon)
+    # Step 1: Determine province and networks from coordinates
+    result = get_province_and_networks_by_coordinates(db, lat, lon)
 
     if not result:
         # Coordinates are outside Spain - return empty list
         return []
 
-    province_name, nucleo_name = result
+    province_code = result.get('province_code')
 
-    # Step 2: If nucleo_name is None, province has no Renfe service - return empty list
-    if not nucleo_name:
+    # Step 2: If no province found, return empty list
+    if not province_code:
         return []
 
     # Step 3: Calculate distance using Haversine formula (in meters)
@@ -577,10 +578,10 @@ def get_stops_by_coordinates(
     # Distance in meters (Earth radius = 6371000m)
     distance = 2 * 6371000 * func.asin(func.sqrt(a))
 
-    # Step 4: Get all stops in the determined nucleo, ordered by distance
+    # Step 4: Get all stops in the province, ordered by distance
     stops = (
         db.query(StopModel)
-        .filter(StopModel.nucleo_name == nucleo_name)
+        .filter(StopModel.province == result.get('province_name'))
         .order_by(distance)
         .limit(limit)
         .all()
