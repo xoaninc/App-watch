@@ -1212,12 +1212,13 @@ def get_stop_departures(
 
         Looks at today's data first, then yesterday's if no data for today.
         Uses the platform with highest count (most commonly used).
+        Falls back to searching without headsign if exact match not found.
         """
         from datetime import date, timedelta
         today_date = date.today()
         yesterday = today_date - timedelta(days=1)
 
-        # Try today first
+        # Try today first with exact headsign
         history = db.query(PlatformHistoryModel).filter(
             PlatformHistoryModel.stop_id == queried_stop_numeric,
             PlatformHistoryModel.route_short_name == route_short,
@@ -1228,11 +1229,31 @@ def get_stop_departures(
         if history:
             return history.platform
 
-        # Fall back to yesterday
+        # Try today without headsign filter (for "Unknown" headsigns)
+        history = db.query(PlatformHistoryModel).filter(
+            PlatformHistoryModel.stop_id == queried_stop_numeric,
+            PlatformHistoryModel.route_short_name == route_short,
+            PlatformHistoryModel.observation_date == today_date,
+        ).order_by(PlatformHistoryModel.count.desc()).first()
+
+        if history:
+            return history.platform
+
+        # Fall back to yesterday with exact headsign
         history = db.query(PlatformHistoryModel).filter(
             PlatformHistoryModel.stop_id == queried_stop_numeric,
             PlatformHistoryModel.route_short_name == route_short,
             PlatformHistoryModel.headsign == headsign,
+            PlatformHistoryModel.observation_date == yesterday,
+        ).order_by(PlatformHistoryModel.count.desc()).first()
+
+        if history:
+            return history.platform
+
+        # Fall back to yesterday without headsign filter
+        history = db.query(PlatformHistoryModel).filter(
+            PlatformHistoryModel.stop_id == queried_stop_numeric,
+            PlatformHistoryModel.route_short_name == route_short,
             PlatformHistoryModel.observation_date == yesterday,
         ).order_by(PlatformHistoryModel.count.desc()).first()
 
