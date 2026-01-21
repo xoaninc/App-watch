@@ -1,81 +1,85 @@
 # RenfeServer - Épicas de Implementación
 
 ## Visión del Proyecto
-Plataforma de información de transporte ferroviario en España, proporcionando datos de líneas, estaciones, horarios y tiempos estimados de llegada en tiempo real.
+Plataforma de información de transporte ferroviario en España, proporcionando datos de líneas, estaciones, horarios y tiempos en tiempo real para múltiples operadores.
 
-## Alcance Inicial
-- **Zona geográfica:** Cercanías Sevilla
-- **Operador:** Renfe Cercanías
-- **Expansión futura:** Resto de núcleos de Cercanías, Metro de Madrid, Metro de Barcelona, etc.
+## Estado Actual
+
+### Operadores con GTFS-RT (Tiempo Real)
+| Operador | Estado | Datos |
+|----------|--------|-------|
+| Renfe Cercanías | ✅ Activo | Posiciones, retrasos, alertas |
+| TMB Metro Barcelona | ✅ Activo | Predicciones, ocupación, headsign |
+| FGC | ✅ Activo | Posiciones, retrasos, alertas |
+| Euskotren | ✅ Activo | Posiciones, retrasos, alertas |
+| Metro Bilbao | ✅ Activo | Posiciones, retrasos, alertas |
+
+### Operadores con GTFS Estático
+| Operador | Estado |
+|----------|--------|
+| Metro de Madrid | ✅ Importado (frecuencias) |
+| Metro Ligero Madrid | ✅ Importado (frecuencias) |
+| Metro Sevilla | ✅ Importado |
+| Metro Valencia | ✅ Importado |
+| Metro Málaga | ✅ Importado |
+| Tranvías (Sevilla, Zaragoza, etc.) | ✅ Importado |
+| SFM Mallorca | ✅ Importado |
 
 ## Épicas
 
-| # | Épica | Descripción | Prioridad |
-|---|-------|-------------|-----------|
-| 01 | [GTFS Static Import](epic-01-gtfs-static-import.md) | Importar datos estáticos de líneas, estaciones y horarios | Alta |
-| 02 | [GTFS Realtime](epic-02-gtfs-realtime.md) | Integrar datos en tiempo real de posiciones y actualizaciones | Alta |
-| 03 | [ETA Calculation](epic-03-eta-calculation.md) | Calcular tiempos estimados de llegada | Alta |
-| 04 | [API Endpoints](epic-04-api-endpoints.md) | Exponer API REST pública | Alta |
-| 05 | [Wikipedia Data](epic-05-wikipedia-data.md) | Enriquecer con datos de Wikipedia (colores, logos) | Media |
+| # | Épica | Estado | Descripción |
+|---|-------|--------|-------------|
+| 01 | [GTFS Static Import](epic-01-gtfs-static-import.md) | ✅ Completada | Importar datos estáticos de todos los operadores |
+| 02 | [GTFS Realtime](epic-02-gtfs-realtime.md) | ✅ Completada | Integrar datos en tiempo real multi-operador |
+| 03 | [ETA Calculation](epic-03-eta-calculation.md) | ✅ Completada | Posiciones estimadas desde horarios |
+| 04 | [API Endpoints](epic-04-api-endpoints.md) | ✅ Completada | API REST completa |
+| 05 | [Wikipedia Data](epic-05-wikipedia-data.md) | ⏳ Parcial | Colores y logos de operadores |
 
-## Orden de Implementación Sugerido
+## Arquitectura
 
-### Fase 1: Fundamentos (MVP)
-1. **Epic 01** - Sin datos estáticos no hay nada
-2. **Epic 04** (parcial) - Endpoints básicos de líneas y estaciones
-3. **Epic 02** - Datos en tiempo real
-4. **Epic 04** (completo) - Todos los endpoints
+### Sistema de Redes (Networks)
+- 31 redes de transporte definidas en `gtfs_networks`
+- Relación N:M con provincias vía `network_provinces`
+- Lookup por coordenadas usando PostGIS
 
-### Fase 2: Valor Añadido
-5. **Epic 03** - Cálculo de ETAs mejorado
-6. **Epic 05** - Datos enriquecidos de Wikipedia
+### GTFS-RT Multi-Operador
+- Scheduler automático cada 30 segundos
+- Parsers para JSON (Renfe) y Protobuf (otros)
+- API TMB iMetro para Metro Barcelona
 
-### Fase 3: Expansión
-- Añadir más núcleos de Cercanías
-- Integrar Metro de Madrid
-- Integrar Metro de Barcelona
-- etc.
+### Características API
+- **Departures**: Incluye retrasos RT, posición del tren, andén estimado
+- **Operating Hours Filter**: Redes estáticas no muestran salidas fuera de horario
+- **Platform History**: Estimación de andén basada en histórico
 
 ## Stack Técnico
 
-### Backend (existente)
+### Backend
 - Python 3.13+ / FastAPI
-- PostgreSQL + PostGIS (para datos geográficos)
-- Redis (cache + Celery broker)
-- Celery (workers background)
+- PostgreSQL 16+ con PostGIS
+- Redis (cache)
+- Scheduler AsyncIO integrado con lifespan
 
-### Dependencias Adicionales Necesarias
-- `gtfs-realtime-bindings` - Parser de Protocol Buffers GTFS-RT
-- `shapely` - Operaciones geométricas
-- `geopandas` - Datos geoespaciales (opcional)
-- `beautifulsoup4` - Scraping Wikipedia (ya instalado)
+### Base de Datos
+- `gtfs_networks` - 31 redes de transporte
+- `gtfs_routes` - Rutas con `network_id`
+- `gtfs_stops` - Paradas con geolocalización
+- `gtfs_rt_*` - Tablas de tiempo real
+- `spanish_provinces` - Polígonos PostGIS
 
 ## Fuentes de Datos
 
-| Fuente | URL | Tipo | Frecuencia |
-|--------|-----|------|------------|
-| GTFS Estático | https://data.renfe.com/dataset | ZIP/CSV | Semanal |
-| GTFS Realtime Renfe | https://gtfsrt.renfe.com/*.json | **JSON** | 30 seg (auto) |
-| GTFS-RT Metro Bilbao | opendata.euskadi.eus | Protobuf | 30 seg (auto) |
-| GTFS-RT Euskotren | opendata.euskadi.eus | Protobuf | 30 seg (auto) |
-| GTFS-RT FGC | dadesobertes.fgc.cat | JSON/Protobuf | 30 seg (auto) |
-| TMB iMetro API | api.tmb.cat | REST API | 30 seg (auto) |
-| Wikipedia | es.wikipedia.org | HTML | Manual |
+| Fuente | URL | Formato | Frecuencia |
+|--------|-----|---------|------------|
+| GTFS Renfe | data.renfe.com | ZIP | Semanal |
+| GTFS-RT Renfe | gtfsrt.renfe.com | JSON | 30 seg |
+| GTFS-RT Metro Bilbao | opendata.euskadi.eus | Protobuf | 30 seg |
+| GTFS-RT Euskotren | opendata.euskadi.eus | Protobuf | 30 seg |
+| GTFS-RT FGC | dadesobertes.fgc.cat | Protobuf | 30 seg |
+| TMB iMetro | api.tmb.cat | REST API | 30 seg |
 
-**Nota:** Renfe usa **JSON**, no Protobuf. El scheduler automático hace fetch cada 30 segundos.
+## Documentación Relacionada
 
-## Consideraciones Técnicas
-
-### Base de Datos
-- Usar PostGIS para datos geográficos (lat/lon, shapes)
-- Particionar tabla de posiciones históricas por fecha
-- Índices espaciales para búsquedas por proximidad
-
-### Performance
-- Cache de respuestas frecuentes en Redis
-- Precalcular próximas salidas cada minuto
-- WebSockets para actualizaciones en tiempo real (futuro)
-
-### Escalabilidad
-- Diseño multi-tenant para diferentes operadores/ciudades
-- Workers separados por tipo de tarea (import, realtime, ETA)
+- [README.md](../../README.md) - Documentación principal
+- [GTFS_REALTIME.md](../../GTFS_REALTIME.md) - Detalles de integración RT
+- [ARCHITECTURE_NETWORK_PROVINCES.md](../ARCHITECTURE_NETWORK_PROVINCES.md) - Sistema de redes
