@@ -1,210 +1,159 @@
 # Epic 04: API REST Pública
 
+## Estado: ✅ Completada
+
 ## Objetivo
-Exponer una API REST para que los clientes (web, móvil) puedan consultar información de líneas, estaciones, horarios y tiempos estimados.
+Exponer una API REST para que los clientes (web, móvil) puedan consultar información de redes, líneas, estaciones, horarios y datos en tiempo real.
 
-## User Stories
+## Endpoints Implementados
 
-### US-04.1: Listar líneas/rutas
-**Como** usuario
-**Quiero** ver las líneas disponibles
-**Para** saber qué opciones de transporte tengo
+### Redes de Transporte
 
-**Endpoint:** `GET /api/v1/routes`
+#### Listar todas las redes
+```
+GET /api/v1/gtfs/networks
+```
+Devuelve las 31 redes de transporte con logo, color y número de rutas.
 
-**Response:**
-```json
-{
-  "routes": [
-    {
-      "id": "C1",
-      "short_name": "C1",
-      "long_name": "Lora del Río - Sevilla - Lebrija",
-      "color": "#FF6600",
-      "text_color": "#FFFFFF",
-      "type": "rail"
-    }
-  ]
-}
+#### Detalle de red con líneas
+```
+GET /api/v1/gtfs/networks/{code}
+```
+Devuelve la red con todas sus líneas ordenadas por `sort_order`.
+
+### Rutas/Líneas
+
+#### Listar rutas
+```
+GET /api/v1/gtfs/routes
+GET /api/v1/gtfs/routes?network_id=TMB_METRO
+GET /api/v1/gtfs/routes?search=C1
 ```
 
-### US-04.2: Detalle de línea
-**Como** usuario
-**Quiero** ver el detalle de una línea
-**Para** conocer sus paradas y recorrido
+#### Rutas por coordenadas
+```
+GET /api/v1/gtfs/coordinates/routes?lat=41.38&lon=2.17
+```
+Detecta la provincia por coordenadas y devuelve todas las rutas de las redes en esa provincia.
 
-**Endpoint:** `GET /api/v1/routes/{route_id}`
+#### Paradas de una ruta
+```
+GET /api/v1/gtfs/routes/{route_id}/stops
+```
+Devuelve las paradas ordenadas por secuencia.
 
-**Response:**
-```json
-{
-  "id": "C1",
-  "short_name": "C1",
-  "long_name": "...",
-  "stops": [
-    {"id": "...", "name": "Lora del Río", "sequence": 1},
-    {"id": "...", "name": "Sevilla Santa Justa", "sequence": 5}
-  ],
-  "shape": [[lat, lon], ...]
-}
+#### Frecuencias de una ruta
+```
+GET /api/v1/gtfs/routes/{route_id}/frequencies
+```
+Para rutas de Metro/ML con datos de frecuencia.
+
+#### Horarios operativos
+```
+GET /api/v1/gtfs/routes/{route_id}/operating-hours
 ```
 
-### US-04.3: Listar estaciones
-**Como** usuario
-**Quiero** ver las estaciones disponibles
-**Para** encontrar mi estación
+### Paradas/Estaciones
 
-**Endpoint:** `GET /api/v1/stops`
-
-**Query params:**
-- `lat`, `lon`, `radius`: Buscar cercanas
-- `q`: Buscar por nombre
-- `route_id`: Filtrar por línea
-
-### US-04.4: Detalle de estación
-**Como** usuario
-**Quiero** ver el detalle de una estación
-**Para** conocer sus líneas y próximas salidas
-
-**Endpoint:** `GET /api/v1/stops/{stop_id}`
-
-**Response:**
-```json
-{
-  "id": "...",
-  "name": "Sevilla Santa Justa",
-  "lat": 37.391,
-  "lon": -5.975,
-  "routes": ["C1", "C2", "C3", "C4", "C5"],
-  "next_departures": [...]
-}
+#### Buscar paradas
+```
+GET /api/v1/gtfs/stops?search=sol
+GET /api/v1/gtfs/stops/by-network?network_id=TMB_METRO
 ```
 
-### US-04.5: Próximas salidas de una estación
-**Como** usuario
-**Quiero** ver las próximas salidas desde una estación
-**Para** saber cuándo sale el próximo tren
-
-**Endpoint:** `GET /api/v1/stops/{stop_id}/departures`
-
-**Query params:**
-- `route_id`: Filtrar por línea
-- `limit`: Número de resultados (default: 10)
-
-**Response:**
-```json
-{
-  "departures": [
-    {
-      "trip_id": "...",
-      "route_id": "C1",
-      "headsign": "Lebrija",
-      "scheduled_departure": "14:35:00",
-      "estimated_departure": "14:37:00",
-      "delay_minutes": 2,
-      "status": "ON_TIME",
-      "platform": "3"
-    }
-  ]
-}
+#### Paradas cercanas
 ```
+GET /api/v1/gtfs/stops/by-coordinates?lat=41.38&lon=2.17&radius_km=5
+```
+Por defecto solo devuelve paradas con GTFS-RT. Usar `transport_type=all` para todas.
 
-### US-04.6: Consultar ETA para un viaje
-**Como** usuario
-**Quiero** saber cuándo llegará el tren a mi estación
-**Para** planificar mi viaje
-
-**Endpoint:** `GET /api/v1/trips/{trip_id}/eta`
-
-**Query params:**
-- `stop_id`: Estación de destino
+#### Próximas salidas
+```
+GET /api/v1/gtfs/stops/{stop_id}/departures?limit=10
+```
 
 **Response:**
 ```json
 {
   "trip_id": "...",
-  "stop_id": "...",
-  "stop_name": "Sevilla Santa Justa",
-  "scheduled_arrival": "14:45:00",
-  "estimated_arrival": "14:47:30",
-  "delay_seconds": 150,
-  "confidence": "HIGH",
-  "vehicle_position": {
-    "lat": 37.38,
-    "lon": -5.95,
-    "last_stop": "Virgen del Rocío",
-    "next_stop": "Santa Justa"
-  }
+  "route_id": "RENFE_C1_01",
+  "route_short_name": "C1",
+  "route_color": "#FF6600",
+  "headsign": "Lebrija",
+  "departure_time": "14:35:00",
+  "minutes_until": 5,
+  "delay_seconds": 120,
+  "realtime_departure_time": "14:37:00",
+  "realtime_minutes_until": 7,
+  "is_delayed": true,
+  "platform": "3",
+  "platform_estimated": false,
+  "train_position": {
+    "latitude": 37.39,
+    "longitude": -5.97,
+    "current_stop_name": "Virgen del Rocío",
+    "status": "IN_TRANSIT_TO",
+    "progress_percent": 65.0,
+    "estimated": false
+  },
+  "frequency_based": false
 }
 ```
 
-### US-04.7: Posición de trenes en tiempo real
-**Como** usuario
-**Quiero** ver dónde están los trenes ahora
-**Para** seguir mi tren en el mapa
+### Tiempo Real (GTFS-RT)
 
-**Endpoint:** `GET /api/v1/vehicles`
-
-**Query params:**
-- `route_id`: Filtrar por línea
-- `bounds`: Filtrar por área geográfica
-
-**Response:**
-```json
-{
-  "vehicles": [
-    {
-      "vehicle_id": "...",
-      "trip_id": "...",
-      "route_id": "C1",
-      "lat": 37.39,
-      "lon": -5.97,
-      "bearing": 180,
-      "speed_kmh": 45,
-      "status": "IN_TRANSIT_TO",
-      "next_stop": "Santa Justa",
-      "updated_at": "2024-01-14T14:30:00Z"
-    }
-  ]
-}
+#### Posiciones de vehículos
+```
+GET /api/v1/gtfs/realtime/vehicles
+GET /api/v1/gtfs/realtime/vehicles?route_id=RENFE_C1_01
 ```
 
-### US-04.8: Alertas de servicio
-**Como** usuario
-**Quiero** ver las alertas activas
-**Para** estar informado de incidencias
-
-**Endpoint:** `GET /api/v1/alerts`
-
-**Query params:**
-- `route_id`: Filtrar por línea
-- `stop_id`: Filtrar por estación
-
-**Response:**
-```json
-{
-  "alerts": [
-    {
-      "id": "...",
-      "cause": "MAINTENANCE",
-      "effect": "REDUCED_SERVICE",
-      "header": "Obras en vía",
-      "description": "Frecuencia reducida...",
-      "affected_routes": ["C1"],
-      "active_until": "2024-01-20T23:59:59Z"
-    }
-  ]
-}
+#### Retrasos
+```
+GET /api/v1/gtfs/realtime/delays
+GET /api/v1/gtfs/realtime/stops/{stop_id}/delays
 ```
 
-## Tareas Técnicas
-1. Crear routers para cada recurso
-2. Implementar controladores
-3. Crear DTOs/schemas de request/response
-4. Implementar queries y handlers
-5. Añadir validación de parámetros
-6. Implementar paginación
-7. Añadir cache (Redis) para respuestas frecuentes
-8. Documentar con OpenAPI/Swagger
-9. Añadir rate limiting
-10. Crear tests de integración
+#### Alertas de servicio
+```
+GET /api/v1/gtfs/realtime/alerts
+GET /api/v1/gtfs/realtime/routes/{route_id}/alerts
+GET /api/v1/gtfs/realtime/stops/{stop_id}/alerts
+```
+
+#### Estado del scheduler
+```
+GET /api/v1/gtfs/realtime/scheduler/status
+```
+
+#### Fetch manual (admin)
+```
+POST /api/v1/gtfs/realtime/fetch
+```
+
+### Viajes
+
+#### Detalle de viaje
+```
+GET /api/v1/gtfs/trips/{trip_id}
+```
+Devuelve todas las paradas del viaje con horarios.
+
+## Características Implementadas
+
+### Filtro de Horarios Operativos
+Las redes con GTFS estático (Metro Madrid, ML, Tranvías) no muestran salidas fuera de su horario de servicio. Las redes con GTFS-RT (Renfe, TMB, FGC, Euskotren) no se filtran ya que los datos en tiempo real reflejan el servicio real.
+
+### Estimación de Andén
+Si no hay dato de andén en tiempo real, se estima usando el histórico (`gtfs_rt_platform_history`).
+
+### Posición del Tren
+- **GTFS-RT**: Posición real del vehículo
+- **Estimada**: Calculada interpolando entre paradas según el horario
+
+### Salidas Basadas en Frecuencia
+Para Metro Madrid y ML que no tienen `stop_times`, se generan salidas estimadas basadas en los datos de `gtfs_route_frequencies`.
+
+## Documentación OpenAPI
+
+Disponible en: `https://redcercanias.com/docs`

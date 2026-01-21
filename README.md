@@ -1,51 +1,120 @@
 # RenfeServer
 
-Backend server project.
+API de información de transporte ferroviario en España. Proporciona datos de líneas, estaciones, horarios y tiempos en tiempo real para múltiples operadores.
+
+## Operadores Soportados
+
+### Con GTFS-RT (Tiempo Real)
+| Operador | Prefijo | Datos |
+|----------|---------|-------|
+| **Renfe Cercanías** | `RENFE_` | Posiciones, retrasos, alertas |
+| **TMB Metro Barcelona** | `TMB_METRO_` | Predicciones, ocupación por vagón |
+| **FGC** | `FGC_` | Posiciones, retrasos, alertas |
+| **Euskotren** | `EUSKOTREN_` | Posiciones, retrasos, alertas |
+| **Metro Bilbao** | `METRO_BILBAO_` | Posiciones, retrasos, alertas |
+
+### GTFS Estático (Horarios)
+| Operador | Prefijo |
+|----------|---------|
+| Metro de Madrid | `METRO_` |
+| Metro Ligero Madrid | `ML_` |
+| Metro Sevilla | `METRO_SEV_` |
+| Metro Valencia | `METRO_VAL_` |
+| Metro Málaga | `METRO_MAL_` |
+| Tranvías (varios) | `TRAM_*` |
 
 ## Tech Stack
 
 ### Backend
-- **Python 3.13+** with **FastAPI**
-- **PostgreSQL** database
-- **Redis** for cache and background jobs
-- DDD + Hexagonal Architecture + CQRS
+- **Python 3.13+** con **FastAPI**
+- **PostgreSQL 16+** con **PostGIS** (geolocalización)
+- **Redis** para cache
+- DDD + Hexagonal Architecture
 
-### Frontend
-- **React 19** + **TypeScript**
-- **Vite** build tool
-- **Tailwind CSS** + **shadcn/ui**
-- React Router v6
+### Infraestructura
+- Scheduler automático GTFS-RT (cada 30 segundos)
+- Systemd service en producción
 
-## Server Access
+## API Endpoints Principales
 
-- **Server:** juanmacias.com
-- **Username:** root
-- **Domain:** redcercanias.com
+### Redes y Rutas
+```
+GET /api/v1/gtfs/networks                    # Todas las redes
+GET /api/v1/gtfs/networks/{code}             # Detalle de red con líneas
+GET /api/v1/gtfs/routes                      # Todas las rutas
+GET /api/v1/gtfs/coordinates/routes?lat=&lon= # Rutas por coordenadas
+```
 
-## Development
+### Paradas y Salidas
+```
+GET /api/v1/gtfs/stops/by-coordinates?lat=&lon=  # Paradas cercanas
+GET /api/v1/gtfs/stops/{stop_id}/departures      # Próximas salidas
+GET /api/v1/gtfs/routes/{route_id}/stops         # Paradas de una línea
+```
 
-### Prerequisites
+### Tiempo Real
+```
+GET /api/v1/gtfs/realtime/vehicles           # Posiciones de trenes
+GET /api/v1/gtfs/realtime/delays             # Retrasos actuales
+GET /api/v1/gtfs/realtime/alerts             # Alertas de servicio
+GET /api/v1/gtfs/realtime/scheduler/status   # Estado del scheduler
+```
 
+## Características
+
+### Salidas (`/departures`)
+- **Retrasos en tiempo real** para operadores con GTFS-RT
+- **Posición del tren** (real o estimada)
+- **Andén/vía** (real de GTFS-RT o estimado de histórico)
+- **Filtro de horarios**: Redes estáticas no muestran salidas fuera de horario de servicio
+
+### Redes (`/networks`)
+- 31 redes de transporte en España
+- Logos de cada operador
+- Líneas ordenadas por `sort_order`
+- Colores por línea
+
+## Server
+
+- **Servidor:** juanmacias.com
+- **Dominio:** redcercanias.com
+- **Puerto:** 8002
+- **Servicio:** `systemctl restart renfeserver`
+
+## Desarrollo Local
+
+### Requisitos
 - Python 3.13+
-- Node.js 20+
-- PostgreSQL
+- PostgreSQL 16+ con PostGIS
 - Redis
 
-### Getting Started
-
+### Iniciar
 ```bash
 # Backend
-cd /Users/juanmacias/Projects/renfeserver
 PYTHONPATH=. uv run uvicorn app:app --reload --port 8000
 
-# Frontend
-cd /Users/juanmacias/Projects/renfeserver/web/app
-npm run dev
-
-# Database
+# Base de datos local
 PGPASSWORD=postgres psql -h localhost -p 5443 -U postgres -d renfeserver_dev
 ```
 
-## License
+### Deploy a Producción
+```bash
+# Subir cambios
+rsync -avz --exclude='__pycache__' --exclude='.git' \
+  src/ root@juanmacias.com:/var/www/renfeserver/src/
+
+rsync -avz adapters/ root@juanmacias.com:/var/www/renfeserver/adapters/
+
+# Reiniciar servicio
+ssh root@juanmacias.com "systemctl restart renfeserver"
+```
+
+## Documentación
+
+- [GTFS_REALTIME.md](./GTFS_REALTIME.md) - Integración tiempo real
+- [docs/ARCHITECTURE_NETWORK_PROVINCES.md](./docs/ARCHITECTURE_NETWORK_PROVINCES.md) - Arquitectura de redes
+- [docs/epics/](./docs/epics/) - Épicas de desarrollo
+
+## Licencia
 
 Proprietary - All rights reserved.
