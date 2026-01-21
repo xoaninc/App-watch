@@ -109,6 +109,97 @@ def get_effective_day_type(now: datetime) -> str:
     return "weekday"
 
 
+# Prefixes for networks with real GTFS-RT data (don't filter by operating hours)
+GTFS_RT_PREFIXES = (
+    "RENFE_",        # Cercanías RENFE
+    "TMB_METRO_",    # Metro Barcelona
+    "FGC_",          # FGC
+    "EUSKOTREN_",    # Euskotren
+    "METRO_BILBAO_", # Metro Bilbao
+)
+
+def is_static_gtfs_route(route_id: str) -> bool:
+    """Check if a route uses static GTFS (no real-time data).
+
+    Routes with GTFS-RT don't need operating hours filtering since
+    real-time data already reflects actual service.
+    """
+    return not any(route_id.startswith(prefix) for prefix in GTFS_RT_PREFIXES)
+
+
+def is_route_operating(db, route_id: str, current_seconds: int, day_type: str) -> bool:
+    """Check if a route is currently operating based on its frequency schedule.
+
+    Returns True if current time is within operating hours, False otherwise.
+    For routes without frequency data, returns True (assume always operating).
+    """
+    # Get frequencies for this route and day type
+    frequencies = db.query(RouteFrequencyModel).filter(
+        RouteFrequencyModel.route_id == route_id,
+        RouteFrequencyModel.day_type == day_type
+    ).all()
+
+    if not frequencies:
+        # No frequency data - assume always operating (or use stop_times)
+        return True
+
+    def parse_time_to_seconds(time_val) -> int:
+        """Parse time (TIME or VARCHAR like '25:30:00') to seconds."""
+        if hasattr(time_val, 'hour'):
+            # It's a time object
+            return time_val.hour * 3600 + time_val.minute * 60 + time_val.second
+        else:
+            # It's a string like "25:30:00"
+            parts = str(time_val).split(':')
+            return int(parts[0]) * 3600 + int(parts[1]) * 60 + int(parts[2])
+
+    # First pass: find max_end from ALL entries (including aggregates)
+    # This gives us the actual closing time (e.g., 25:30:00 = 01:30 AM)
+    max_end = None
+    for freq in frequencies:
+        end_secs = parse_time_to_seconds(freq.end_time)
+        if max_end is None or end_secs > max_end:
+            max_end = end_secs
+
+    # Second pass: find min_start from NON-aggregate entries only
+    # Aggregates have start=00:00:00 AND end>=25:00:00 - they represent full day summary
+    min_start = None
+    for freq in frequencies:
+        start_secs = parse_time_to_seconds(freq.start_time)
+        end_secs = parse_time_to_seconds(freq.end_time)
+
+        # Skip aggregates (00:00:00 to 25:00:00+) for min_start calculation
+        is_aggregate = start_secs == 0 and end_secs >= 25 * 3600
+        if is_aggregate:
+            continue
+
+        if min_start is None or start_secs < min_start:
+            min_start = start_secs
+
+    # If no valid min_start found (only aggregates), use default opening time
+    # Metro typically opens around 6:00-6:05 AM
+    if min_start is None:
+        min_start = 6 * 3600  # Default to 6:00 AM (21600 seconds)
+
+    if max_end is None:
+        return True  # No valid data
+
+    # Check if current time is within operating hours
+    # Handle overnight (max_end > 24h means service extends past midnight)
+    if max_end > 24 * 3600:
+        # Service runs past midnight (e.g., until 01:30 = 25:30:00)
+        # Operating if: current >= min_start OR current <= (max_end - 24h)
+        late_night_cutoff = max_end - 24 * 3600  # e.g., 5400 for 01:30 AM
+        if current_seconds >= min_start or current_seconds <= late_night_cutoff:
+            return True
+    else:
+        # Normal hours
+        if min_start <= current_seconds <= max_end:
+            return True
+
+    return False
+
+
 from core.database import get_db
 from src.gtfs_bc.route.infrastructure.models import RouteModel, RouteFrequencyModel
 from src.gtfs_bc.stop.infrastructure.models import StopModel
@@ -741,6 +832,11 @@ def _get_frequency_based_departures(
 
     # For each route, get current frequency and generate departures
     for route in routes:
+        # Skip routes that are not currently operating (static GTFS routes only)
+        # This prevents showing future departures when service is closed
+        if is_static_gtfs_route(route.id) and not is_route_operating(db, route.id, current_seconds, day_type):
+            continue
+
         # Get applicable frequency for current time and day
         # Handle end_time=00:00:00 as "until midnight" (end of service)
         effective_day_type = day_type
@@ -1259,8 +1355,15 @@ def get_stop_departures(
 
         return history.platform if history else None
 
+    # Determine day type for operating hours check
+    day_type = get_effective_day_type(now)
+
     departures = []
     for stop_time, trip, route in results:
+        # Filter out static GTFS routes outside operating hours
+        if is_static_gtfs_route(route.id) and not is_route_operating(db, route.id, current_seconds, day_type):
+            continue
+
         minutes_until = (stop_time.departure_seconds - current_seconds) // 60
 
         # Get delay: prefer stop-specific delay, fall back to trip delay
