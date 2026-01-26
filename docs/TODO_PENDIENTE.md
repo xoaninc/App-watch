@@ -1,6 +1,6 @@
 # TODO - Tareas Pendientes
 
-**Última actualización:** 2026-01-26 19:30
+**Última actualización:** 2026-01-26 23:45
 
 ---
 
@@ -25,17 +25,19 @@
 | Metro Ligero Madrid | 38 | 61,816 | ✅ Funciona |
 | Metro Bilbao | 33 | 13,271 | ✅ Funciona |
 | FGC | 42 | 11,591 | ✅ Funciona |
-| Metrovalencia | 20 | 900 | ✅ Importado 2026-01-26 |
-| TRAM Alicante | 12 | 2,719 | ✅ Importado 2026-01-26 |
-| Metro Granada | 2 | 784 | ✅ Importado 2026-01-26 |
 | Tranvía Murcia | 2 | 634 | ✅ Importado 2026-01-26 |
 | Metro Málaga | 4 | 260 | ✅ Importado 2026-01-26 |
 | Tranvía Zaragoza | 2 | 252 | ✅ Importado 2026-01-26 |
 | Metro Tenerife | 4 | 132 | ✅ Importado 2026-01-26 |
-| Metro Sevilla | 2 | 544 | ✅ Reextraído de OSM 2026-01-26 (272 pts x 2 dir) |
+| Metro Sevilla | 2 | 212 | ✅ OSM sin depot 2026-01-26 |
 | TRAM Barcelona | 12 | 5,136 | ✅ Extraído de OSM 2026-01-26 |
+| Metro Granada | 1 | 26 | ✅ Creado desde estaciones 2026-01-26 |
+| Metrovalencia | 20 | 11,390 | ✅ Extraído de OSM 2026-01-26 (10 líneas x 2 dir) |
+| TRAM Alicante | 12 | 6,858 | ✅ Extraído de OSM 2026-01-26 (6 líneas x 2 dir) |
 
-**Total en producción:** 882 shapes, 577,911 puntos
+**Total en producción:** 888 shapes, 591,925 puntos
+**Trips con shape:** 239,205
+**Trips sin shape:** 1,218 (trips huérfanos)
 
 ---
 
@@ -174,14 +176,62 @@ Añadidas 403 plataformas faltantes usando coordenadas GTFS:
 
 **Total plataformas en producción:** 2,989
 
-### Resumen Base de Datos (2026-01-26)
+### ✅ Limpieza de Shapes Corruptos (2026-01-26)
+
+Los shapes importados del NAP usaban IDs numéricos simples (1, 2, 3...) que colisionaron entre redes:
+
+**Problema detectado:**
+- Shape ID "1" tenía puntos de Granada (lat 37.14), Valencia (lat 39.62) y Alicante - saltos de 400+ km
+- Shape IDs 1-10 afectados en Metro Granada, Metrovalencia y TRAM Alicante
+
+**Acciones tomadas:**
+1. Nullificados shape_id en 22,331 trips afectados
+2. Eliminados 4,140 puntos de shapes corruptos
+3. Creado shape de Metro Granada desde coordenadas de estaciones (26 puntos)
+4. Enlazados trips de TRAM Barcelona a shapes OSM existentes (3,195 trips)
+5. Metro Sevilla: filtrado para excluir área de cocheras (depot) - de 272 a 212 puntos
+
+### ✅ Shapes de Metrovalencia y TRAM Alicante desde OSM (2026-01-26)
+
+Extraídos desde OpenStreetMap usando Overpass API con shapes bidireccionales:
+
+**Metrovalencia (10 líneas, 20 shapes):**
+| Línea | Shape IDA | Shape VUELTA | Puntos |
+|-------|-----------|--------------|--------|
+| L1 | METRO_VAL_L1_5622354 | METRO_VAL_L1_5622924 | 3,357 |
+| L2 | METRO_VAL_L2_5622180 | METRO_VAL_L2_5625922 | 1,472 |
+| L3 | METRO_VAL_L3_5622355 | METRO_VAL_L3_5625981 | 1,269 |
+| L4 | METRO_VAL_L4_5620862 | METRO_VAL_L4_5620871 | 1,598 |
+| L5 | METRO_VAL_L5_5622154 | METRO_VAL_L5_5626066 | 606 |
+| L6 | METRO_VAL_L6_5621993 | METRO_VAL_L6_5622028 | 802 |
+| L7 | METRO_VAL_L7_5616613 | METRO_VAL_L7_5626067 | 664 |
+| L8 | METRO_VAL_L8_5622077 | METRO_VAL_L8_5622078 | 194 |
+| L9 | METRO_VAL_L9_5626068 | METRO_VAL_L9_5626069 | 1,058 |
+| L10 | METRO_VAL_L10_14166106 | METRO_VAL_L10_14166107 | 342 |
+
+**TRAM Alicante (6 líneas, 12 shapes):**
+| Línea | Shape IDA | Shape VUELTA | Puntos |
+|-------|-----------|--------------|--------|
+| L1 | TRAM_ALI_L1_190196 | TRAM_ALI_L1_6269076 | 2,018 |
+| L2 | TRAM_ALI_L2_190199 | TRAM_ALI_L2_6563046 | 597 |
+| L3 | TRAM_ALI_L3_190203 | TRAM_ALI_L3_6266776 | 655 |
+| L4 | TRAM_ALI_L4_190184 | TRAM_ALI_L4_6266683 | 548 |
+| L5 | TRAM_ALI_L5_13154071 | TRAM_ALI_L5_14193223 | 506 |
+| L9 | TRAM_ALI_L9_404372 | TRAM_ALI_L9_15320667 | 2,565 |
+
+**Asignación de shapes:** Cada trip se asigna al shape de IDA o VUELTA basándose en la comparación de los números de estación de origen y destino.
+
+### Resumen Base de Datos (2026-01-26 FINAL)
 
 | Datos | Total |
 |-------|-------|
 | Platforms | 2,989 |
-| Correspondencias | 246 |
+| Correspondencias | 218 |
 | Trips con headsign | 237,054 |
-| Shape points | 577,911 |
+| Trips con shape | 239,205 |
+| Trips sin shape | 1,218 |
+| Shape points | 591,925 |
+| Shapes | 888 |
 
 ---
 
@@ -224,8 +274,9 @@ Creadas rutas y trips para acceder a los shapes via endpoint estándar:
 | **TOTAL** | **218** |
 
 ### Shapes
-- 882 shapes
-- 578,594 puntos
+- 888 shapes (32 nuevos de Metrovalencia + TRAM Alicante)
+- 591,925 puntos
+- 239,205 trips con shape (99.5%)
 
 ---
 
