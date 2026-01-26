@@ -3,6 +3,8 @@
 import re as regex_module
 from typing import Optional
 
+from src.gtfs_bc.route.infrastructure.models import RouteFrequencyModel
+
 # Prefixes for networks with real GTFS-RT data (don't filter by operating hours)
 GTFS_RT_PREFIXES = (
     "RENFE_",        # Cercanías RENFE
@@ -22,7 +24,7 @@ def is_static_gtfs_route(route_id: str) -> bool:
     return not any(route_id.startswith(prefix) for prefix in GTFS_RT_PREFIXES)
 
 
-def is_route_operating(db, route_id: str, current_seconds: int, day_type: str, RouteFrequencyModel) -> bool:
+def is_route_operating(db, route_id: str, current_seconds: int, day_type: str) -> bool:
     """Check if a route is currently operating based on its frequency schedule.
 
     Returns True if current time is within operating hours, False otherwise.
