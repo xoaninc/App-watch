@@ -56,18 +56,19 @@
 | Euskotren | ✅ | ✅ | ✅ (13) | ✅ 61k pts |
 | FGC | ✅ | ✅ | ❌ | ✅ 12k pts |
 | TMB Metro | ✅ (API key) | ✅ API | ✅ (60) | ✅ 103k pts |
-| TRAM Barcelona | ✅ | ❌ | ❌ | ❌ URL 403 |
-| TRAM Alicante | 🔧 NAP | ❌ | ❌ | 🔧 NAP |
-| Metro Tenerife | ✅ | ❌ | ✅ (2) | ⚠️ URL directa |
-| Metro Málaga | 🔧 NAP | ❌ | ✅ (4) | 🔧 NAP |
-| Metrovalencia | 🔧 NAP | ❌ (API*) | ❌ | 🔧 NAP |
-| Metro Granada | 🔧 NAP | ❌ | ❌ | 🔧 NAP |
-| Metro Sevilla | 🔧 NAP | ❌ | ❌ | 🔧 NAP |
-| Tranvía Zaragoza | 🔧 NAP | ❌ | ❌ | 🔧 NAP |
-| Tranvía Murcia | 🔧 NAP | ❌ | ❌ | 🔧 NAP |
-| SFM Mallorca | 🔧 NAP | ❌ | ❌ | 🔧 NAP |
+| TRAM Barcelona | ✅ | ❌ | ❌ | ✅ 5k pts (OSM 2026-01-26) |
+| TRAM Alicante | ✅ NAP | ❌ | ❌ | ✅ 7k pts (OSM 2026-01-26) |
+| Metro Tenerife | ✅ | ❌ | ✅ (2) | ✅ 132 pts |
+| Metro Málaga | ✅ NAP | ❌ | ✅ (4) | ✅ 260 pts |
+| Metrovalencia | ✅ NAP | ❌ (API*) | ❌ | ✅ 11k pts (OSM 2026-01-26) |
+| Metro Granada | ✅ NAP | ❌ | ❌ | ✅ 52 pts (bidireccional) |
+| Metro Sevilla | ✅ NAP | ❌ | ❌ | ✅ 424 pts (OSM) |
+| Tranvía Zaragoza | ✅ NAP | ❌ | ❌ | ✅ 252 pts |
+| Tranvía Murcia | ✅ NAP | ❌ | ❌ | ✅ 989 pts (L1 circular + L1B bidir) |
+| SFM Mallorca | ✅ NAP | ❌ | ❌ | ✅ 258k pts |
+| Tranvía Sevilla | ✅ manual | ❌ | ❌ | ✅ 552 pts (OSM 2026-01-27) |
 | **Renfe Cercanías** | ✅ | ✅ JSON | ✅ (19)* | ✅ 74k pts |
-| Metro Madrid (CRTM) | ✅ | ❌ | ❌ | ✅ 57k pts (importado 2026-01-27) |
+| Metro Madrid (CRTM) | ✅ | ❌ | ❌ | ✅ 57k pts (2026-01-27) |
 | Metro Ligero Madrid | ✅ | ❌ | ❌ | ✅ 62k pts |
 
 **Leyenda:**
