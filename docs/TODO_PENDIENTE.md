@@ -156,8 +156,21 @@ Añadidos platforms para Sagrera (L1, L5, L9N/L10N). Verificados todos los inter
 ### ✅ Fix headsigns vacíos y correspondencias huérfanas (2026-01-26)
 
 - **155,834 trips** sin headsign → rellenados con nombre de última parada
-- **6 correspondencias huérfanas** Euskotren → eliminadas (referenciaban stops inexistentes)
+- **6 correspondencias huérfanas** Euskotren → eliminadas (IDs malformados con `::` doble)
 - **3,369 trips** sin stop_times → no afectan API (orphan data del GTFS original)
+
+### ✅ Plataformas completadas para todas las paradas (2026-01-26)
+
+Añadidas 402 plataformas faltantes usando coordenadas GTFS:
+
+| Red | Añadidas | Total |
+|-----|----------|-------|
+| FGC | +358 | 412 |
+| TMB Barcelona | +24 | 199 |
+| Metro Madrid | +13 | 570 |
+| Tram Sevilla | +7 | 179 |
+
+**Total plataformas en producción:** 2,988
 
 ---
 
