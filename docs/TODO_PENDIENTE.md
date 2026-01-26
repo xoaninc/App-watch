@@ -153,6 +153,12 @@ Añadidos platforms para Sagrera (L1, L5, L9N/L10N). Verificados todos los inter
 | C6 Valencia | València, Castelló de la Plana, Vila-real |
 | C10 Madrid | Villalba de Guadarrama, Chamartín RENFE |
 
+### ✅ Fix headsigns vacíos y correspondencias huérfanas (2026-01-26)
+
+- **155,834 trips** sin headsign → rellenados con nombre de última parada
+- **6 correspondencias huérfanas** Euskotren → eliminadas (referenciaban stops inexistentes)
+- **3,369 trips** sin stop_times → no afectan API (orphan data del GTFS original)
+
 ---
 
 ## Tareas Pendientes
