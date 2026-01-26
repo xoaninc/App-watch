@@ -10,6 +10,7 @@ from sqlalchemy import and_, or_, func
 # Centralized imports
 from adapters.http.api.gtfs.utils.holiday_utils import get_effective_day_type, MADRID_TZ
 from adapters.http.api.gtfs.utils.route_utils import is_static_gtfs_route, is_route_operating, has_real_cercanias
+from adapters.http.api.gtfs.utils.shape_utils import normalize_shape
 from adapters.http.api.gtfs.schemas import (
     RouteResponse,
     RouteFrequencyResponse,
@@ -1568,12 +1569,31 @@ def get_route_operating_hours(route_id: str, db: Session = Depends(get_db)):
 
 
 @router.get("/routes/{route_id}/shape", response_model=RouteShapeResponse)
-def get_route_shape(route_id: str, db: Session = Depends(get_db)):
+def get_route_shape(
+    route_id: str,
+    max_gap: Optional[float] = Query(
+        None,
+        ge=10,
+        le=500,
+        description="Maximum gap in meters between points. When set, interpolates points using spherical interpolation (slerp) to ensure smooth curves. Recommended: 50 for 3D animations."
+    ),
+    db: Session = Depends(get_db),
+):
     """Get the shape (path) of a route for drawing on maps.
 
     Returns the sequence of coordinates that define the physical path
     of the route. Useful for drawing the actual line trajectory on maps
     (showing curves, tunnels, etc.) instead of just straight lines between stops.
+
+    **Normalization (max_gap parameter):**
+    When `max_gap` is specified, the server interpolates additional points
+    using spherical linear interpolation (slerp) to ensure no gap between
+    consecutive points exceeds the threshold. This is useful for:
+    - 3D map animations (smooth camera movements)
+    - Accurate distance calculations
+    - Preventing visual artifacts from large gaps
+
+    Example: `?max_gap=50` ensures points are at most 50m apart.
 
     Data source: shapes.txt from GTFS feed.
     """
@@ -1607,16 +1627,23 @@ def get_route_shape(route_id: str, db: Session = Depends(get_db)):
         .all()
     )
 
+    # Convert to list of tuples for processing
+    points = [(p.lat, p.lon, p.sequence) for p in shape_points]
+
+    # Normalize if max_gap is specified
+    if max_gap is not None and points:
+        points = normalize_shape(points, max_gap_meters=max_gap)
+
     return RouteShapeResponse(
         route_id=route_id,
         route_short_name=route.short_name.strip() if route.short_name else "",
         shape=[
             ShapePointResponse(
-                lat=point.lat,
-                lon=point.lon,
-                sequence=point.sequence
+                lat=lat,
+                lon=lon,
+                sequence=seq
             )
-            for point in shape_points
+            for lat, lon, seq in points
         ]
     )
 
