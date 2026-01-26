@@ -7,25 +7,38 @@
 
 ## 1. Conceptos Clave
 
-### 1.1 Correspondencias (cor_*) - INFORMATIVO
+### 1.1 Correspondencias (cor_*) - LÍNEAS DEL MISMO SISTEMA
 
-Campos en la tabla `gtfs_stops` que indican qué líneas de **otros sistemas de transporte** pasan cerca de una parada.
+Campos en la tabla `gtfs_stops` que indican qué **líneas del mismo tipo de transporte** pasan por esa parada.
 
-| Campo | Descripción | Ejemplo |
-|-------|-------------|---------|
-| `cor_metro` | Líneas de metro cercanas | L1, L6, L8 |
-| `cor_cercanias` | Líneas de cercanías/rodalies | C3, C4a, R1 |
-| `cor_tranvia` | Líneas de tranvía | T1, T2, T3 |
-| `cor_ml` | Líneas de metro ligero | ML1, ML2 |
+| Tipo de parada | Campo usado | Contenido |
+|----------------|-------------|-----------|
+| Metro | `cor_metro` | Líneas de metro que pasan (L1, L6, L8) |
+| Cercanías/FGC/Euskotren | `cor_cercanias` | Líneas de cercanías que pasan (C3, C4a, R1, S1) |
+| Tranvía | `cor_tranvia` | Líneas de tranvía que pasan (T1, T2, T3) |
+| Metro Ligero | `cor_ml` | Líneas de ML que pasan (ML1, ML2) |
 
-**Uso:** Puramente informativo para mostrar al usuario qué otras opciones de transporte tiene cerca. **Excepción:** En Renfe Cercanías se usa activamente.
+**Uso:** Mostrar al usuario qué líneas del mismo sistema puede coger en esa parada.
 
-**Ejemplo:** Una parada de Metro Madrid tendría:
+**Ejemplo - Parada de Metro:**
 ```
 id: METRO_12345
 name: Nuevos Ministerios
-cor_metro: L6, L8, L10
-cor_cercanias: C3, C4a, C4b, C7, C8a, C8b, C10
+cor_metro: L6, L8, L10  ← líneas de metro que pasan aquí
+```
+
+**Ejemplo - Parada de Cercanías:**
+```
+id: RENFE_17000
+name: Madrid-Atocha Cercanías
+cor_cercanias: C1, C2, C3, C4a, C4b, C5, C7, C8a, C8b, C10  ← líneas de cercanías
+```
+
+**Ejemplo - Parada de Tranvía Barcelona:**
+```
+id: TRAM_BARCELONA_1234
+name: Glòries
+cor_tranvia: T4, T5, T6  ← líneas de tranvía que pasan aquí
 ```
 
 ### 1.2 Line Transfers - DETALLADO
