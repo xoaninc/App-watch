@@ -28,6 +28,40 @@ class NetworkModel(Base):
     # Relación 1:N con rutas
     routes = relationship("RouteModel", back_populates="network")
 
+    @property
+    def transport_type(self) -> str:
+        """Infer transport type from network code.
+
+        Returns: 'cercanias', 'metro', 'metro_ligero', 'tranvia', 'fgc', 'euskotren', 'other'
+        """
+        code_upper = self.code.upper()
+
+        # Metro (check before cercanías since 11T ends with T)
+        if code_upper.startswith('METRO_') or code_upper == '11T' or code_upper == 'TMB_METRO':
+            return 'metro'
+
+        # Metro Ligero (check before cercanías since 12T ends with T)
+        if code_upper == '12T' or code_upper.startswith('ML_'):
+            return 'metro_ligero'
+
+        # Cercanías: codes ending with T (10T, 40T, 51T) but not 11T or 12T
+        if code_upper.endswith('T') and code_upper[:-1].isdigit():
+            return 'cercanias'
+
+        # Tranvía
+        if code_upper.startswith('TRANVIA_') or code_upper.startswith('TRAM_'):
+            return 'tranvia'
+
+        # FGC
+        if code_upper == 'FGC':
+            return 'fgc'
+
+        # Euskotren
+        if code_upper == 'EUSKOTREN':
+            return 'euskotren'
+
+        return 'other'
+
     def __repr__(self):
         return f"<Network {self.code}: {self.name}>"
 

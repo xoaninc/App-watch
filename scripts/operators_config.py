@@ -106,7 +106,7 @@ OPERATORS['metro_malaga'] = OperatorConfig(
     color='E30613',
     gtfs_url=None,  # URL outdated, needs manual download
     auth_method=AuthMethod.MANUAL,
-    notes='URL desactualizada. Buscar en datosabiertos.malaga.eu o NAP',
+    notes='Download from NAP: https://nap.transportes.gob.es/Files/Detail/1296 (requires login)',
     route_type=1,
     agency_id='METRO_MALAGA',
     agency_name='Metro de Málaga',
@@ -144,7 +144,7 @@ OPERATORS['metro_bilbao'] = OperatorConfig(
 # Original: https://datosabiertos.malaga.eu/recursos/transporte/EMT/gtfs/google_transit.zip
 
 # -----------------------------------------------------------------------------
-# 3. METRO DE VALENCIA
+# 3. METRO DE VALENCIA (Metrovalencia / FGV)
 # -----------------------------------------------------------------------------
 OPERATORS['metro_valencia'] = OperatorConfig(
     code='metro_valencia',
@@ -155,12 +155,16 @@ OPERATORS['metro_valencia'] = OperatorConfig(
     gtfs_url=None,  # Must download from NAP
     auth_method=AuthMethod.MANUAL,
     route_type=1,
-    agency_id='METRO_VALENCIA',
+    agency_id='METROVALENCIA',
     agency_name='Ferrocarrils de la Generalitat Valenciana',
     agency_url='https://www.metrovalencia.es',
     nucleo_id=60,  # Valencia nucleo
     wikipedia_url='https://es.wikipedia.org/wiki/Metrovalencia',
-    notes='Download from NAP: https://nap.transportes.gob.es',
+    notes='GTFS from NAP. Real-time: Valencia OpenData API',
+    gtfs_rt=GTFSRTConfig(
+        format=GTFSRTFormat.CUSTOM_API,
+        custom_endpoint='https://geoportal.valencia.es/geoportal-services/api/v1/salidas-metro.json',
+    ),
 )
 
 # -----------------------------------------------------------------------------
@@ -180,7 +184,7 @@ OPERATORS['metro_granada'] = OperatorConfig(
     agency_url='https://www.metropolitanogranada.es',
     nucleo_id=33,  # Granada nucleo (created for metro)
     wikipedia_url='https://es.wikipedia.org/wiki/Metro_de_Granada',
-    notes='Download from NAP: https://nap.transportes.gob.es',
+    notes='Download from NAP: https://nap.transportes.gob.es/Files/Detail/1370 (requires login)',
 )
 
 # -----------------------------------------------------------------------------
@@ -192,8 +196,8 @@ OPERATORS['tmb_metro'] = OperatorConfig(
     city='Barcelona',
     region='Cataluña',
     color='E30613',
-    gtfs_url='https://developer.tmb.cat/downloads/gtfs.zip',
-    auth_method=AuthMethod.SESSION,  # Requires login session
+    gtfs_url='https://api.tmb.cat/v1/static/datasets/gtfs.zip',
+    auth_method=AuthMethod.API_KEY,  # Requires app_id and app_key
     api_id='e76ae269',
     api_key='291c7f8027c5e684e010e6a54e76428c',
     route_type=1,
@@ -217,7 +221,7 @@ OPERATORS['fgc'] = OperatorConfig(
     city='Barcelona',
     region='Cataluña',
     color='F26522',
-    gtfs_url='https://dadesobertes.fgc.cat/api/explore/v2.1/catalog/datasets/gtfs-schedule/exports/zip',
+    gtfs_url='https://www.fgc.cat/google/google_transit.zip',
     auth_method=AuthMethod.NONE,
     route_type=2,  # Suburban rail
     agency_id='FGC',
@@ -304,14 +308,15 @@ OPERATORS['tram_alicante'] = OperatorConfig(
     city='Alicante',
     region='Comunidad Valenciana',
     color='E30613',
-    gtfs_url='https://www.tramalicante.es/page/gtfs/google_transit.zip',
-    auth_method=AuthMethod.NONE,
+    gtfs_url=None,  # Old URL 404. Must download from NAP (requires login)
+    auth_method=AuthMethod.MANUAL,
     route_type=0,  # Tram/Light rail
     agency_id='TRAM_ALICANTE',
     agency_name='TRAM Metropolitano de Alicante',
-    agency_url='https://www.tramalicante.es',
+    agency_url='https://www.tramalacant.es',
     nucleo_id=61,  # Murcia/Alicante nucleo
     wikipedia_url='https://es.wikipedia.org/wiki/TRAM_Metropolitano_de_Alicante',
+    notes='Download from NAP: https://nap.transportes.gob.es/Files/Detail/966 (requires login)',
 )
 
 # -----------------------------------------------------------------------------
@@ -323,7 +328,7 @@ OPERATORS['metro_tenerife'] = OperatorConfig(
     city='Santa Cruz de Tenerife',
     region='Canarias',
     color='E30613',
-    gtfs_url='https://metrotenerife.com/wp-content/uploads/docs/google_transit.zip',
+    gtfs_url='https://metrotenerife.com/transit/google_transit.zip',
     auth_method=AuthMethod.NONE,
     route_type=0,  # Light rail/tram
     agency_id='METRO_TENERIFE',
@@ -350,7 +355,7 @@ OPERATORS['tranvia_zaragoza'] = OperatorConfig(
     agency_url='https://www.tranviasdezaragoza.es',
     nucleo_id=40,  # Zaragoza nucleo
     wikipedia_url='https://es.wikipedia.org/wiki/Tranv%C3%ADa_de_Zaragoza',
-    notes='Download from NAP: https://nap.transportes.gob.es',
+    notes='Download from NAP: https://nap.transportes.gob.es/Files/Detail/1394 (requires login)',
 )
 
 # -----------------------------------------------------------------------------
@@ -370,7 +375,7 @@ OPERATORS['tranvia_murcia'] = OperatorConfig(
     agency_url='https://www.tranviademurcia.es',
     nucleo_id=61,  # Murcia/Alicante nucleo
     wikipedia_url='https://es.wikipedia.org/wiki/Tranv%C3%ADa_de_Murcia',
-    notes='Download from NAP: https://nap.transportes.gob.es',
+    notes='Download from NAP: https://nap.transportes.gob.es/Files/Detail/1371 (requires login)',
 )
 
 # -----------------------------------------------------------------------------
@@ -390,7 +395,7 @@ OPERATORS['sfm_mallorca'] = OperatorConfig(
     agency_url='https://www.tib.org',
     nucleo_id=81,  # Mallorca nucleo
     wikipedia_url='https://es.wikipedia.org/wiki/Serveis_Ferroviaris_de_Mallorca',
-    notes='Download from NAP, filter for trains (T1, T2, T3) and metro (M1)',
+    notes='Download from NAP: https://nap.transportes.gob.es/Files/Detail/1071 (requires login). Filter for trains (T1, T2, T3) and metro (M1)',
 )
 
 
