@@ -214,7 +214,9 @@ from src.gtfs_bc.province.province_lookup import (
     get_province_and_networks_by_coordinates,
 )
 from src.gtfs_bc.realtime.infrastructure.services.estimated_positions import EstimatedPositionsService
+from src.gtfs_bc.realtime.infrastructure.services.gtfs_rt_fetcher import GTFSRealtimeFetcher
 from src.gtfs_bc.stop_route_sequence.infrastructure.models import StopRouteSequenceModel
+from src.gtfs_bc.transfer.infrastructure.models import LineTransferModel
 
 
 router = APIRouter(prefix="/gtfs", tags=["GTFS Query"])
@@ -265,6 +267,61 @@ class RouteOperatingHoursResponse(BaseModel):
     friday: Optional[DayOperatingHours]   # Friday (extended hours)
     saturday: Optional[DayOperatingHours]
     sunday: Optional[DayOperatingHours]
+    is_suspended: bool = False  # True if service is suspended (from alerts)
+    suspension_message: Optional[str] = None  # Alert message if suspended
+
+
+import re as regex_module
+
+
+def _has_real_cercanias(cor_cercanias: Optional[str]) -> bool:
+    """Check if cor_cercanias contains real Cercanías lines (C* or R* patterns).
+
+    Filters out Euskotren lines (E1, E2, TR) which may appear in cor_cercanias
+    but are not actually Renfe Cercanías.
+
+    Args:
+        cor_cercanias: Comma-separated list of Cercanías lines (e.g., "C1, C3, R2")
+
+    Returns:
+        True if any line matches C* or R* pattern (Cercanías/Rodalies Renfe)
+    """
+    if not cor_cercanias:
+        return False
+    lines = [line.strip() for line in cor_cercanias.split(',')]
+    for line in lines:
+        # Match C1, C2, R1, R2, etc. (Renfe Cercanías/Rodalies)
+        if regex_module.match(r'^[CR]\d', line):
+            return True
+    return False
+
+
+def _calculate_is_hub(stop: StopModel) -> bool:
+    """Calculate if a stop is a transport hub.
+
+    A hub is a station with 2 or more DIFFERENT transport types:
+    - Metro (cor_metro)
+    - Cercanías/Rodalies (cor_cercanias with C*/R* lines only)
+    - Metro Ligero (cor_ml)
+    - Tranvía (cor_tranvia)
+
+    Note: Multiple lines of the same type don't make a hub.
+    """
+    transport_count = 0
+
+    if stop.cor_metro:
+        transport_count += 1
+
+    if _has_real_cercanias(stop.cor_cercanias):
+        transport_count += 1
+
+    if stop.cor_ml:
+        transport_count += 1
+
+    if stop.cor_tranvia:
+        transport_count += 1
+
+    return transport_count >= 2
 
 
 class StopResponse(BaseModel):
@@ -285,6 +342,7 @@ class StopResponse(BaseModel):
     cor_ml: Optional[str]
     cor_cercanias: Optional[str]
     cor_tranvia: Optional[str]
+    is_hub: bool = False  # True if station has 2+ different transport types
 
     class Config:
         from_attributes = True
@@ -309,6 +367,7 @@ class RouteStopResponse(BaseModel):
     cor_ml: Optional[str]
     cor_cercanias: Optional[str]
     cor_tranvia: Optional[str]
+    is_hub: bool = False  # True if station has 2+ different transport types
     stop_sequence: int  # Position in the route (1-based)
 
     class Config:
@@ -378,6 +437,28 @@ class AgencyResponse(BaseModel):
     timezone: str
     lang: Optional[str]
     phone: Optional[str]
+
+    class Config:
+        from_attributes = True
+
+
+class TransferResponse(BaseModel):
+    """Transfer/interchange information between stops or lines."""
+    id: int
+    from_stop_id: str
+    to_stop_id: str
+    from_route_id: Optional[str]
+    to_route_id: Optional[str]
+    transfer_type: int  # 0=recommended, 1=timed, 2=min time required, 3=not possible
+    min_transfer_time: Optional[int]  # seconds
+    from_stop_name: Optional[str]
+    to_stop_name: Optional[str]
+    from_line: Optional[str]
+    to_line: Optional[str]
+    network_id: Optional[str]
+    instructions: Optional[str]
+    exit_name: Optional[str]
+    source: Optional[str]
 
     class Config:
         from_attributes = True
@@ -511,6 +592,23 @@ def get_routes_by_coordinates(
         .limit(limit)
         .all()
     )
+
+    # Step 4: Filter out generic C4/C8 routes when variants exist
+    # Madrid C4 splits into C4a (Alcobendas) and C4b (Colmenar Viejo)
+    # Madrid C8 splits into C8a (El Escorial) and C8b (Cercedilla)
+    short_names = {r.short_name for r in routes}
+    routes_to_exclude = set()
+
+    # If C4a or C4b exist, exclude generic C4
+    if 'C4a' in short_names or 'C4b' in short_names:
+        routes_to_exclude.add('C4')
+
+    # If C8a or C8b exist, exclude generic C8
+    if 'C8a' in short_names or 'C8b' in short_names:
+        routes_to_exclude.add('C8')
+
+    if routes_to_exclude:
+        routes = [r for r in routes if r.short_name not in routes_to_exclude]
 
     return routes
 
@@ -1555,6 +1653,7 @@ def get_route_stops(route_id: str, db: Session = Depends(get_db)):
                 cor_ml=stop.cor_ml,
                 cor_cercanias=stop.cor_cercanias,
                 cor_tranvia=stop.cor_tranvia,
+                is_hub=stop.is_hub,
                 stop_sequence=sequence,
             )
             for stop, sequence in sorted_stations
@@ -1611,6 +1710,7 @@ def get_route_stops(route_id: str, db: Session = Depends(get_db)):
             cor_ml=stop.cor_ml,
             cor_cercanias=stop.cor_cercanias,
             cor_tranvia=stop.cor_tranvia,
+            is_hub=stop.is_hub,
             stop_sequence=idx + 1,
         )
         for idx, stop in enumerate(stops)
@@ -1669,6 +1769,50 @@ def get_route_operating_hours(route_id: str, db: Session = Depends(get_db)):
     route = db.query(RouteModel).filter(RouteModel.id == route_id).first()
     if not route:
         raise HTTPException(status_code=404, detail=f"Route {route_id} not found")
+
+    # Check for service suspension alerts
+    is_suspended = False
+    suspension_message = None
+
+    fetcher = GTFSRealtimeFetcher(db)
+    alerts = fetcher.get_alerts_for_route(route_id)
+
+    # Keywords that indicate TRAIN SERVICE suspension (not facilities)
+    suspension_keywords = [
+        "suspende el servicio de trenes",
+        "servicio de trenes suspendido",
+        "se suspende el servicio",
+        "sin servicio de trenes",
+        "no circula",
+        "circulación suspendida",
+        "línea cerrada",
+    ]
+
+    # Keywords that indicate facility issues (NOT service suspension)
+    facility_keywords = [
+        "ascensor",
+        "escalera",
+        "aseo",
+        "igogailu",  # Ascensor en euskera
+        "eskailera",  # Escalera en euskera
+    ]
+
+    for alert in alerts:
+        alert_text = (alert.description_text or "") + " " + (alert.header_text or "")
+        alert_text_lower = alert_text.lower()
+
+        # Skip alerts about facilities (elevators, escalators, bathrooms)
+        is_facility_alert = any(fk in alert_text_lower for fk in facility_keywords)
+        if is_facility_alert:
+            continue
+
+        for keyword in suspension_keywords:
+            if keyword in alert_text_lower:
+                is_suspended = True
+                suspension_message = alert.description_text or alert.header_text
+                break
+        if is_suspended:
+            break
 
     # Get all trips for this route with their calendar info
     trips_with_calendar = (
@@ -1730,10 +1874,12 @@ def get_route_operating_hours(route_id: str, db: Session = Depends(get_db)):
             return RouteOperatingHoursResponse(
                 route_id=route_id,
                 route_short_name=route.short_name.strip() if route.short_name else "",
-                weekday=get_freq_hours(freq_by_day["weekday"]),
-                friday=get_freq_hours(freq_by_day["friday"]) or get_freq_hours(freq_by_day["weekday"]),
-                saturday=get_freq_hours(freq_by_day["saturday"]),
-                sunday=get_freq_hours(freq_by_day["sunday"]),
+                weekday=None if is_suspended else get_freq_hours(freq_by_day["weekday"]),
+                friday=None if is_suspended else (get_freq_hours(freq_by_day["friday"]) or get_freq_hours(freq_by_day["weekday"])),
+                saturday=None if is_suspended else get_freq_hours(freq_by_day["saturday"]),
+                sunday=None if is_suspended else get_freq_hours(freq_by_day["sunday"]),
+                is_suspended=is_suspended,
+                suspension_message=suspension_message,
             )
 
         # No schedule data and no frequencies
@@ -1744,6 +1890,8 @@ def get_route_operating_hours(route_id: str, db: Session = Depends(get_db)):
             friday=None,
             saturday=None,
             sunday=None,
+            is_suspended=is_suspended,
+            suspension_message=suspension_message,
         )
 
     # Group trips by day type
@@ -1804,8 +1952,50 @@ def get_route_operating_hours(route_id: str, db: Session = Depends(get_db)):
     return RouteOperatingHoursResponse(
         route_id=route_id,
         route_short_name=route.short_name.strip() if route.short_name else "",
-        weekday=get_day_hours(trips_by_day["weekday"]),
-        friday=get_day_hours(trips_by_day["weekday"]),  # Cercanías: Friday same as weekday
-        saturday=get_day_hours(trips_by_day["saturday"]),
-        sunday=get_day_hours(trips_by_day["sunday"]),
+        weekday=None if is_suspended else get_day_hours(trips_by_day["weekday"]),
+        friday=None if is_suspended else get_day_hours(trips_by_day["weekday"]),  # Cercanías: Friday same as weekday
+        saturday=None if is_suspended else get_day_hours(trips_by_day["saturday"]),
+        sunday=None if is_suspended else get_day_hours(trips_by_day["sunday"]),
+        is_suspended=is_suspended,
+        suspension_message=suspension_message,
     )
+
+
+@router.get("/stops/{stop_id}/transfers", response_model=List[TransferResponse])
+def get_stop_transfers(
+    stop_id: str,
+    direction: Optional[str] = Query(
+        None,
+        description="Filter direction: 'from' (transfers FROM this stop), 'to' (transfers TO this stop), or None (both)"
+    ),
+    db: Session = Depends(get_db),
+):
+    """Get transfer/interchange information for a stop.
+
+    Returns transfer times and instructions between this stop and nearby lines.
+    Data comes from GTFS transfers.txt or manual entries.
+
+    Transfer types:
+    - 0: Recommended transfer point
+    - 1: Timed transfer (vehicle waits)
+    - 2: Minimum time required
+    - 3: Transfer not possible
+    """
+    if direction == "from":
+        transfers = db.query(LineTransferModel).filter(
+            LineTransferModel.from_stop_id == stop_id
+        ).all()
+    elif direction == "to":
+        transfers = db.query(LineTransferModel).filter(
+            LineTransferModel.to_stop_id == stop_id
+        ).all()
+    else:
+        # Both directions
+        transfers = db.query(LineTransferModel).filter(
+            or_(
+                LineTransferModel.from_stop_id == stop_id,
+                LineTransferModel.to_stop_id == stop_id,
+            )
+        ).all()
+
+    return transfers

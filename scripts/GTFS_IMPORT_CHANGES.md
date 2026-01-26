@@ -880,3 +880,100 @@ WHERE route_id = 'METRO_1'
 | `friday` | Viernes |
 | `saturday` | Sábado |
 | `sunday` | Domingo y Festivos |
+
+---
+
+## Transfers (Transbordos)
+
+Los transfers definen conexiones entre líneas/rutas en una misma estación. Se almacenan en la tabla `line_transfer`.
+
+### Tabla line_transfer
+
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| `from_stop_id` | VARCHAR | ID de la parada origen (con prefijo) |
+| `to_stop_id` | VARCHAR | ID de la parada destino (con prefijo) |
+| `from_route_id` | VARCHAR | ID de la ruta origen (opcional) |
+| `to_route_id` | VARCHAR | ID de la ruta destino (opcional) |
+| `transfer_type` | INT | Tipo de transbordo GTFS (0-3) |
+| `min_transfer_time` | INT | Tiempo mínimo en segundos |
+| `network_id` | VARCHAR | Red a la que pertenece (40T, TMB_METRO, etc.) |
+| `source` | VARCHAR | Origen de los datos (gtfs, nap, manual) |
+
+### Transfer Types (GTFS estándar)
+
+| Tipo | Descripción |
+|------|-------------|
+| 0 | Punto de transbordo recomendado |
+| 1 | Transbordo temporizado (vehículo espera) |
+| 2 | Tiempo mínimo requerido |
+| 3 | Transbordo no posible |
+
+### Prefijos de stop_id por operador
+
+| Operador | Prefijo stop_id | network_id |
+|----------|-----------------|------------|
+| Renfe Cercanías | `RENFE_` | Se extrae del route_id (10T, 40T, etc.) |
+| TMB Metro Barcelona | `TMB_METRO_` | `TMB_METRO` |
+| Euskotren | `EUSKOTREN_` | `EUSKOTREN` |
+| Metro Tenerife | `METRO_TENERIFE_` | `METRO_TENERIFE` |
+| Metro Málaga | `METRO_MALAGA_` | `METRO_MALAGA` |
+
+### Renfe Cercanías - Extracción de network_id
+
+Los transfers de Renfe se importan desde un único GTFS (`fomento_transit.zip`) que contiene todas las regiones. El `network_id` se extrae del `route_id`:
+
+```
+route_id: 40T0002C1 → network_id: 40T (Cercanías Valencia)
+route_id: 10T0005C3 → network_id: 10T (Cercanías Madrid)
+```
+
+Esto permite que los transfers se asocien a la red correcta en `gtfs_networks`.
+
+### Script de Importación
+
+```bash
+# Importar todos los transfers
+python scripts/import_transfers.py
+```
+
+El script:
+1. Descarga GTFS de cada operador
+2. Parsea `transfers.txt`
+3. Añade prefijo a los stop_id
+4. Extrae network_id del route_id (para Renfe)
+5. Inserta en `line_transfer`
+
+### Operadores con transfers.txt
+
+| Operador | Registros | Fuente |
+|----------|-----------|--------|
+| TMB Metro Barcelona | 60 | GTFS URL |
+| Renfe Cercanías | 19 | GTFS URL |
+| Euskotren | 13 | GTFS URL |
+| Metro Málaga | 4 | NAP (manual) |
+| Metro Tenerife | 2 | GTFS URL |
+
+### Operadores verificados SIN transfers.txt
+
+- Metro Bilbao
+- FGC
+- TRAM Barcelona
+- TRAM Alicante
+- Metrovalencia
+- Metro Granada
+- Tranvía Zaragoza
+- Tranvía Murcia
+- SFM Mallorca
+- Metro Madrid (CRTM)
+- Metro Ligero Madrid
+
+### API Endpoint
+
+```
+GET /api/v1/gtfs/stops/{stop_id}/transfers?direction={from|to}
+```
+
+**Parámetros:**
+- `stop_id`: ID de la parada (ej: `TMB_METRO_1.117`, `RENFE_65000`)
+- `direction` (opcional): `from` (desde esta parada), `to` (hacia esta parada)

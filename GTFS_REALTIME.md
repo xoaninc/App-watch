@@ -52,7 +52,64 @@ También existe configuración para Celery Beat como alternativa:
 
 ---
 
-## Operadores Soportados
+## Disponibilidad de Datos en Tiempo Real
+
+### ⚠️ IMPORTANTE: No todos los operadores tienen GTFS-RT
+
+#### Operadores CON tiempo real (GTFS-RT)
+
+| Operador | Formato | Prefijo ID | Datos disponibles |
+|----------|---------|------------|-------------------|
+| **Renfe Cercanías** | JSON | `RENFE_` | Posiciones GPS, retrasos, alertas |
+| **Metro Bilbao** | Protobuf | `METRO_BILBAO_` | Posiciones, retrasos, alertas |
+| **Euskotren** | Protobuf | `EUSKOTREN_` | Posiciones, retrasos, alertas |
+| **FGC** | Protobuf | `FGC_` | Posiciones, retrasos, alertas |
+| **TMB Metro Barcelona** | API iMetro | `TMB_METRO_1.` | Predicciones por estación |
+
+#### Operadores SIN tiempo real (solo GTFS estático)
+
+| Operador | Network Code | Prefijo ID | Notas |
+|----------|--------------|------------|-------|
+| **Metro Madrid** | `11T` | `METRO_` | No publican feed GTFS-RT |
+| **Metro Ligero Madrid** | `12T` | `ML_` | No publican feed GTFS-RT |
+| **Metro Valencia** | `METRO_VALENCIA` | `METRO_VALENCIA_` | No publican feed GTFS-RT |
+| **Metro Granada** | `METRO_GRANADA` | `METRO_GRANADA_` | No publican feed GTFS-RT |
+| **Metro Málaga** | `METRO_MALAGA` | `METRO_MALAGA_` | No publican feed GTFS-RT |
+| **Metro Sevilla** | `32T` | `METRO_SEVILLA_` | No publican feed GTFS-RT |
+| **Metrotenerife** | `METRO_TENERIFE` | `METRO_TENERIFE_` | No publican feed GTFS-RT |
+| **TRAM Barcelona** | `TRAM_BCN` | `TRAM_BCN_` | No publican feed GTFS-RT |
+| **TRAM Alicante** | `TRAM_ALICANTE` | `TRAM_ALICANTE_` | No publican feed GTFS-RT |
+| **Tranvía Murcia** | `TRANVIA_MURCIA` | `TRANVIA_MURCIA_` | No publican feed GTFS-RT |
+| **Tranvía Vitoria** | `TRANVIA_VITORIA` | `TRANVIA_VITORIA_` | No publican feed GTFS-RT |
+| **Tranvía Sevilla** | `31T` | `TRANVIA_SEVILLA_` | No publican feed GTFS-RT |
+| **Tranvía Zaragoza** | `TRANVIA_ZARAGOZA` | `TRANVIA_ZARAGOZA_` | No publican feed GTFS-RT |
+
+### Qué significa esto para la app:
+
+**Operadores CON GTFS-RT** (Renfe, Metro Bilbao, Euskotren, FGC, TMB):
+- `delay_seconds`: Retraso real del tren
+- `train_position`: Posición GPS real
+- `platform`: Andén real (cuando disponible)
+- `platform_estimated: false`
+
+**Operadores SIN GTFS-RT** (Metro Madrid, ML, Tranvías):
+- `delay_seconds: null` - No hay datos de retraso
+- `train_position.estimated: true` - Posición calculada del horario
+- `platform_estimated: true` - Andén estimado del histórico
+- Los horarios vienen del GTFS estático (fiables pero sin tiempo real)
+
+### Confusión común: METRO_ vs METRO_BILBAO_
+
+```
+METRO_120          → Metro MADRID (Nuevos Ministerios) - Solo estático
+METRO_BILBAO_xxx   → Metro BILBAO - Tiene tiempo real
+```
+
+**Metro Madrid no publica feeds GTFS-RT públicos.** Solo disponemos de horarios estáticos.
+
+---
+
+## Operadores con GTFS-RT
 
 El sistema soporta **múltiples operadores** con **diferentes formatos de datos**:
 

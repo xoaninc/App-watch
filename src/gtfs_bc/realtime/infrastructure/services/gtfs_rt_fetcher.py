@@ -20,6 +20,7 @@ from src.gtfs_bc.realtime.infrastructure.models import (
     PlatformHistoryModel,
 )
 from src.gtfs_bc.trip.infrastructure.models import TripModel
+from src.gtfs_bc.route.infrastructure.models import RouteModel
 
 logger = logging.getLogger(__name__)
 
@@ -427,30 +428,27 @@ class GTFSRealtimeFetcher:
         This method updates stop_time_updates with platform info from matching
         vehicle_positions for the same trip_id and stop_id.
 
+        Uses a single bulk UPDATE query for efficiency.
+
         Returns the number of stop_time_updates updated.
         """
-        # Get all vehicle positions with platform info
-        vehicle_positions = (
-            self.db.query(VehiclePositionModel)
-            .filter(VehiclePositionModel.platform.isnot(None))
-            .filter(VehiclePositionModel.stop_id.isnot(None))
-            .all()
-        )
+        from sqlalchemy import text
 
-        if not vehicle_positions:
-            return 0
+        # Use a single UPDATE ... FROM query (PostgreSQL syntax)
+        # This is much faster than running individual queries for each vehicle position
+        sql = text("""
+            UPDATE gtfs_rt_stop_time_updates stu
+            SET platform = vp.platform
+            FROM gtfs_rt_vehicle_positions vp
+            WHERE stu.trip_id = vp.trip_id
+              AND stu.stop_id = vp.stop_id
+              AND stu.platform IS NULL
+              AND vp.platform IS NOT NULL
+              AND vp.stop_id IS NOT NULL
+        """)
 
-        count = 0
-        for vp in vehicle_positions:
-            # Update stop_time_updates for this trip_id and stop_id
-            updated = (
-                self.db.query(StopTimeUpdateModel)
-                .filter(StopTimeUpdateModel.trip_id == vp.trip_id)
-                .filter(StopTimeUpdateModel.stop_id == vp.stop_id)
-                .filter(StopTimeUpdateModel.platform.is_(None))
-                .update({"platform": vp.platform})
-            )
-            count += updated
+        result = self.db.execute(sql)
+        count = result.rowcount
 
         if count > 0:
             self.db.commit()
@@ -512,11 +510,77 @@ class GTFSRealtimeFetcher:
 
         return count
 
+    def _cleanup_stale_realtime_data(self) -> dict:
+        """Clean up stale GTFS-RT data that's no longer being updated.
+
+        Removes:
+        - trip_updates and stop_time_updates for trips > 2 hours old
+        - alerts with active_period_end in the past
+        - alerts without active_period_end that haven't been updated in 24 hours
+
+        Returns dict with counts of deleted records.
+        """
+        from sqlalchemy import text
+
+        # Delete trip_updates older than 2 hours (trips that ended)
+        # This also cascades to stop_time_updates via foreign key
+        sql_trip_updates = text("""
+            DELETE FROM gtfs_rt_trip_updates
+            WHERE updated_at < NOW() - INTERVAL '2 hours'
+        """)
+        result_tu = self.db.execute(sql_trip_updates)
+        tu_count = result_tu.rowcount
+
+        # Delete orphaned stop_time_updates (shouldn't exist due to cascade, but cleanup anyway)
+        sql_stu = text("""
+            DELETE FROM gtfs_rt_stop_time_updates
+            WHERE trip_id NOT IN (SELECT trip_id FROM gtfs_rt_trip_updates)
+        """)
+        result_stu = self.db.execute(sql_stu)
+        stu_count = result_stu.rowcount
+
+        # Delete alerts that have expired (active_period_end in the past)
+        sql_alerts_expired = text("""
+            DELETE FROM gtfs_rt_alerts
+            WHERE active_period_end IS NOT NULL
+              AND active_period_end < NOW()
+        """)
+        result_alerts_exp = self.db.execute(sql_alerts_expired)
+        alerts_expired_count = result_alerts_exp.rowcount
+
+        # Delete alerts without end date that haven't been updated in 24 hours
+        # These are likely alerts that Renfe stopped sending but didn't set an end date
+        sql_alerts_stale = text("""
+            DELETE FROM gtfs_rt_alerts
+            WHERE active_period_end IS NULL
+              AND updated_at < NOW() - INTERVAL '24 hours'
+              AND source != 'manual'
+        """)
+        result_alerts_stale = self.db.execute(sql_alerts_stale)
+        alerts_stale_count = result_alerts_stale.rowcount
+
+        if tu_count > 0 or stu_count > 0 or alerts_expired_count > 0 or alerts_stale_count > 0:
+            self.db.commit()
+            logger.info(
+                f"Cleaned up {tu_count} trip_updates, {stu_count} stop_time_updates, "
+                f"{alerts_expired_count} expired alerts, {alerts_stale_count} stale alerts"
+            )
+
+        return {
+            "trip_updates_deleted": tu_count,
+            "stop_time_updates_deleted": stu_count,
+            "alerts_expired_deleted": alerts_expired_count,
+            "alerts_stale_deleted": alerts_stale_count,
+        }
+
     def fetch_all_sync(self) -> Dict[str, int]:
         """Fetch vehicle positions, trip updates, and alerts synchronously.
 
         Returns a dict with counts of each type.
         """
+        # Clean up stale data first
+        self._cleanup_stale_realtime_data()
+
         vehicle_count = self.fetch_and_store_vehicle_positions_sync()
         trip_count = self.fetch_and_store_trip_updates_sync()
         alerts_count = self.fetch_and_store_alerts_sync()
@@ -592,7 +656,8 @@ class GTFSRealtimeFetcher:
         """Get alerts with optional filters.
 
         Args:
-            route_id: Filter by affected route
+            route_id: Filter by affected route (supports both our format RENFE_C4a_67
+                      and original GTFS format 10T0036C5)
             stop_id: Filter by affected stop
             active_only: Only return currently active alerts (default True)
         """
@@ -609,7 +674,29 @@ class GTFSRealtimeFetcher:
             # Join with entities if filtering
             query = query.join(AlertModel.informed_entities)
             if route_id:
-                query = query.filter(AlertEntityModel.route_id == route_id)
+                # Check if route_id is in our format (e.g., RENFE_C4a_67)
+                # Alerts store the original GTFS route_id (e.g., 10T0036C5) but also
+                # store route_short_name (e.g., C4a). Map our format to short_name.
+                route_short_name = None
+                network_id = None
+                if route_id.startswith(('RENFE_', 'FGC_', 'EUSKOTREN_', 'METRO_BILBAO_', 'TMB_')):
+                    # Look up the route to get its short_name and network_id
+                    route = self.db.query(RouteModel).filter(RouteModel.id == route_id).first()
+                    if route:
+                        route_short_name = route.short_name
+                        network_id = route.network_id
+
+                if route_short_name:
+                    # Search by route_short_name (matches C4a, C5, etc.)
+                    query = query.filter(AlertEntityModel.route_short_name == route_short_name)
+                    # Also filter by network to avoid mixing alerts from different networks
+                    # (e.g., Madrid C4 vs Bilbao C4). GTFS route_id starts with network code.
+                    if network_id:
+                        # GTFS route_id format: {network}T{code}C{line} (e.g., 10T0036C5)
+                        query = query.filter(AlertEntityModel.route_id.like(f"{network_id}%"))
+                else:
+                    # Fallback: search by original route_id
+                    query = query.filter(AlertEntityModel.route_id == route_id)
             if stop_id:
                 query = query.filter(AlertEntityModel.stop_id == stop_id)
 

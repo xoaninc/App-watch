@@ -33,6 +33,7 @@ class NetworkResponse(BaseModel):
     region: str
     color: str
     text_color: str
+    transport_type: str  # cercanias, metro, metro_ligero, tranvia, fgc, euskotren, other
     logo_url: Optional[str] = None
     wikipedia_url: Optional[str] = None
     description: Optional[str] = None
@@ -81,6 +82,7 @@ async def get_networks(db: Session = Depends(get_db)):
                 region=network.region,
                 color=network.color,
                 text_color=network.text_color,
+                transport_type=network.transport_type,
                 logo_url=network.logo_url,
                 wikipedia_url=network.wikipedia_url,
                 description=network.description,
@@ -128,6 +130,17 @@ async def get_network(code: str, db: Session = Depends(get_db)):
             }
         )
 
+    # Filter out generic C4/C8 lines when variants exist (Cercanías only)
+    # C4 splits into C4a (Alcobendas) and C4b (Colmenar Viejo)
+    # C8 splits into C8a (El Escorial) and C8b (Cercedilla)
+    lines_to_exclude = set()
+    if 'C4a' in lines_dict or 'C4b' in lines_dict:
+        lines_to_exclude.add('C4')
+    if 'C8a' in lines_dict or 'C8b' in lines_dict:
+        lines_to_exclude.add('C8')
+    for line_code in lines_to_exclude:
+        lines_dict.pop(line_code, None)
+
     # Convert to list and sort by sort_order (fallback to natural sort)
     lines = sorted(
         [
@@ -150,6 +163,7 @@ async def get_network(code: str, db: Session = Depends(get_db)):
         region=network.region,
         color=network.color,
         text_color=network.text_color,
+        transport_type=network.transport_type,
         logo_url=network.logo_url,
         wikipedia_url=network.wikipedia_url,
         description=network.description,
@@ -194,6 +208,17 @@ async def get_network_lines(code: str, db: Session = Depends(get_db)):
                 "color": route.color,
             }
         )
+
+    # Filter out generic C4/C8 lines when variants exist (Cercanías only)
+    # C4 splits into C4a (Alcobendas) and C4b (Colmenar Viejo)
+    # C8 splits into C8a (El Escorial) and C8b (Cercedilla)
+    lines_to_exclude = set()
+    if 'C4a' in lines_dict or 'C4b' in lines_dict:
+        lines_to_exclude.add('C4')
+    if 'C8a' in lines_dict or 'C8b' in lines_dict:
+        lines_to_exclude.add('C8')
+    for line_code in lines_to_exclude:
+        lines_dict.pop(line_code, None)
 
     return sorted(
         [

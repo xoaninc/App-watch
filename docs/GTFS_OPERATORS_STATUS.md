@@ -1,0 +1,276 @@
+# Estado de Operadores GTFS
+
+**Última actualización:** 2026-01-26
+
+---
+
+## Comparación GTFS vs OSM
+
+### Archivos de Revisión
+
+| Archivo | Descripción |
+|---------|-------------|
+| `revision_final.csv` | **Archivo principal** - 2,054 estaciones para revisar |
+| `revision_simple.csv` | Backup del archivo original con tus notas |
+| `revision_tecnica.csv` | Datos técnicos con coordenadas OSM (uso interno) |
+
+#### Columnas de revision_final.csv
+
+| Columna | Qué hacer |
+|---------|-----------|
+| `ESTA_BIEN` | Marcar **SI** si las líneas de Cor_Metro/Cercanias/Tranvia son correctas |
+| `FALTA_ALGO` | Escribir qué línea falta o si hay error en el nombre |
+
+**Nota:** Se han eliminado 38 entradas internas (vestíbulos, áreas, salidas) que no son estaciones reales.
+
+#### Estadísticas por red (2,054 estaciones)
+
+| Red | Estaciones |
+|-----|------------|
+| RENFE | 774 |
+| METRO (Madrid) | 242 |
+| METRO_BILBAO | 149 |
+| METRO_VALENCIA | 143 |
+| TMB_METRO | 139 |
+| EUSKOTREN | 134 |
+| FGC | 100 |
+| TRAM_ALICANTE | 70 |
+| TRAM_BARCELONA | 58 |
+| ML (Metro Ligero) | 56 |
+| TRANVIA_ZARAGOZA | 32 |
+| SFM_MALLORCA | 31 |
+| TRANVIA_MURCIA | 28 |
+| METRO_GRANADA | 26 |
+| METRO_TENERIFE | 25 |
+| METRO_SEV | 21 |
+| METRO_MALAGA | 19 |
+| TRAM_SEV | 7 |
+
+---
+
+## Resumen
+
+| Operador | GTFS Estático | GTFS-RT | transfers.txt |
+|----------|---------------|---------|---------------|
+| Metro Bilbao | ✅ | ✅ | ❌ |
+| Euskotren | ✅ | ✅ | ✅ (13) |
+| FGC | ✅ | ✅ | ❌ |
+| TMB Metro | ✅ (API key) | ✅ API | ✅ (60) |
+| TRAM Barcelona | ✅ | ❌ | ❌ |
+| TRAM Alicante | 🔧 NAP | ❌ | ❌ |
+| Metro Tenerife | ✅ | ❌ | ✅ (2) |
+| Metro Málaga | 🔧 NAP | ❌ | ✅ (4) |
+| Metrovalencia | 🔧 NAP | ❌ (API*) | ❌ |
+| Metro Granada | 🔧 NAP | ❌ | ❌ |
+| Tranvía Zaragoza | 🔧 NAP | ❌ | ❌ |
+| Tranvía Murcia | 🔧 NAP | ❌ | ❌ |
+| SFM Mallorca | 🔧 NAP | ❌ | ❌ |
+| **Renfe Cercanías** | ✅ | ✅ JSON | ✅ (19)* |
+| Metro Madrid (CRTM) | ✅ | ❌ | ❌ |
+| Metro Ligero Madrid | ✅ | ❌ | ❌ |
+
+**Leyenda:**
+- ✅ = Funciona
+- 🔧 NAP = Requiere descarga manual desde NAP (con login)
+- ❌ (API*) = No hay GTFS-RT; existe API propietaria pero devuelve vacío (ver sección Metrovalencia)
+- ✅ (19)* = Transfers distribuidos por red (40T, 10T, etc.) según route_id
+
+---
+
+## URLs Funcionando ✅
+
+### Metro Bilbao
+- **GTFS Estático:** `https://opendata.euskadi.eus/transport/moveuskadi/metro_bilbao/gtfs_metro_bilbao.zip`
+- **GTFS-RT Vehicle Positions:** `https://opendata.euskadi.eus/transport/moveuskadi/metro_bilbao/gtfsrt_metro_bilbao_vehicle_positions.pb`
+- **GTFS-RT Trip Updates:** `https://opendata.euskadi.eus/transport/moveuskadi/metro_bilbao/gtfsrt_metro_bilbao_trip_updates.pb`
+- **GTFS-RT Alerts:** `https://opendata.euskadi.eus/transport/moveuskadi/metro_bilbao/gtfsrt_metro_bilbao_alerts.pb`
+- **transfers.txt:** NO
+
+### Euskotren
+- **GTFS Estático:** `https://opendata.euskadi.eus/transport/moveuskadi/euskotren/gtfs_euskotren.zip`
+- **GTFS-RT Vehicle Positions:** `https://opendata.euskadi.eus/transport/moveuskadi/euskotren/gtfsrt_euskotren_vehicle_positions.pb`
+- **GTFS-RT Trip Updates:** `https://opendata.euskadi.eus/transport/moveuskadi/euskotren/gtfsrt_euskotren_trip_updates.pb`
+- **GTFS-RT Alerts:** `https://opendata.euskadi.eus/transport/moveuskadi/euskotren/gtfsrt_euskotren_alerts.pb`
+- **transfers.txt:** ✅ SÍ (13 registros)
+
+### FGC (Ferrocarrils de la Generalitat de Catalunya)
+- **GTFS Estático:** `https://www.fgc.cat/google/google_transit.zip`
+- **GTFS-RT Vehicle Positions:** `https://dadesobertes.fgc.cat/api/explore/v2.1/catalog/datasets/vehicle-positions-gtfs_realtime/files/d286964db2d107ecdb1344bf02f7b27b`
+- **GTFS-RT Trip Updates:** `https://dadesobertes.fgc.cat/api/explore/v2.1/catalog/datasets/trip-updates-gtfs_realtime/files/735985017f62fd33b2fe46e31ce53829`
+- **GTFS-RT Alerts:** `https://dadesobertes.fgc.cat/api/explore/v2.1/catalog/datasets/alerts-gtfs_realtime/files/02f92ddc6d2712788903e54468542936`
+- **transfers.txt:** NO
+
+### TMB Metro Barcelona
+- **GTFS Estático:** `https://api.tmb.cat/v1/static/datasets/gtfs.zip?app_id=XXX&app_key=XXX`
+- **GTFS-RT:** API custom `https://api.tmb.cat/v1/imetro/estacions`
+- **Portal:** https://developer.tmb.cat/api-docs/v1/
+- **Notas:** Requiere app_id y app_key
+- **transfers.txt:** ✅ SÍ (60 registros)
+
+### TRAM Barcelona
+- **GTFS Estático Trambaix:** `https://www.tram.cat/documents/20124/260748/google_transit_tram.zip`
+- **GTFS Estático Trambesòs:** `https://www.tram.cat/documents/20124/260749/google_transit_tram_besos.zip`
+- **GTFS-RT:** No disponible
+- **transfers.txt:** NO
+
+### Metro Tenerife
+- **GTFS Estático:** `https://metrotenerife.com/transit/google_transit.zip`
+- **GTFS-RT:** No disponible
+- **Fuente:** Portal datos abiertos Canarias
+- **transfers.txt:** ✅ SÍ (2 registros)
+
+### Renfe Cercanías (todas las regiones)
+- **GTFS Estático:** `https://ssl.renfe.com/ftransit/Fichero_CER_FOMENTO/fomento_transit.zip`
+- **GTFS-RT Vehicle Positions:** `https://gtfsrt.renfe.com/vehicle_positions.json`
+- **GTFS-RT Trip Updates:** `https://gtfsrt.renfe.com/trip_updates.json`
+- **GTFS-RT Alerts:** `https://gtfsrt.renfe.com/alerts.json`
+- **Formato RT:** JSON
+- **Fuente:** data.renfe.com
+- **transfers.txt:** ✅ SÍ (19 registros)
+- **Notas:** Feed unificado para todas las regiones de Cercanías
+- **network_id:** Se extrae del route_id (ej: `40T0002C1` → `40T` Valencia, `10T...` → `10T` Madrid)
+
+### Metro Madrid (CRTM)
+- **GTFS Estático:** `https://crtm.maps.arcgis.com/sharing/rest/content/items/5c7f2951962540d69ffe8f640d94c246/data`
+- **GTFS-RT:** No disponible
+- **Fuente:** CRTM Open Data
+- **transfers.txt:** NO
+
+### Metro Ligero Madrid
+- **GTFS Estático:** `https://crtm.maps.arcgis.com/sharing/rest/content/items/aaed26cc0ff64b0c947ac0bc3e033196/data`
+- **GTFS-RT:** No disponible
+- **Fuente:** CRTM Open Data
+- **transfers.txt:** NO
+
+---
+
+## Metrovalencia (FGV)
+
+### Resumen de APIs
+
+| Tipo | API | Estado |
+|------|-----|--------|
+| **Datos Estáticos** | `valencia.opendatasoft.com` | ✅ Funciona |
+| **Tiempo Real** | `geoportal.valencia.es` | ❌ Devuelve vacío |
+| **GTFS Estático** | NAP (ID 967) | 🔧 Descarga manual |
+| **GTFS-RT** | No existe | ❌ |
+
+### Datos Estáticos ✅ (OpenDataSoft)
+
+| Concepto | Valor |
+|----------|-------|
+| Portal | https://valencia.opendatasoft.com |
+| API Base | `https://valencia.opendatasoft.com/api/explore/v2.1/` |
+| Auth | No requerida (5000 req/día) |
+
+| Dataset | Registros | Descripción |
+|---------|-----------|-------------|
+| `fgv-estacions-estaciones` | 142 | Estaciones (coords, línea, código, URLs) |
+| `fgv-bocas` | 187 | Bocas de acceso |
+| `emt` | 1126 | Paradas de bus EMT |
+
+```bash
+# Exportar estaciones JSON
+GET https://valencia.opendatasoft.com/api/explore/v2.1/catalog/datasets/fgv-estacions-estaciones/exports/json
+
+# Exportar en GeoJSON
+GET https://valencia.opendatasoft.com/api/explore/v2.1/catalog/datasets/fgv-estacions-estaciones/exports/geojson
+```
+
+### Tiempo Real ❌ (Geoportal)
+
+```
+GET https://geoportal.valencia.es/geoportal-services/api/v1/salidas-metro.json?estacion={codigo}
+
+Respuesta: {"salidasMetro":[]}
+```
+
+**Nota:** El campo `proximas_llegadas` en `fgv-estacions-estaciones` apunta a esta API, pero actualmente no devuelve datos de próximas llegadas.
+
+---
+
+## Requieren Descarga Manual (NAP)
+
+Estos operadores requieren descarga desde el NAP con login web:
+- Portal: https://nap.transportes.gob.es
+
+| Operador | NAP ID | URL |
+|----------|--------|-----|
+| TRAM Alicante | 966 | https://nap.transportes.gob.es/Files/Detail/966 |
+| Metrovalencia | 967 | https://nap.transportes.gob.es/Files/Detail/967 |
+| Metro Málaga | 1296 | https://nap.transportes.gob.es/Files/Detail/1296 |
+| Metro Granada | 1370 | https://nap.transportes.gob.es/Files/Detail/1370 |
+| Tranvía Zaragoza | 1394 | https://nap.transportes.gob.es/Files/Detail/1394 |
+| Tranvía Murcia | 1371 | https://nap.transportes.gob.es/Files/Detail/1371 |
+| SFM Mallorca | 1071 | https://nap.transportes.gob.es/Files/Detail/1071 |
+
+**Nota:** La API key del NAP no permite descargas directas. Se requiere login web.
+
+---
+
+## Transfers.txt - Resumen
+
+| Operador | Registros | Fuente |
+|----------|-----------|--------|
+| TMB Metro Barcelona | 60 | GTFS URL |
+| Renfe Cercanías | 19 | GTFS URL (distribuidos por network: 40T, 10T, etc.) |
+| Euskotren | 13 | GTFS URL |
+| Metro Málaga | 4 | NAP (manual) |
+| Metro Tenerife | 2 | GTFS URL |
+| **Total** | **98** | |
+
+### Operadores verificados SIN transfers.txt
+- Metro Bilbao ❌
+- FGC ❌
+- TRAM Barcelona ❌
+- TRAM Alicante ❌
+- Metrovalencia ❌
+- Metro Granada ❌
+- Tranvía Zaragoza ❌
+- Tranvía Murcia ❌
+- SFM Mallorca ❌
+- Metro Madrid (CRTM) ❌
+- Metro Ligero Madrid ❌
+
+---
+
+## Archivos de Configuración
+
+| Archivo | Descripción |
+|---------|-------------|
+| `scripts/operators_config.py` | Configuración de operadores |
+| `scripts/import_transfers.py` | Importador de transfers |
+| `src/gtfs_bc/realtime/infrastructure/services/multi_operator_fetcher.py` | Fetcher multi-operador |
+
+---
+
+## API Endpoint (Desplegado ✅)
+
+```
+GET /api/v1/gtfs/stops/{stop_id}/transfers?direction={from|to}
+```
+
+**Parámetros:**
+- `stop_id`: ID de la parada (ej: `TMB_METRO_1.117`, `EUSKOTREN_ES:Euskotren:StopPlace:1480:`)
+- `direction` (opcional): `from` (transfers desde esta parada), `to` (transfers hacia esta parada)
+
+**Ejemplo respuesta:**
+```json
+{
+  "id": 100,
+  "from_stop_id": "TMB_METRO_1.117",
+  "to_stop_id": "TMB_METRO_1.915",
+  "transfer_type": 2,
+  "min_transfer_time": 45,
+  "from_stop_name": "Torrassa",
+  "to_stop_name": "Torrassa",
+  "network_id": "TMB_METRO",
+  "source": "gtfs"
+}
+```
+
+**Transfer types (GTFS estándar):**
+- 0 = Punto de transbordo recomendado
+- 1 = Transbordo temporizado (vehículo espera)
+- 2 = Tiempo mínimo requerido
+- 3 = Transbordo no posible

@@ -23,6 +23,8 @@ class GTFSRTScheduler:
 
     # Fetch interval in seconds (30 seconds for real-time accuracy)
     FETCH_INTERVAL = 30
+    # Maximum time allowed for a single fetch (60 seconds since operators have 45s individual timeouts)
+    FETCH_TIMEOUT = 60
 
     def __init__(self):
         self._running = False
@@ -79,6 +81,9 @@ class GTFSRTScheduler:
         while self._running:
             try:
                 await self._do_fetch()
+            except asyncio.TimeoutError:
+                self._error_count += 1
+                logger.error(f"GTFS-RT fetch timeout after {self.FETCH_TIMEOUT}s")
             except Exception as e:
                 self._error_count += 1
                 logger.error(f"GTFS-RT fetch error: {e}")
@@ -87,10 +92,15 @@ class GTFSRTScheduler:
             await asyncio.sleep(self.FETCH_INTERVAL)
 
     async def _do_fetch(self):
-        """Perform a single GTFS-RT fetch."""
-        # Run the synchronous fetch in a thread pool
+        """Perform a single GTFS-RT fetch with timeout."""
+        # Run the synchronous fetch in a thread pool with timeout
         loop = asyncio.get_event_loop()
-        result = await loop.run_in_executor(None, self._fetch_sync)
+
+        # Wrap the fetch in a timeout
+        result = await asyncio.wait_for(
+            loop.run_in_executor(None, self._fetch_sync),
+            timeout=self.FETCH_TIMEOUT
+        )
 
         self._last_fetch = datetime.utcnow()
         self._fetch_count += 1
