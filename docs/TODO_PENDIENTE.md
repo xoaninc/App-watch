@@ -1,6 +1,6 @@
 # TODO - Tareas Pendientes
 
-**Última actualización:** 2026-01-26 19:00
+**Última actualización:** 2026-01-26 19:30
 
 ---
 
@@ -161,16 +161,27 @@ Añadidos platforms para Sagrera (L1, L5, L9N/L10N). Verificados todos los inter
 
 ### ✅ Plataformas completadas para todas las paradas (2026-01-26)
 
-Añadidas 402 plataformas faltantes usando coordenadas GTFS:
+Añadidas 403 plataformas faltantes usando coordenadas GTFS:
 
 | Red | Añadidas | Total |
 |-----|----------|-------|
-| FGC | +358 | 412 |
+| FGC | +359 | 412 |
 | TMB Barcelona | +24 | 199 |
 | Metro Madrid | +13 | 570 |
 | Tram Sevilla | +7 | 179 |
 
-**Total plataformas en producción:** 2,988
+**Nota:** FGC_PC (Plaça Catalunya) añadido como estación padre con todas las líneas (L6, L7, S1, S2).
+
+**Total plataformas en producción:** 2,989
+
+### Resumen Base de Datos (2026-01-26)
+
+| Datos | Total |
+|-------|-------|
+| Platforms | 2,989 |
+| Correspondencias | 246 |
+| Trips con headsign | 237,054 |
+| Shape points | 578,594 |
 
 ---
 
