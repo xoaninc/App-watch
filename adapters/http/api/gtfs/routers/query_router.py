@@ -443,10 +443,10 @@ class AgencyResponse(BaseModel):
 
 
 class PlatformResponse(BaseModel):
-    """Platform coordinates for a specific line at a stop."""
+    """Platform coordinates for one or more lines at a stop."""
     id: int
     stop_id: str
-    line: str
+    lines: str  # Single line "L6" or multiple "C2, C3, C4a, C4b"
     lat: float
     lon: float
     source: Optional[str]
@@ -1985,7 +1985,7 @@ def get_stop_platforms(
     # Get all platforms for this stop
     platforms = db.query(StopPlatformModel).filter(
         StopPlatformModel.stop_id == stop_id
-    ).order_by(StopPlatformModel.line).all()
+    ).order_by(StopPlatformModel.lines).all()
 
     return StopPlatformsResponse(
         stop_id=stop_id,
