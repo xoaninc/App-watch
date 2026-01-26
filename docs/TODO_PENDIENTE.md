@@ -164,6 +164,7 @@ No hay tareas pendientes de shapes o correspondencias.
 ### Mejoras opcionales (baja prioridad)
 
 - [ ] Investigar API Valencia tiempo real (devuelve vacío)
+- [ ] Investigar servicio CIVIS Madrid - es un servicio semi-directo que podría tener su propia ruta/identificación en la app (actualmente headsign muestra destino real)
 - [x] ~~Mapear shapes OSM a route_ids existentes~~ ✅ Completado 2026-01-26
 
 ### ✅ Shapes OSM mapeados a rutas (2026-01-26)
