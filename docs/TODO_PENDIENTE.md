@@ -1,6 +1,6 @@
 # TODO - Tareas Pendientes
 
-**Última actualización:** 2026-01-26 14:30
+**Última actualización:** 2026-01-26 18:00
 
 ---
 
@@ -76,9 +76,9 @@ Extraídos desde OpenStreetMap usando Overpass API:
 - `TRAM_BCN_T6_4665785`, `TRAM_BCN_T6_4665786` (T6 ida/vuelta)
 - `METRO_SEV_L1_255088`, `METRO_SEV_L1_7781388` (L1 ida/vuelta)
 
-### ✅ Correspondencias Barcelona (TMB ↔ FGC ↔ Rodalies)
+### ✅ Correspondencias Estaciones Principales (TODAS LAS CIUDADES)
 
-Añadidas 22 correspondencias nuevas:
+#### Barcelona
 
 | Estación | Conexiones |
 |----------|------------|
@@ -86,12 +86,54 @@ Añadidas 22 correspondencias nuevas:
 | Passeig de Gràcia | TMB L2/L4 ↔ RENFE, TMB L3 ↔ RENFE |
 | Sants Estació | TMB L3 ↔ RENFE, TMB L5 ↔ RENFE |
 | Arc de Triomf | TMB L1 ↔ RENFE |
+| Espanya | TMB L1 ↔ FGC, TMB L3 ↔ FGC |
+| Sagrera | TMB L1 ↔ L5 ↔ L9N/L10N ↔ RENFE |
+| Clot | TMB L1 ↔ L2 ↔ RENFE |
 
-**IDs usados:**
-- Catalunya: TMB_METRO_1.126 (L1), TMB_METRO_1.326 (L3), FGC_PC, RENFE_78805
-- Passeig de Gràcia: TMB_METRO_1.213 (L2/L4), TMB_METRO_1.327 (L3), TMB_METRO_1.425 (L4), RENFE_71802
-- Sants: TMB_METRO_1.319 (L3), TMB_METRO_1.518 (L5), RENFE_71801
-- Arc de Triomf: TMB_METRO_1.128 (L1), RENFE_78804
+#### Madrid
+
+| Estación | Conexiones |
+|----------|------------|
+| Sol | Metro L1 ↔ L2 ↔ L3 ↔ RENFE C3/C4 |
+| Nuevos Ministerios | Metro L6 ↔ L8 ↔ L10 ↔ RENFE |
+| Atocha | Metro L1 ↔ RENFE |
+| Chamartín | Metro L1 ↔ L10 ↔ RENFE |
+| Príncipe Pío | Metro L6 ↔ L10 ↔ RENFE |
+| Méndez Álvaro | Metro L6 ↔ RENFE |
+
+#### Bilbao
+
+| Estación | Conexiones |
+|----------|------------|
+| Abando | Metro Bilbao L1/L2 ↔ RENFE ↔ Euskotren |
+| Casco Viejo | Metro Bilbao L1/L2 ↔ Euskotren |
+
+#### Valencia
+
+| Estación | Conexiones |
+|----------|------------|
+| Àngel Guimerà | Metrovalencia L1/L2/L5 ↔ RENFE |
+
+#### Sevilla
+
+| Estación | Conexiones |
+|----------|------------|
+| San Bernardo | Metro Sevilla L1 ↔ RENFE |
+
+### ✅ Limpieza de Datos Erróneos
+
+- Eliminadas 22 correspondencias inválidas entre ciudades (ej: Zaragoza Delicias ↔ Madrid Metro, distancia >350km)
+- Eliminadas 6 paradas mal asignadas a rutas:
+  - RENFE_4040 (Zaragoza) en C10 Madrid
+  - RENFE_54501 (Victoria Kent Málaga) en R3 Barcelona
+  - METRO_285 (T4 Madrid) en C1 Málaga
+  - ML_59 (Metro Ligero) en C3 Madrid
+  - RENFE_5436 (Asturias) en C2 Santander
+  - RENFE_71602 (Calafell costa) en RL4 interior
+
+### ✅ Platforms Verificados para Estaciones Principales
+
+Añadidos platforms para Sagrera (L1, L5, L9N/L10N). Verificados todos los intercambiadores principales tienen platforms con coordenadas.
 
 ---
 
