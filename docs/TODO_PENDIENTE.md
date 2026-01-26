@@ -1,6 +1,6 @@
 # TODO - Tareas Pendientes
 
-**Última actualización:** 2026-01-26 23:45
+**Última actualización:** 2026-01-27 00:30
 
 ---
 
@@ -34,9 +34,10 @@
 | Metro Granada | 1 | 26 | ✅ Creado desde estaciones 2026-01-26 |
 | Metrovalencia | 20 | 11,390 | ✅ Extraído de OSM 2026-01-26 (10 líneas x 2 dir) |
 | TRAM Alicante | 12 | 6,858 | ✅ Extraído de OSM 2026-01-26 (6 líneas x 2 dir) |
+| Tranvía Sevilla (Metrocentro) | 2 | 552 | ✅ Extraído de OSM 2026-01-27 |
 
-**Total en producción:** 888 shapes, 591,925 puntos
-**Trips con shape:** 239,205
+**Total en producción:** 890 shapes, 592,477 puntos
+**Trips con shape:** 239,207
 **Trips sin shape:** 1,218 (trips huérfanos)
 
 ---
@@ -60,7 +61,7 @@ Importados automáticamente desde NAP usando credenciales de `.env.local`:
 
 **Nota:** Metro Sevilla (NAP ID 1385, no 1583) tiene el archivo shapes.txt pero está VACÍO (solo header). Se extrajeron de OSM.
 
-### ✅ Shapes de OSM (Metro Sevilla y TRAM Barcelona)
+### ✅ Shapes de OSM (Metro Sevilla, TRAM Barcelona, Tranvía Sevilla)
 
 Extraídos desde OpenStreetMap usando Overpass API:
 
@@ -68,6 +69,7 @@ Extraídos desde OpenStreetMap usando Overpass API:
 |-----|--------|--------|------------|
 | TRAM Barcelona | 12 | 5,136 | Relations T1-T6 (ida/vuelta) |
 | Metro Sevilla | 2 | 1,227 | Relations L1 (ida/vuelta) |
+| Tranvía Sevilla (Metrocentro) | 2 | 552 | Tracks railway=tram (2026-01-27) |
 
 **IDs de shapes OSM:**
 - `TRAM_BCN_T1_4666995`, `TRAM_BCN_T1_4666996` (T1 ida/vuelta)
@@ -77,6 +79,7 @@ Extraídos desde OpenStreetMap usando Overpass API:
 - `TRAM_BCN_T5_4665783`, `TRAM_BCN_T5_4665784` (T5 ida/vuelta)
 - `TRAM_BCN_T6_4665785`, `TRAM_BCN_T6_4665786` (T6 ida/vuelta)
 - `METRO_SEV_L1_255088`, `METRO_SEV_L1_7781388` (L1 ida/vuelta)
+- `TRAM_SEV_T1_OSM`, `TRAM_SEV_T1_OSM_REV` (Metrocentro T1 ida/vuelta)
 
 ### ✅ Correspondencias Estaciones Principales (TODAS LAS CIUDADES)
 
@@ -343,4 +346,7 @@ curl "https://redcercanias.com/api/v1/gtfs/routes/TRAM_BCN_T6/shape"
 
 # Metro Sevilla L1
 curl "https://redcercanias.com/api/v1/gtfs/routes/METRO_SEV_L1_CE_OQ/shape"
+
+# Tranvía Sevilla (Metrocentro) T1
+curl "https://juanmacias.com/api/v1/gtfs/routes/TRAM_SEV_T1/shape"
 ```
