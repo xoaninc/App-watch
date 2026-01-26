@@ -1,5 +1,9 @@
 """Centralized API schemas for GTFS endpoints."""
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 from .route_schemas import (
     RouteResponse,
     RouteFrequencyResponse,
@@ -45,7 +49,8 @@ from .realtime_schemas import (
 
 from .import_schemas import ImportStatusResponse
 
-__all__ = [
+# Required schemas that must exist for the API to function
+REQUIRED_SCHEMAS = [
     # Route schemas
     "RouteResponse",
     "RouteFrequencyResponse",
@@ -84,3 +89,39 @@ __all__ = [
     # Import schemas
     "ImportStatusResponse",
 ]
+
+# Export all required schemas
+__all__ = REQUIRED_SCHEMAS
+
+
+def validate_schemas() -> bool:
+    """Validate that all required schemas are available.
+
+    This function checks that all schemas listed in REQUIRED_SCHEMAS
+    are properly imported and accessible. Called at module load time.
+
+    Returns:
+        True if all schemas are valid
+
+    Raises:
+        ImportError: If any required schema is missing
+    """
+    import sys
+    current_module = sys.modules[__name__]
+
+    missing = []
+    for schema_name in REQUIRED_SCHEMAS:
+        if not hasattr(current_module, schema_name):
+            missing.append(schema_name)
+
+    if missing:
+        error_msg = f"Missing required schemas: {', '.join(missing)}"
+        logger.error(error_msg)
+        raise ImportError(error_msg)
+
+    logger.debug(f"Schema validation passed: {len(REQUIRED_SCHEMAS)} schemas loaded")
+    return True
+
+
+# Validate schemas at import time
+validate_schemas()
