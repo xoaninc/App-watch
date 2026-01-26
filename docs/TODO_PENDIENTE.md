@@ -32,10 +32,10 @@
 | Metro Málaga | 4 | 260 | ✅ Importado 2026-01-26 |
 | Tranvía Zaragoza | 2 | 252 | ✅ Importado 2026-01-26 |
 | Metro Tenerife | 4 | 132 | ✅ Importado 2026-01-26 |
-| Metro Sevilla | 2 | 1,227 | ✅ Extraído de OSM 2026-01-26 |
+| Metro Sevilla | 2 | 544 | ✅ Reextraído de OSM 2026-01-26 (272 pts x 2 dir) |
 | TRAM Barcelona | 12 | 5,136 | ✅ Extraído de OSM 2026-01-26 |
 
-**Total en producción:** 882 shapes, 578,594 puntos
+**Total en producción:** 882 shapes, 577,911 puntos
 
 ---
 
@@ -181,7 +181,7 @@ Añadidas 403 plataformas faltantes usando coordenadas GTFS:
 | Platforms | 2,989 |
 | Correspondencias | 246 |
 | Trips con headsign | 237,054 |
-| Shape points | 578,594 |
+| Shape points | 577,911 |
 
 ---
 
