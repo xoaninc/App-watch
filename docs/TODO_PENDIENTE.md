@@ -1,6 +1,6 @@
 # TODO - Tareas Pendientes
 
-**Última actualización:** 2026-01-26 18:00
+**Última actualización:** 2026-01-26 18:30
 
 ---
 
@@ -134,6 +134,24 @@ Extraídos desde OpenStreetMap usando Overpass API:
 ### ✅ Platforms Verificados para Estaciones Principales
 
 Añadidos platforms para Sagrera (L1, L5, L9N/L10N). Verificados todos los intercambiadores principales tienen platforms con coordenadas.
+
+### ✅ Fix headsign CIVIS (2026-01-26)
+
+735 trips tenían headsign "CIVIS" en lugar del destino real. CIVIS es un servicio semi-directo de Renfe, no un destino.
+
+**Fix:** Actualizado headsign con la última parada del viaje (destino real).
+
+| Ruta | Destinos reales |
+|------|-----------------|
+| C1 Valencia | València Estació del Nord |
+| C1 Asturias | Llamaquique, Gijón Sanz Crespo |
+| C1 Alicante | Alacant Terminal |
+| C2 Madrid | Chamartín RENFE, Guadalajara |
+| C3 Madrid | Chamartín RENFE, Aranjuez |
+| C3 Asturias | Avilés, Llamaquique |
+| C4 Bilbao | Ametzola |
+| C6 Valencia | València, Castelló de la Plana, Vila-real |
+| C10 Madrid | Villalba de Guadarrama, Chamartín RENFE |
 
 ---
 
