@@ -1,204 +1,34 @@
 from typing import List, Optional
-from datetime import datetime, date, time, timedelta
+from datetime import datetime, time
 from zoneinfo import ZoneInfo
 import math
+import re as regex_module
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_, func
 
-MADRID_TZ = ZoneInfo("Europe/Madrid")
-
-
-def get_spanish_holidays(year: int) -> set:
-    """Get Spanish national and Madrid regional holidays for a given year.
-
-    Returns a set of date objects for holidays.
-    """
-    holidays = set()
-
-    # National holidays (fiestas nacionales)
-    holidays.add(date(year, 1, 1))    # Año Nuevo
-    holidays.add(date(year, 1, 6))    # Epifanía del Señor (Reyes)
-    holidays.add(date(year, 5, 1))    # Día del Trabajador
-    holidays.add(date(year, 8, 15))   # Asunción de la Virgen
-    holidays.add(date(year, 10, 12))  # Fiesta Nacional de España
-    holidays.add(date(year, 11, 1))   # Todos los Santos
-    holidays.add(date(year, 12, 6))   # Día de la Constitución
-    holidays.add(date(year, 12, 8))   # Inmaculada Concepción
-    holidays.add(date(year, 12, 25))  # Navidad
-
-    # Madrid regional holidays
-    holidays.add(date(year, 5, 2))    # Día de la Comunidad de Madrid
-    holidays.add(date(year, 5, 15))   # San Isidro (Madrid capital)
-    holidays.add(date(year, 11, 9))   # Almudena (Madrid capital)
-
-    # Easter (variable dates) - approximate calculation
-    # Using Anonymous Gregorian algorithm
-    a = year % 19
-    b = year // 100
-    c = year % 100
-    d = b // 4
-    e = b % 4
-    f = (b + 8) // 25
-    g = (b - f + 1) // 3
-    h = (19 * a + b - d - g + 15) % 30
-    i = c // 4
-    k = c % 4
-    l = (32 + 2 * e + 2 * i - h - k) % 7
-    m = (a + 11 * h + 22 * l) // 451
-    month = (h + l - 7 * m + 114) // 31
-    day = ((h + l - 7 * m + 114) % 31) + 1
-    easter_sunday = date(year, month, day)
-
-    # Jueves Santo (Thursday before Easter)
-    holidays.add(easter_sunday - timedelta(days=3))
-    # Viernes Santo (Friday before Easter)
-    holidays.add(easter_sunday - timedelta(days=2))
-
-    return holidays
-
-
-def is_holiday(check_date: date) -> bool:
-    """Check if a date is a holiday."""
-    holidays = get_spanish_holidays(check_date.year)
-    return check_date in holidays
-
-
-def is_pre_holiday(check_date: date) -> bool:
-    """Check if a date is a pre-holiday (víspera de festivo).
-
-    A pre-holiday is the day before a holiday, when extended
-    (friday/saturday) schedules typically apply.
-    """
-    tomorrow = check_date + timedelta(days=1)
-    return is_holiday(tomorrow)
-
-
-def get_effective_day_type(now: datetime) -> str:
-    """Determine the effective day type considering holidays and pre-holidays.
-
-    Returns: 'weekday', 'friday', 'saturday', or 'sunday'
-
-    Logic:
-    - Sunday or holiday -> 'sunday'
-    - Saturday -> 'saturday'
-    - Friday or pre-holiday (víspera) -> 'friday' (extended hours)
-    - Monday-Thursday -> 'weekday'
-    """
-    current_date = now.date()
-    weekday = now.weekday()  # 0=Monday, 6=Sunday
-
-    # Check if today is a holiday -> use sunday schedule
-    if is_holiday(current_date):
-        return "sunday"
-
-    # Sunday
-    if weekday == 6:
-        return "sunday"
-
-    # Saturday
-    if weekday == 5:
-        return "saturday"
-
-    # Friday or pre-holiday (víspera) -> extended hours
-    if weekday == 4 or is_pre_holiday(current_date):
-        return "friday"
-
-    # Monday-Thursday
-    return "weekday"
-
-
-# Prefixes for networks with real GTFS-RT data (don't filter by operating hours)
-GTFS_RT_PREFIXES = (
-    "RENFE_",        # Cercanías RENFE
-    "TMB_METRO_",    # Metro Barcelona
-    "FGC_",          # FGC
-    "EUSKOTREN_",    # Euskotren
-    "METRO_BILBAO_", # Metro Bilbao
+# Centralized imports
+from adapters.http.api.gtfs.utils.holiday_utils import get_effective_day_type, MADRID_TZ
+from adapters.http.api.gtfs.utils.route_utils import is_static_gtfs_route, is_route_operating, has_real_cercanias
+from adapters.http.api.gtfs.schemas import (
+    RouteResponse,
+    RouteFrequencyResponse,
+    DayOperatingHours,
+    RouteOperatingHoursResponse,
+    ShapePointResponse,
+    RouteShapeResponse,
+    StopResponse,
+    RouteStopResponse,
+    PlatformResponse,
+    StopPlatformsResponse,
+    CorrespondenceResponse,
+    StopCorrespondencesResponse,
+    TrainPositionSchema,
+    DepartureResponse,
+    TripStopResponse,
+    TripDetailResponse,
+    AgencyResponse,
 )
-
-def is_static_gtfs_route(route_id: str) -> bool:
-    """Check if a route uses static GTFS (no real-time data).
-
-    Routes with GTFS-RT don't need operating hours filtering since
-    real-time data already reflects actual service.
-    """
-    return not any(route_id.startswith(prefix) for prefix in GTFS_RT_PREFIXES)
-
-
-def is_route_operating(db, route_id: str, current_seconds: int, day_type: str) -> bool:
-    """Check if a route is currently operating based on its frequency schedule.
-
-    Returns True if current time is within operating hours, False otherwise.
-    For routes without frequency data, returns True (assume always operating).
-    """
-    # Get frequencies for this route and day type
-    frequencies = db.query(RouteFrequencyModel).filter(
-        RouteFrequencyModel.route_id == route_id,
-        RouteFrequencyModel.day_type == day_type
-    ).all()
-
-    if not frequencies:
-        # No frequency data - assume always operating (or use stop_times)
-        return True
-
-    def parse_time_to_seconds(time_val) -> int:
-        """Parse time (TIME or VARCHAR like '25:30:00') to seconds."""
-        if hasattr(time_val, 'hour'):
-            # It's a time object
-            return time_val.hour * 3600 + time_val.minute * 60 + time_val.second
-        else:
-            # It's a string like "25:30:00"
-            parts = str(time_val).split(':')
-            return int(parts[0]) * 3600 + int(parts[1]) * 60 + int(parts[2])
-
-    # First pass: find max_end from ALL entries (including aggregates)
-    # This gives us the actual closing time (e.g., 25:30:00 = 01:30 AM)
-    max_end = None
-    for freq in frequencies:
-        end_secs = parse_time_to_seconds(freq.end_time)
-        if max_end is None or end_secs > max_end:
-            max_end = end_secs
-
-    # Second pass: find min_start from NON-aggregate entries only
-    # Aggregates have start=00:00:00 AND end>=25:00:00 - they represent full day summary
-    min_start = None
-    for freq in frequencies:
-        start_secs = parse_time_to_seconds(freq.start_time)
-        end_secs = parse_time_to_seconds(freq.end_time)
-
-        # Skip aggregates (00:00:00 to 25:00:00+) for min_start calculation
-        is_aggregate = start_secs == 0 and end_secs >= 25 * 3600
-        if is_aggregate:
-            continue
-
-        if min_start is None or start_secs < min_start:
-            min_start = start_secs
-
-    # If no valid min_start found (only aggregates), use default opening time
-    # Metro typically opens around 6:00-6:05 AM
-    if min_start is None:
-        min_start = 6 * 3600  # Default to 6:00 AM (21600 seconds)
-
-    if max_end is None:
-        return True  # No valid data
-
-    # Check if current time is within operating hours
-    # Handle overnight (max_end > 24h means service extends past midnight)
-    if max_end > 24 * 3600:
-        # Service runs past midnight (e.g., until 01:30 = 25:30:00)
-        # Operating if: current >= min_start OR current <= (max_end - 24h)
-        late_night_cutoff = max_end - 24 * 3600  # e.g., 5400 for 01:30 AM
-        if current_seconds >= min_start or current_seconds <= late_night_cutoff:
-            return True
-    else:
-        # Normal hours
-        if min_start <= current_seconds <= max_end:
-            return True
-
-    return False
-
 
 from core.database import get_db
 from src.gtfs_bc.route.infrastructure.models import RouteModel, RouteFrequencyModel
@@ -223,282 +53,21 @@ from src.gtfs_bc.stop.infrastructure.models.stop_correspondence_model import Sto
 router = APIRouter(prefix="/gtfs", tags=["GTFS Query"])
 
 
-# Response schemas
-class RouteResponse(BaseModel):
-    id: str
-    short_name: str
-    long_name: str
-    route_type: int
-    color: Optional[str]
-    text_color: Optional[str]
-    agency_id: str
-    network_id: Optional[str]
-    description: Optional[str] = None
-
-    class Config:
-        from_attributes = True
-
-
-class RouteFrequencyResponse(BaseModel):
-    """Frequency data for a route (Metro, ML, Tranvía)."""
-    trip_id: Optional[str] = None  # Optional - not always available
-    route_id: Optional[str] = None  # Optional for compatibility
-    day_type: str  # 'weekday', 'saturday', 'sunday'
-    start_time: str  # HH:MM:SS format
-    end_time: str  # HH:MM:SS format
-    headway_secs: int  # Interval between trains in seconds
-    headway_minutes: Optional[float] = None  # Interval in minutes (for convenience)
-
-    class Config:
-        from_attributes = True
-
-
-class DayOperatingHours(BaseModel):
-    """Operating hours for a single day type."""
-    first_departure: Optional[str]  # HH:MM:SS format
-    last_departure: Optional[str]  # HH:MM:SS format
-    total_trips: int
-
-
-class RouteOperatingHoursResponse(BaseModel):
-    """Operating hours for a route (derived from stop_times for Cercanías)."""
-    route_id: str
-    route_short_name: str
-    weekday: Optional[DayOperatingHours]  # Monday-Thursday
-    friday: Optional[DayOperatingHours]   # Friday (extended hours)
-    saturday: Optional[DayOperatingHours]
-    sunday: Optional[DayOperatingHours]
-    is_suspended: bool = False  # True if service is suspended (from alerts)
-    suspension_message: Optional[str] = None  # Alert message if suspended
-
-
-import re as regex_module
-
-
-def _has_real_cercanias(cor_cercanias: Optional[str]) -> bool:
-    """Check if cor_cercanias contains real Cercanías lines (C* or R* patterns).
-
-    Filters out Euskotren lines (E1, E2, TR) which may appear in cor_cercanias
-    but are not actually Renfe Cercanías.
-
-    Args:
-        cor_cercanias: Comma-separated list of Cercanías lines (e.g., "C1, C3, R2")
-
-    Returns:
-        True if any line matches C* or R* pattern (Cercanías/Rodalies Renfe)
-    """
-    if not cor_cercanias:
-        return False
-    lines = [line.strip() for line in cor_cercanias.split(',')]
-    for line in lines:
-        # Match C1, C2, R1, R2, etc. (Renfe Cercanías/Rodalies)
-        if regex_module.match(r'^[CR]\d', line):
-            return True
-    return False
-
-
 def _calculate_is_hub(stop: StopModel) -> bool:
     """Calculate if a stop is a transport hub.
 
-    A hub is a station with 2 or more DIFFERENT transport types:
-    - Metro (cor_metro)
-    - Cercanías/Rodalies (cor_cercanias with C*/R* lines only)
-    - Metro Ligero (cor_ml)
-    - Tranvía (cor_tranvia)
-
-    Note: Multiple lines of the same type don't make a hub.
+    A hub is a station with 2 or more DIFFERENT transport types.
     """
     transport_count = 0
-
     if stop.cor_metro:
         transport_count += 1
-
-    if _has_real_cercanias(stop.cor_cercanias):
+    if has_real_cercanias(stop.cor_cercanias):
         transport_count += 1
-
     if stop.cor_ml:
         transport_count += 1
-
     if stop.cor_tranvia:
         transport_count += 1
-
     return transport_count >= 2
-
-
-class StopResponse(BaseModel):
-    id: str
-    name: str
-    lat: float
-    lon: float
-    code: Optional[str]
-    location_type: int
-    parent_station_id: Optional[str]
-    zone_id: Optional[str]
-    province: Optional[str]
-    lineas: Optional[str]
-    parking_bicis: Optional[str]
-    accesibilidad: Optional[str]
-    cor_bus: Optional[str]
-    cor_metro: Optional[str]
-    cor_ml: Optional[str]
-    cor_cercanias: Optional[str]
-    cor_tranvia: Optional[str]
-    is_hub: bool = False  # True if station has 2+ different transport types
-
-    class Config:
-        from_attributes = True
-
-
-class RouteStopResponse(BaseModel):
-    """Stop response with route sequence information."""
-    id: str
-    name: str
-    lat: float
-    lon: float
-    code: Optional[str]
-    location_type: int
-    parent_station_id: Optional[str]
-    zone_id: Optional[str]
-    province: Optional[str]
-    lineas: Optional[str]
-    parking_bicis: Optional[str]
-    accesibilidad: Optional[str]
-    cor_bus: Optional[str]
-    cor_metro: Optional[str]
-    cor_ml: Optional[str]
-    cor_cercanias: Optional[str]
-    cor_tranvia: Optional[str]
-    is_hub: bool = False  # True if station has 2+ different transport types
-    stop_sequence: int  # Position in the route (1-based)
-
-    class Config:
-        from_attributes = True
-
-
-class TrainPositionSchema(BaseModel):
-    """Current position of the train."""
-    latitude: float
-    longitude: float
-    current_stop_name: str
-    status: str  # STOPPED_AT, IN_TRANSIT_TO, INCOMING_AT
-    progress_percent: float
-    estimated: bool = True  # True if calculated from schedule, False if from GTFS-RT
-
-
-class DepartureResponse(BaseModel):
-    trip_id: str
-    route_id: str
-    route_short_name: str
-    route_color: Optional[str]
-    headsign: Optional[str]
-    departure_time: str
-    departure_seconds: int
-    minutes_until: int
-    stop_sequence: int
-    # Platform/track info (from GTFS-RT when available, or estimated from history)
-    platform: Optional[str] = None
-    platform_estimated: bool = False  # True if platform is estimated from history
-    # Realtime delay fields
-    delay_seconds: Optional[int] = None
-    realtime_departure_time: Optional[str] = None
-    realtime_minutes_until: Optional[int] = None
-    is_delayed: bool = False
-    # Train position (from GTFS-RT or estimated)
-    train_position: Optional[TrainPositionSchema] = None
-    # Frequency-based estimation (for Metro/ML without GTFS-RT)
-    frequency_based: bool = False  # True if departure is estimated from frequency data
-    headway_secs: Optional[int] = None  # Frequency headway in seconds (e.g., 300 = every 5 min)
-
-
-class TripStopResponse(BaseModel):
-    stop_id: str
-    stop_name: str
-    arrival_time: str
-    departure_time: str
-    stop_sequence: int
-    stop_lat: float
-    stop_lon: float
-
-
-class TripDetailResponse(BaseModel):
-    id: str
-    route_id: str
-    route_short_name: str
-    route_long_name: str
-    route_color: Optional[str]
-    headsign: Optional[str]
-    direction_id: Optional[int]
-    stops: List[TripStopResponse]
-
-
-class AgencyResponse(BaseModel):
-    id: str
-    name: str
-    url: Optional[str]
-    timezone: str
-    lang: Optional[str]
-    phone: Optional[str]
-
-    class Config:
-        from_attributes = True
-
-
-class PlatformResponse(BaseModel):
-    """Platform coordinates for one or more lines at a stop."""
-    id: int
-    stop_id: str
-    lines: str  # Single line "L6" or multiple "C2, C3, C4a, C4b"
-    lat: float
-    lon: float
-    source: Optional[str]
-    color: Optional[str] = None  # Hex color without # (e.g., 'FF0000')
-    description: Optional[str] = None  # Platform direction (e.g., 'Dirección Nuevos Ministerios')
-
-    class Config:
-        from_attributes = True
-
-
-class StopPlatformsResponse(BaseModel):
-    """All platforms at a stop with their coordinates."""
-    stop_id: str
-    stop_name: str
-    platforms: List[PlatformResponse]
-
-
-class CorrespondenceResponse(BaseModel):
-    """Walking connection to another station."""
-    id: int
-    to_stop_id: str
-    to_stop_name: str
-    to_lines: Optional[str]  # Lines at destination (cor_metro, cor_cercanias, etc.)
-    to_transport_types: List[str]  # Transport types at destination: metro, cercanias, metro_ligero, tranvia
-    distance_m: Optional[int]
-    walk_time_s: Optional[int]
-    source: Optional[str]
-
-    class Config:
-        from_attributes = True
-
-
-class StopCorrespondencesResponse(BaseModel):
-    """Walking correspondences from a stop to nearby stations."""
-    stop_id: str
-    stop_name: str
-    correspondences: List[CorrespondenceResponse]
-
-
-class ShapePointResponse(BaseModel):
-    """A single point in a route shape."""
-    lat: float
-    lon: float
-    sequence: int
-
-
-class RouteShapeResponse(BaseModel):
-    """Shape (path) of a route for drawing on maps."""
-    route_id: str
-    route_short_name: str
-    shape: List[ShapePointResponse]
 
 
 @router.get("/agencies", response_model=List[AgencyResponse])
