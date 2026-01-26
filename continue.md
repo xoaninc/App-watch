@@ -251,9 +251,10 @@ Cuando los datos del CSV difieren de la BD, **NO se sobreescribe**. Se guarda en
 - [x] ~~Crear script import_platform_coords.py~~ ✅ Creado 2026-01-26
 - [x] ~~EJECUTAR migración 028~~ ✅ Ejecutado en servidor 2026-01-26 02:55
 - [x] ~~Poblar cor_tranvia en TRAM_BARCELONA~~ ✅ Ejecutado 2026-01-26 03:20 (172 paradas, OSM data)
-- [ ] **EJECUTAR script import_platform_coords.py** (pendiente)
-- [ ] Revisar discrepancias encontradas manualmente
+- [x] ~~Importar transfers por proximidad~~ ✅ Ejecutado 2026-01-26 03:26 (592 transfers)
+- [x] ~~Añadir coordenadas de andenes a transfers~~ ✅ Ejecutado 2026-01-26 03:35 (690/690 con coords)
 - [ ] Completar Passeig de Gràcia con L2, L4 en cor_metro
+- [ ] Mejorar coords: distinguir Metro vs Cercanías con mismo nombre
 - [ ] Investigar por qué API de geoportal.valencia.es devuelve vacío
 - [ ] Metro Sevilla y Tranvía Sevilla: Requieren NAP ID 1583 y 1567 (descarga manual)
 - [ ] Revisar transfers 250m-500m para añadir manualmente los que tengan sentido

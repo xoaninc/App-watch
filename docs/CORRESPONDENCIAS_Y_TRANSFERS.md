@@ -410,12 +410,128 @@ ssh -i ~/.ssh/id_ed25519 root@juanmacias.com "systemctl restart renfeserver"
 
 ## 9. Historial de Cambios
 
-### 2026-01-26
-- TRAM_BARCELONA: 172 paradas con cor_tranvia poblado desde OSM
-- Migración 028 ejecutada (coordenadas en line_transfer + tabla discrepancies)
+### 2026-01-26 (sesión actual)
+
+**Transfers por proximidad importados:**
+- 592 transfers nuevos (296 bidireccionales)
+- Conectan Metro/Tranvía/FGC/ML con Cercanías a <250m
+- Total: 690 transfers (592 proximity + 94 gtfs + 4 nap)
+
+**Coordenadas de andenes añadidas:**
+- Extraídas de OSM (Overpass API) para:
+  - Metro Madrid: 235 estaciones, 36 intercambiadores
+  - Metro Barcelona: 187 estaciones, 46 intercambiadores
+  - Metro Bilbao: 48 estaciones, 12 intercambiadores
+- 690/690 transfers con from_lat/lon y to_lat/lon
+
+**Fuentes de coordenadas:**
+1. OSM (rutas de metro con stop_positions) - coordenadas por línea
+2. Fallback: tabla gtfs_stops - coordenadas generales
+
+**TRAM_BARCELONA cor_tranvia:**
+- 172 paradas con cor_tranvia poblado desde OSM
+- Líneas T1-T6 asignadas
+
+**Infraestructura:**
+- Migración 028 ejecutada
 - BD local sincronizada con producción
 
 ### 2026-01-25
 - Migraciones 026, 027 ejecutadas
-- 690 transfers importados (GTFS + proximidad)
+- 98 transfers importados (GTFS original)
 - Campos transport_type e is_hub añadidos a API
+
+---
+
+## 10. Scripts de Importación
+
+### import_proximity_transfers.py
+
+```bash
+# Ejecutar
+.venv/bin/python scripts/import_proximity_transfers.py
+
+# En servidor
+ssh root@juanmacias.com "cd /var/www/renfeserver && .venv/bin/python scripts/import_proximity_transfers.py"
+```
+
+**Qué hace:**
+1. Busca paradas Metro/Tranvía/FGC/ML
+2. Busca paradas Renfe Cercanías
+3. Calcula distancia haversine entre todas
+4. Crea transfers bidireccionales para distancia < 250m
+5. Tiempo de caminata: distancia / 1.2 m/s
+
+**Redes procesadas:**
+- TMB_METRO (Barcelona): 215 conexiones
+- METRO (Madrid): 26 conexiones
+- METRO_BILBAO: 16 conexiones
+- FGC: 17 conexiones
+- TRAM: 10 conexiones
+- ML (Metro Ligero): 3 conexiones
+- METRO_VALENCIA: 2 conexiones
+- TRANVIA (Zaragoza): 2 conexiones
+- METRO_MALAGA: 4 conexiones
+- METRO_SEV: 1 conexión
+
+### Extracción de coordenadas de andenes (OSM)
+
+```bash
+# 1. Descargar rutas de metro de OSM
+curl -s "https://overpass-api.de/api/interpreter" --data-urlencode 'data=
+[out:json][timeout:120];
+area["name"="Comunidad de Madrid"]->.madrid;
+relation["type"="route"]["route"="subway"](area.madrid);
+out body;
+>;
+out skel qt;
+' > /tmp/metro_madrid_routes.json
+
+# 2. Descargar estaciones
+curl -s "https://overpass-api.de/api/interpreter" --data-urlencode 'data=
+[out:json][timeout:60];
+area["name"="Comunidad de Madrid"]->.madrid;
+node["railway"="station"]["station"="subway"](area.madrid);
+out body;
+' > /tmp/metro_madrid_stations.json
+
+# 3. Procesar y generar CSV con coordenadas por línea
+# (script Python que matchea stops de rutas con estaciones por proximidad)
+```
+
+**Resultado:** CSV con formato:
+```csv
+station_name,line,lat,lon
+Nuevos Ministerios,L10,40.4452235,-3.6913658
+Nuevos Ministerios,L8,40.4454795,-3.6915608
+```
+
+**Intercambiadores encontrados (coords diferentes por línea):**
+```
+Avenida de América (Madrid):
+    L4: (40.438002, -3.678090)
+    L6: (40.437782, -3.678183)
+    L7: (40.437419, -3.679145)
+    L9: (40.438138, -3.679117)
+
+Zazpikaleak (Bilbao):
+    L1: (43.25964, -2.92077)
+    L2: (43.25966, -2.92075)
+    L3: (43.26024, -2.92186)
+```
+
+---
+
+## 11. Limitaciones Actuales
+
+1. **Coordenadas duplicadas para mismo nombre:**
+   - Si Metro y Cercanías tienen mismo nombre (ej: "Nuevos Ministerios"), ambos obtienen coords de OSM (metro)
+   - Solución pendiente: usar stop_id para distinguir tipo de parada
+
+2. **Líneas sin from_line/to_line:**
+   - Muchos transfers no tienen la línea específica asignada
+   - Usan la primera coordenada disponible de esa estación
+
+3. **Redes sin datos OSM:**
+   - Metro Valencia, Metro Sevilla, etc. no tienen rutas en OSM
+   - Usan coordenadas generales de gtfs_stops
