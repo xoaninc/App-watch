@@ -1,6 +1,6 @@
 # Estado del Proyecto - GTFS y APIs de Transporte
 
-**Última actualización:** 2026-01-26 03:30 CET
+**Última actualización:** 2026-01-26 04:15 CET
 
 ---
 
@@ -242,6 +242,7 @@ Cuando los datos del CSV difieren de la BD, **NO se sobreescribe**. Se guarda en
 
 ## 6. Tareas Pendientes
 
+### Completadas
 - [x] ~~Importar Renfe Cercanías transfers~~ ✅ Desplegado 2026-01-25 21:11
 - [x] ~~Añadir transport_type a /networks~~ ✅ Implementado 2026-01-25 23:30
 - [x] ~~Añadir is_hub a stops~~ ✅ Implementado 2026-01-25 23:30
@@ -252,12 +253,31 @@ Cuando los datos del CSV difieren de la BD, **NO se sobreescribe**. Se guarda en
 - [x] ~~EJECUTAR migración 028~~ ✅ Ejecutado en servidor 2026-01-26 02:55
 - [x] ~~Poblar cor_tranvia en TRAM_BARCELONA~~ ✅ Ejecutado 2026-01-26 03:20 (172 paradas, OSM data)
 - [x] ~~Importar transfers por proximidad~~ ✅ Ejecutado 2026-01-26 03:26 (592 transfers)
-- [x] ~~Añadir coordenadas de andenes a transfers~~ ✅ Ejecutado 2026-01-26 03:35 (690/690 con coords)
+- [x] ~~Añadir coordenadas de andenes a transfers (Metro MAD/BCN/BIO)~~ ✅ Ejecutado 2026-01-26 03:35
+
+### Alta Prioridad - Extraer OSM de redes faltantes
+⚠️ **IMPORTANTE:** Solo 3 de ~15 redes tienen coordenadas específicas de andén
+
+| Estado | Red | Tipo OSM | Transfers afectados |
+|--------|-----|----------|---------------------|
+| ❌ | Renfe Cercanías | `route=train, operator=Renfe` | ~200 |
+| ❌ | FGC | `route=train, operator=FGC` | ~30 |
+| ❌ | Euskotren | `route=train, operator=Euskotren` | 13 |
+| ❌ | TRAM Barcelona | `route=tram, ref=T1-T6` | ~20 |
+| ❌ | Metro Ligero Madrid | `route=light_rail` | ~6 |
+
+**Ver:** `docs/CORRESPONDENCIAS_Y_TRANSFERS.md` sección 12 para queries Overpass
+
+### Media Prioridad
+- [ ] Extraer coords Metro Valencia, Sevilla, Málaga (si existe en OSM)
 - [ ] Completar Passeig de Gràcia con L2, L4 en cor_metro
 - [ ] Mejorar coords: distinguir Metro vs Cercanías con mismo nombre
+- [ ] Revisar transfers 250m-500m para añadir manualmente los que tengan sentido
+
+### Baja Prioridad
 - [ ] Investigar por qué API de geoportal.valencia.es devuelve vacío
 - [ ] Metro Sevilla y Tranvía Sevilla: Requieren NAP ID 1583 y 1567 (descarga manual)
-- [ ] Revisar transfers 250m-500m para añadir manualmente los que tengan sentido
+- [ ] Metro Granada, Tenerife (coords OSM si disponible)
 
 ---
 
@@ -273,6 +293,10 @@ scripts/import_platform_coords.py        # Importador de coordenadas de andenes 
 # Datos fuente
 docs/estaciones_espana_completo.csv      # 1168 estaciones con coordenadas por andén (OSM/GMaps)
 docs/estaciones_bilbao_detallado.csv     # Detalle de Bilbao
+docs/osm_coords/                         # CSVs con coordenadas OSM por línea
+  - metro_madrid_by_line.csv             # 281 pares estación-línea
+  - metro_bcn_by_line.csv                # 259 pares estación-línea
+  - metro_bilbao_by_line.csv             # 62 pares estación-línea
 
 # API Routers
 adapters/http/api/gtfs/routers/query_router.py    # Endpoint transfers + is_hub

@@ -237,14 +237,98 @@ Las coordenadas específicas de cada andén (`from_lat/lon`, `to_lat/lon`) deben
 | nap | 4 |
 | **TOTAL** | **690** |
 
-### 4.3 Coordenadas de Andenes
+### 4.3 Coordenadas de Andenes - ESTADO DETALLADO
 
-| Campo | Estado |
-|-------|--------|
-| from_lat/lon | 0% poblado |
-| to_lat/lon | 0% poblado |
+**Resumen:** 690/690 transfers tienen coordenadas, pero la mayoría usa fallback de gtfs_stops (coordenadas generales), no coordenadas específicas por andén/línea.
 
-**Pendiente:** Extraer coordenadas de andenes desde OSM para los 690 transfers existentes.
+#### Redes con datos OSM extraídos (coordenadas por línea)
+
+| Red | Estaciones | Pares estación-línea | Intercambiadores | Archivo CSV |
+|-----|------------|---------------------|------------------|-------------|
+| Metro Madrid | 235 | 281 | 36 | `docs/osm_coords/metro_madrid_by_line.csv` |
+| Metro Barcelona | 187 | 259 | 46 | `docs/osm_coords/metro_bcn_by_line.csv` |
+| Metro Bilbao | 48 | 62 | 12 | `docs/osm_coords/metro_bilbao_by_line.csv` |
+| **TOTAL OSM** | **470** | **602** | **94** | |
+
+#### Redes SIN datos OSM (usan fallback gtfs_stops)
+
+| Red | Transfers afectados | Tipo de transporte | Estado OSM |
+|-----|--------------------|--------------------|------------|
+| Renfe Cercanías (10T, 40T, etc.) | ~200 | Tren cercanías | ❌ No extraído |
+| FGC | ~30 | Ferrocarril | ❌ No extraído |
+| Euskotren | 13 | Ferrocarril | ❌ No extraído |
+| TRAM Barcelona | ~20 | Tranvía | ❌ No extraído |
+| Metro Ligero Madrid (ML) | ~6 | Metro ligero | ❌ No extraído |
+| Metro Valencia | ~4 | Metro | ❌ No extraído |
+| Metro Sevilla | ~2 | Metro | ❌ No extraído |
+| Metro Málaga | 4 | Metro | ❌ No extraído |
+| Metro Granada | - | Metro | ❌ No extraído |
+| Metro Tenerife | 2 | Metro | ❌ No extraído |
+| Tranvía Zaragoza | 2 | Tranvía | ❌ No extraído |
+| Tranvía Murcia | - | Tranvía | ❌ No extraído |
+
+#### Problema actual de coordenadas
+
+Cuando un transfer conecta:
+- **Metro → Cercanías** (ej: L6 Nuevos Ministerios → C4 Nuevos Ministerios)
+  - `from_lat/lon` = coordenadas OSM del andén L6 ✅
+  - `to_lat/lon` = coordenadas generales de gtfs_stops ⚠️ (no son del andén específico)
+
+Esto significa que para mostrar la ruta de caminata entre andenes, el destino usa la coordenada general de la estación, no la del andén C4 específico.
+
+#### Queries Overpass pendientes de ejecutar
+
+```bash
+# Renfe Cercanías - España completa
+curl -s "https://overpass-api.de/api/interpreter" --data-urlencode 'data=
+[out:json][timeout:180];
+area["ISO3166-1"="ES"]->.spain;
+relation["type"="route"]["route"="train"]["operator"~"Renfe|RENFE"](area.spain);
+out body;
+>;
+out skel qt;
+'
+
+# FGC - Cataluña
+curl -s "https://overpass-api.de/api/interpreter" --data-urlencode 'data=
+[out:json][timeout:120];
+area["name"="Catalunya"]->.cat;
+relation["type"="route"]["route"="train"]["operator"~"FGC|Ferrocarrils"](area.cat);
+out body;
+>;
+out skel qt;
+'
+
+# Tranvía Barcelona (T1-T6)
+curl -s "https://overpass-api.de/api/interpreter" --data-urlencode 'data=
+[out:json][timeout:90];
+area["name"="Catalunya"]->.cat;
+relation["type"="route"]["route"="tram"]["ref"~"^T[1-6]$"](area.cat);
+out body;
+>;
+out skel qt;
+'
+
+# Metro Ligero Madrid (ML1-ML3)
+curl -s "https://overpass-api.de/api/interpreter" --data-urlencode 'data=
+[out:json][timeout:90];
+area["name"="Comunidad de Madrid"]->.madrid;
+relation["type"="route"]["route"="light_rail"](area.madrid);
+out body;
+>;
+out skel qt;
+'
+
+# Euskotren
+curl -s "https://overpass-api.de/api/interpreter" --data-urlencode 'data=
+[out:json][timeout:90];
+area["name"="Euskadi"]->.euskadi;
+relation["type"="route"]["route"="train"]["operator"~"Euskotren"](area.euskadi);
+out body;
+>;
+out skel qt;
+'
+```
 
 ---
 
@@ -295,17 +379,29 @@ Devuelve transfers desde/hacia una parada.
 
 ## 6. Tareas Pendientes
 
-### Alta Prioridad
-- [ ] Extraer coordenadas de andenes desde OSM para transfers existentes
+### Alta Prioridad - Coordenadas de Andenes
+
+| Tarea | Red | Tipo OSM | Estado |
+|-------|-----|----------|--------|
+| Extraer coords Renfe Cercanías | 10T, 40T, 51T, etc. | `route=train` + `operator=Renfe` | ❌ Pendiente |
+| Extraer coords FGC | S1, S2, L8, etc. | `route=train` + `operator=FGC` | ❌ Pendiente |
+| Extraer coords Euskotren | E1, E2, E3 | `route=train` + `operator=Euskotren` | ❌ Pendiente |
+| Extraer coords TRAM BCN | T1-T6 | `route=tram` | ❌ Pendiente |
+| Extraer coords ML Madrid | ML1, ML2, ML3 | `route=light_rail` | ❌ Pendiente |
+
+### Alta Prioridad - Otros
 - [ ] Completar Passeig de Gràcia (L2, L4 en cor_metro)
 
 ### Media Prioridad
+- [ ] Extraer coords Metro Valencia (si existe en OSM)
+- [ ] Extraer coords Metro Sevilla (si existe en OSM)
 - [ ] Revisar SFM_MALLORCA (32% cor_metro)
 - [ ] Añadir transfers 250m-500m que tengan sentido
 
 ### Baja Prioridad
 - [ ] Investigar API Valencia (devuelve vacío)
 - [ ] Metro/Tranvía Sevilla (requiere NAP)
+- [ ] Metro Granada, Málaga, Tenerife (coords OSM si disponible)
 
 ---
 
@@ -524,14 +620,280 @@ Zazpikaleak (Bilbao):
 
 ## 11. Limitaciones Actuales
 
-1. **Coordenadas duplicadas para mismo nombre:**
-   - Si Metro y Cercanías tienen mismo nombre (ej: "Nuevos Ministerios"), ambos obtienen coords de OSM (metro)
-   - Solución pendiente: usar stop_id para distinguir tipo de parada
+### 11.1 Coordenadas de Andenes - Solo 3 Redes
 
-2. **Líneas sin from_line/to_line:**
-   - Muchos transfers no tienen la línea específica asignada
-   - Usan la primera coordenada disponible de esa estación
+**Estado actual (2026-01-26):**
+- ✅ Metro Madrid - 281 pares estación-línea con coords específicas
+- ✅ Metro Barcelona - 259 pares estación-línea con coords específicas
+- ✅ Metro Bilbao - 62 pares estación-línea con coords específicas
+- ❌ **TODO EL RESTO** - usa coordenadas generales de gtfs_stops
 
-3. **Redes sin datos OSM:**
-   - Metro Valencia, Metro Sevilla, etc. no tienen rutas en OSM
-   - Usan coordenadas generales de gtfs_stops
+**Consecuencia:**
+Para un transfer como "L6 Nuevos Ministerios → C4 Nuevos Ministerios":
+- `from_lat/lon` = coords del andén L6 (específicas de OSM) ✅
+- `to_lat/lon` = coords de la estación general (no del andén C4) ⚠️
+
+### 11.2 Redes pendientes de extracción OSM
+
+| Red | Disponibilidad OSM | Notas |
+|-----|-------------------|-------|
+| Renfe Cercanías | ⚠️ Parcial | Algunas líneas mapeadas, revisar cobertura |
+| FGC | ⚠️ Parcial | Líneas principales probablemente disponibles |
+| Euskotren | ⚠️ Parcial | Revisar mapeo en País Vasco |
+| TRAM Barcelona | ✅ Disponible | T1-T6 mapeados en OSM |
+| Metro Ligero Madrid | ✅ Disponible | ML1-ML3 mapeados |
+| Metro Valencia | ⚠️ Desconocido | Verificar disponibilidad |
+| Metro Sevilla | ⚠️ Desconocido | Verificar disponibilidad |
+| Otros metros | ⚠️ Desconocido | Málaga, Granada, Tenerife |
+
+### 11.3 Matching de nombres
+
+**Problema:** Diferentes redes usan nombres distintos para la misma estación:
+- GTFS: "Nuevos Ministerios"
+- OSM: "Nuevos Ministerios" o "Estación de Nuevos Ministerios"
+
+**Solución actual:** Normalización de nombres (minúsculas, sin acentos, sin prefijos comunes)
+
+### 11.4 Líneas sin asignar
+
+Muchos transfers (especialmente de `proximity`) no tienen `from_line` ni `to_line` asignados porque se crean a partir de paradas, no de rutas. Esto dificulta asignar coordenadas específicas de andén.
+
+**Campos afectados en line_transfer:**
+```sql
+SELECT COUNT(*) FROM line_transfer WHERE from_line IS NULL;  -- ~400 registros
+SELECT COUNT(*) FROM line_transfer WHERE to_line IS NULL;    -- ~500 registros
+```
+
+---
+
+## 12. Proceso de Extracción OSM - Guía Completa
+
+Esta sección documenta paso a paso cómo extraer coordenadas de andenes desde OpenStreetMap.
+
+### 12.1 Estructura de datos OSM
+
+En OSM, las líneas de transporte público se modelan como **relations** de tipo `route`:
+
+```
+relation (type=route, route=subway/train/tram/light_rail)
+├── tags: ref (L1, C4, T2), name, operator, colour
+└── members:
+    ├── way (la vía)
+    └── node (paradas) con role="stop" o "platform"
+```
+
+### 12.2 Queries Overpass por tipo de transporte
+
+#### Metro (subway)
+```bash
+curl -s "https://overpass-api.de/api/interpreter" --data-urlencode 'data=
+[out:json][timeout:120];
+area["name"="AREA_NAME"]->.area;
+relation["type"="route"]["route"="subway"](area.area);
+out body;
+>;
+out skel qt;
+' > /tmp/metro_AREA.json
+```
+
+#### Tren (cercanías, FGC, Euskotren)
+```bash
+curl -s "https://overpass-api.de/api/interpreter" --data-urlencode 'data=
+[out:json][timeout:180];
+area["ISO3166-1"="ES"]->.spain;
+relation["type"="route"]["route"="train"]["operator"~"Renfe|RENFE|FGC|Euskotren"](area.spain);
+out body;
+>;
+out skel qt;
+' > /tmp/trains_spain.json
+```
+
+#### Tranvía
+```bash
+curl -s "https://overpass-api.de/api/interpreter" --data-urlencode 'data=
+[out:json][timeout:90];
+area["name"="Catalunya"]->.cat;
+relation["type"="route"]["route"="tram"](area.cat);
+out body;
+>;
+out skel qt;
+' > /tmp/tram_cat.json
+```
+
+#### Metro Ligero
+```bash
+curl -s "https://overpass-api.de/api/interpreter" --data-urlencode 'data=
+[out:json][timeout:90];
+area["name"="Comunidad de Madrid"]->.madrid;
+relation["type"="route"]["route"="light_rail"](area.madrid);
+out body;
+>;
+out skel qt;
+' > /tmp/metro_ligero_madrid.json
+```
+
+### 12.3 Script Python para procesar respuesta OSM
+
+```python
+import json
+from collections import defaultdict
+
+def process_osm_routes(json_file):
+    """
+    Procesa la respuesta de Overpass y genera CSV con coordenadas por línea.
+    """
+    with open(json_file) as f:
+        data = json.load(f)
+
+    # Indexar nodos por ID
+    nodes = {e['id']: e for e in data['elements'] if e['type'] == 'node'}
+
+    # Procesar relaciones (rutas)
+    routes = [e for e in data['elements'] if e['type'] == 'relation']
+
+    # Dict: station_name -> {line -> (lat, lon)}
+    coords_by_station = defaultdict(dict)
+
+    for route in routes:
+        line = route.get('tags', {}).get('ref', 'Unknown')
+
+        # Obtener nodos con role=stop o platform
+        for member in route.get('members', []):
+            if member['type'] == 'node' and member.get('role') in ['stop', 'platform', '']:
+                node_id = member['ref']
+                if node_id in nodes:
+                    node = nodes[node_id]
+                    name = node.get('tags', {}).get('name', '')
+                    if name:
+                        lat = node['lat']
+                        lon = node['lon']
+                        coords_by_station[name][line] = (lat, lon)
+
+    # Generar CSV
+    print("station_name,line,lat,lon")
+    for station in sorted(coords_by_station.keys()):
+        for line in sorted(coords_by_station[station].keys()):
+            lat, lon = coords_by_station[station][line]
+            print(f"{station},{line},{lat},{lon}")
+
+if __name__ == "__main__":
+    import sys
+    process_osm_routes(sys.argv[1])
+```
+
+**Uso:**
+```bash
+python3 process_osm.py /tmp/metro_madrid_routes.json > /tmp/metro_madrid_by_line.csv
+```
+
+### 12.4 Actualizar coordenadas en line_transfer
+
+Una vez generado el CSV, actualizar la BD:
+
+```python
+import csv
+from collections import defaultdict
+from sqlalchemy import create_engine, text
+import unicodedata
+import re
+
+def normalize(s):
+    """Normaliza nombre para matching."""
+    s = unicodedata.normalize('NFD', s)
+    s = ''.join(c for c in s if unicodedata.category(c) != 'Mn')
+    s = s.lower().strip()
+    s = re.sub(r'^(estacion de |estacio |station )', '', s)
+    s = re.sub(r'\s+', ' ', s)
+    return s
+
+# Cargar CSV en dict
+coords = defaultdict(dict)
+with open('/tmp/metro_madrid_by_line.csv') as f:
+    reader = csv.DictReader(f)
+    for row in reader:
+        name = normalize(row['station_name'])
+        line = row['line']
+        coords[name][line] = (float(row['lat']), float(row['lon']))
+
+# Actualizar BD
+engine = create_engine('postgresql://...')
+with engine.connect() as conn:
+    transfers = conn.execute(text("SELECT * FROM line_transfer")).fetchall()
+
+    for t in transfers:
+        from_name = normalize(t.from_stop_name or '')
+        to_name = normalize(t.to_stop_name or '')
+
+        updates = {}
+
+        # from coords
+        if from_name in coords:
+            if t.from_line and t.from_line in coords[from_name]:
+                lat, lon = coords[from_name][t.from_line]
+            else:
+                lat, lon = list(coords[from_name].values())[0]
+            updates['from_lat'] = lat
+            updates['from_lon'] = lon
+
+        # to coords
+        if to_name in coords:
+            if t.to_line and t.to_line in coords[to_name]:
+                lat, lon = coords[to_name][t.to_line]
+            else:
+                lat, lon = list(coords[to_name].values())[0]
+            updates['to_lat'] = lat
+            updates['to_lon'] = lon
+
+        if updates:
+            conn.execute(
+                text(f"UPDATE line_transfer SET ... WHERE id = :id"),
+                {**updates, 'id': t.id}
+            )
+    conn.commit()
+```
+
+### 12.5 Verificación
+
+```sql
+-- Transfers con coordenadas diferentes (intercambiadores correctos)
+SELECT from_stop_name, from_line, to_line,
+       from_lat, from_lon, to_lat, to_lon
+FROM line_transfer
+WHERE from_lat != to_lat OR from_lon != to_lon
+LIMIT 20;
+
+-- Resumen por red
+SELECT network_id,
+       COUNT(*) as total,
+       COUNT(CASE WHEN from_lat != to_lat THEN 1 END) as coords_diferentes
+FROM line_transfer
+GROUP BY network_id
+ORDER BY total DESC;
+```
+
+---
+
+## 13. Próximos Pasos Recomendados
+
+### Fase 1: Extraer OSM de redes principales (Estimación: inmediato)
+1. Ejecutar query Overpass para Renfe Cercanías España
+2. Ejecutar query Overpass para FGC Cataluña
+3. Ejecutar query Overpass para Euskotren País Vasco
+4. Ejecutar query Overpass para TRAM Barcelona
+5. Ejecutar query Overpass para Metro Ligero Madrid
+
+### Fase 2: Procesar y actualizar BD
+1. Procesar JSON de cada red con script Python
+2. Generar CSVs con coordenadas por línea
+3. Actualizar line_transfer con nuevas coordenadas
+4. Verificar resultados
+
+### Fase 3: Redes secundarias
+1. Verificar disponibilidad en OSM de: Metro Valencia, Sevilla, Málaga, Granada, Tenerife
+2. Extraer y procesar los que estén disponibles
+3. Para los que no estén en OSM: coordenadas manuales de Google Maps o GTFS
+
+### Fase 4: Refinamiento
+1. Añadir from_line/to_line a transfers que no los tienen
+2. Completar correspondencias cor_* faltantes
+3. Revisar discrepancias y correcciones manuales
