@@ -50,29 +50,32 @@
 
 ## Resumen
 
-| Operador | GTFS Estático | GTFS-RT | transfers.txt |
-|----------|---------------|---------|---------------|
-| Metro Bilbao | ✅ | ✅ | ❌ |
-| Euskotren | ✅ | ✅ | ✅ (13) |
-| FGC | ✅ | ✅ | ❌ |
-| TMB Metro | ✅ (API key) | ✅ API | ✅ (60) |
-| TRAM Barcelona | ✅ | ❌ | ❌ |
-| TRAM Alicante | 🔧 NAP | ❌ | ❌ |
-| Metro Tenerife | ✅ | ❌ | ✅ (2) |
-| Metro Málaga | 🔧 NAP | ❌ | ✅ (4) |
-| Metrovalencia | 🔧 NAP | ❌ (API*) | ❌ |
-| Metro Granada | 🔧 NAP | ❌ | ❌ |
-| Tranvía Zaragoza | 🔧 NAP | ❌ | ❌ |
-| Tranvía Murcia | 🔧 NAP | ❌ | ❌ |
-| SFM Mallorca | 🔧 NAP | ❌ | ❌ |
-| **Renfe Cercanías** | ✅ | ✅ JSON | ✅ (19)* |
-| Metro Madrid (CRTM) | ✅ | ❌ | ❌ |
-| Metro Ligero Madrid | ✅ | ❌ | ❌ |
+| Operador | GTFS Estático | GTFS-RT | transfers.txt | Shapes |
+|----------|---------------|---------|---------------|--------|
+| Metro Bilbao | ✅ | ✅ | ❌ | ✅ 13k pts |
+| Euskotren | ✅ | ✅ | ✅ (13) | ✅ 61k pts |
+| FGC | ✅ | ✅ | ❌ | ✅ 12k pts |
+| TMB Metro | ✅ (API key) | ✅ API | ✅ (60) | ✅ 103k pts |
+| TRAM Barcelona | ✅ | ❌ | ❌ | ❌ URL 403 |
+| TRAM Alicante | 🔧 NAP | ❌ | ❌ | 🔧 NAP |
+| Metro Tenerife | ✅ | ❌ | ✅ (2) | ⚠️ URL directa |
+| Metro Málaga | 🔧 NAP | ❌ | ✅ (4) | 🔧 NAP |
+| Metrovalencia | 🔧 NAP | ❌ (API*) | ❌ | 🔧 NAP |
+| Metro Granada | 🔧 NAP | ❌ | ❌ | 🔧 NAP |
+| Metro Sevilla | 🔧 NAP | ❌ | ❌ | 🔧 NAP |
+| Tranvía Zaragoza | 🔧 NAP | ❌ | ❌ | 🔧 NAP |
+| Tranvía Murcia | 🔧 NAP | ❌ | ❌ | 🔧 NAP |
+| SFM Mallorca | 🔧 NAP | ❌ | ❌ | 🔧 NAP |
+| **Renfe Cercanías** | ✅ | ✅ JSON | ✅ (19)* | ✅ 74k pts |
+| Metro Madrid (CRTM) | ✅ | ❌ | ❌ | ❌ No en GTFS |
+| Metro Ligero Madrid | ✅ | ❌ | ❌ | ✅ 62k pts |
 
 **Leyenda:**
-- ✅ = Funciona
+- ✅ = Funciona (shapes: incluye cantidad de puntos en producción)
 - 🔧 NAP = Requiere descarga manual desde NAP (con login)
+- ⚠️ URL directa = Shapes disponibles en URL pública, pendiente de importar
 - ❌ (API*) = No hay GTFS-RT; existe API propietaria pero devuelve vacío (ver sección Metrovalencia)
+- ❌ No en GTFS = El GTFS del operador no incluye shapes.txt
 - ✅ (19)* = Transfers distribuidos por red (40T, 10T, etc.) según route_id
 
 ---
@@ -203,6 +206,7 @@ Estos operadores requieren descarga desde el NAP con login web:
 | Tranvía Zaragoza | 1394 | https://nap.transportes.gob.es/Files/Detail/1394 |
 | Tranvía Murcia | 1371 | https://nap.transportes.gob.es/Files/Detail/1371 |
 | SFM Mallorca | 1071 | https://nap.transportes.gob.es/Files/Detail/1071 |
+| Metro Sevilla | 1385 | https://nap.transportes.gob.es/Files/Detail/1385 |
 
 **Nota:** La API key del NAP no permite descargas directas. Se requiere login web.
 
