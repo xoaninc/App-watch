@@ -1,6 +1,6 @@
 # Estado del Proyecto - GTFS y APIs de Transporte
 
-**Última actualización:** 2026-01-26 05:45 CET
+**Última actualización:** 2026-01-26 12:30 CET
 
 ---
 
@@ -250,35 +250,65 @@ Cuando los datos del CSV difieren de la BD, **NO se sobreescribe**. Se guarda en
 - [x] ~~Reemplazar line_transfer con stop_platform~~ ✅ Ejecutado 2026-01-26 05:00
   - Migración 029: Elimina line_transfer, crea stop_platform
   - Nuevo endpoint: `GET /stops/{stop_id}/platforms`
-  - 553 plataformas importadas (Metro MAD: 278, TMB: 157, Bilbao: 55, FGC: 54)
+- [x] ~~Migración 030: Cambiar `line` → `lines`~~ ✅ Ejecutado 2026-01-26 06:30
+- [x] ~~Importar plataformas de TODAS las redes~~ ✅ Ejecutado 2026-01-26 07:00
+- [x] ~~Crear tabla stop_correspondence~~ ✅ Ejecutado 2026-01-26 08:00
+  - Migración 031: Nueva tabla para conexiones a pie entre estaciones diferentes
+  - Nuevo endpoint: `GET /stops/{stop_id}/correspondences`
+- [x] ~~Importar correspondencias por proximidad~~ ✅ Ejecutado 2026-01-26 08:30
+  - 68 correspondencias: Metro↔Cercanías, Metro↔Metro Ligero (<300m)
+- [x] ~~Script import_osm_correspondences.py~~ ✅ Ejecutado 2026-01-26 09:00
+  - Importa `stop_area_group` de OSM
+  - Clasifica: misma estación vs estaciones diferentes
+  - Documentación: `docs/IMPORT_OSM_CORRESPONDENCES.md`
 
-### Próximas Tareas - Plan de Plataformas
+### Estado Actual de Plataformas (stop_platform)
 
-**Ver documentación completa:** `docs/CORRESPONDENCIAS_Y_TRANSFERS.md` sección 13
+| Red | Plataformas | Paradas | Fuente |
+|-----|-------------|---------|--------|
+| Renfe Cercanías | 797 | 791 | GTFS |
+| Euskotren | 746 | 740 | GTFS |
+| Metro Madrid | 281 | 233 | OSM |
+| TRAM Barcelona | 172 | 172 | GTFS |
+| TMB Metro BCN | 157 | 131 | OSM |
+| Metro Valencia | 144 | 144 | GTFS |
+| Metro Ligero | 56 | 56 | GTFS |
+| Metro Bilbao | 55 | 42 | OSM |
+| FGC | 54 | 34 | OSM |
+| Metro Granada | 26 | 26 | GTFS |
+| Metro Málaga | 25 | 25 | GTFS |
+| Metro Sevilla | 21 | 21 | GTFS |
+| **TOTAL** | **2550** | **2429** | |
 
-#### Fase 1: Cambio de Modelo
-- [ ] Migración 030: Cambiar `line` → `lines` en stop_platform
-- [ ] Actualizar modelo StopPlatformModel
-- [ ] Actualizar endpoint /platforms
+### Estado Actual de Correspondencias (stop_correspondence)
 
-#### Fase 2: Importar Plataformas por Red
+| Fuente | Cantidad | Ejemplo |
+|--------|----------|---------|
+| Manual | 32 | Acacias↔Embajadores, Nervión↔Eduardo Dato (Sevilla), Abando (Bilbao) |
+| OSM | 72 | Barcelona stop_area_groups (Catalunya, Sants, etc.) |
+| Proximidad (<300m) | 62 | Atocha Metro↔Cercanías, Nuevos Ministerios |
+| **TOTAL** | **166** (83 pares) | |
 
-| # | Red | Tipo | Fuente | Estado |
-|---|-----|------|--------|--------|
-| 1 | Metro Madrid | Metro | OSM | ✅ 278 (re-importar con `lines`) |
-| 2 | TMB Metro | Metro | OSM | ✅ 157 (re-importar con `lines`) |
-| 3 | Metro Bilbao | Metro | OSM | ✅ 55 (re-importar con `lines`) |
-| 4 | Cercanías Madrid | Tren | OSM + GTFS + manual | ❌ Pendiente |
-| 5 | Rodalies Barcelona | Tren | OSM + GTFS + manual | ❌ Pendiente |
-| 6 | FGC | Tren | OSM | ⚠️ 54 parcial |
-| 7 | Euskotren | Tren | OSM + GTFS | ❌ Pendiente |
-| 8 | TRAM Barcelona | Tranvía | OSM | ❌ Pendiente |
-| 9 | Metro Ligero Madrid | ML | OSM | ❌ Pendiente |
-| 10 | Metros secundarios | Metro | OSM/GTFS | ❌ Pendiente |
-| 11 | Resto Cercanías | Tren | GTFS | ❌ Pendiente |
+**Por ciudad:**
+- Madrid Metro: 17 pares
+- Barcelona (TMB+FGC): 25 pares
+- Bilbao (Metro+Euskotren): 5 pares
+- Sevilla (Metro+Tranvía): 6 pares
+- Valencia: 1 par (Sant Isidre)
+- Zaragoza: 9 pares (Delicias, Plaza Aragón)
 
-#### Fase 3: Matching Manual Intercambiadores
-- [ ] Nuevos Ministerios (4 plataformas → 8 líneas)
+### Tareas Completadas (2026-01-26)
+
+- [x] ~~Importar stop_area_group de Barcelona~~ ✅ 27 plataformas, 96 correspondencias
+- [x] ~~Añadir correspondencias Sevilla (Metro↔Tranvía)~~ ✅ Nervión↔Eduardo Dato, Prado, Puerta Jerez
+- [x] ~~Añadir correspondencias Bilbao (Metro↔Euskotren↔Cercanías)~~ ✅ Abando, San Mamés, Casco Viejo
+- [x] ~~Importar stop_area_group Valencia, Zaragoza~~ ✅ Sant Isidre, Delicias, Plaza Aragón
+- [x] ~~Documentación completa~~ ✅ `docs/PLATFORMS_AND_CORRESPONDENCES.md`
+
+### Tareas Pendientes
+
+#### Matching Manual Intercambiadores (cuando el usuario esté listo)
+- [ ] Nuevos Ministerios (separar plataformas por líneas)
 - [ ] Atocha Cercanías (~10 plataformas)
 - [ ] Chamartín (~6 plataformas)
 - [ ] Sol, Príncipe Pío
@@ -287,6 +317,8 @@ Cuando los datos del CSV difieren de la BD, **NO se sobreescribe**. Se guarda en
 ### Otras Tareas
 - [ ] Completar Passeig de Gràcia con L2, L4 en cor_metro
 - [ ] Investigar API Valencia (devuelve vacío)
+- [ ] Metro Tenerife (no tiene datos de líneas en cor_metro)
+- [ ] Extraer coordenadas OSM para metros secundarios (Valencia, Sevilla, Málaga, Granada)
 
 ---
 
@@ -295,9 +327,8 @@ Cuando los datos del CSV difieren de la BD, **NO se sobreescribe**. Se guarda en
 ```
 # Configuración y scripts de importación
 scripts/operators_config.py              # Config de todos los operadores + NAP IDs
-scripts/import_transfers.py              # Importador de transfers GTFS
-scripts/import_proximity_transfers.py    # Importador de transfers por proximidad (< 250m)
-scripts/import_platform_coords.py        # Importador de coordenadas de andenes (NUEVO)
+scripts/import_stop_platforms.py         # Importador de plataformas desde OSM CSV
+scripts/import_osm_correspondences.py    # Importador de correspondencias desde OSM stop_area_group
 
 # Datos fuente
 docs/estaciones_espana_completo.csv      # 1168 estaciones con coordenadas por andén (OSM/GMaps)
