@@ -1,6 +1,6 @@
 # Estado del Proyecto - GTFS y APIs de Transporte
 
-**Última actualización:** 2026-01-26 04:15 CET
+**Última actualización:** 2026-01-26 05:00 CET
 
 ---
 
@@ -246,38 +246,36 @@ Cuando los datos del CSV difieren de la BD, **NO se sobreescribe**. Se guarda en
 - [x] ~~Importar Renfe Cercanías transfers~~ ✅ Desplegado 2026-01-25 21:11
 - [x] ~~Añadir transport_type a /networks~~ ✅ Implementado 2026-01-25 23:30
 - [x] ~~Añadir is_hub a stops~~ ✅ Implementado 2026-01-25 23:30
-- [x] ~~Importar transfers por proximidad Metro ↔ Cercanías~~ ✅ Desplegado 2026-01-26 00:14
-- [x] ~~Crear migración 028 para coordenadas en line_transfer~~ ✅ Creado 2026-01-26
-- [x] ~~Crear modelo CorrespondenceDiscrepancyModel~~ ✅ Creado 2026-01-26
-- [x] ~~Crear script import_platform_coords.py~~ ✅ Creado 2026-01-26
-- [x] ~~EJECUTAR migración 028~~ ✅ Ejecutado en servidor 2026-01-26 02:55
 - [x] ~~Poblar cor_tranvia en TRAM_BARCELONA~~ ✅ Ejecutado 2026-01-26 03:20 (172 paradas, OSM data)
-- [x] ~~Importar transfers por proximidad~~ ✅ Ejecutado 2026-01-26 03:26 (592 transfers)
-- [x] ~~Añadir coordenadas de andenes a transfers (Metro MAD/BCN/BIO)~~ ✅ Ejecutado 2026-01-26 03:35
+- [x] ~~Reemplazar line_transfer con stop_platform~~ ✅ Ejecutado 2026-01-26 05:00
+  - Migración 029: Elimina line_transfer, crea stop_platform
+  - Nuevo endpoint: `GET /stops/{stop_id}/platforms`
+  - 553 plataformas importadas (Metro MAD: 278, TMB: 157, Bilbao: 55, FGC: 54)
 
 ### Alta Prioridad - Extraer OSM de redes faltantes
-⚠️ **IMPORTANTE:** Solo 3 de ~15 redes tienen coordenadas específicas de andén
+⚠️ **IMPORTANTE:** Solo 3 redes tienen coordenadas de plataformas
 
-| Estado | Red | Tipo OSM | Transfers afectados |
-|--------|-----|----------|---------------------|
-| ❌ | Renfe Cercanías | `route=train, operator=Renfe` | ~200 |
-| ❌ | FGC | `route=train, operator=FGC` | ~30 |
-| ❌ | Euskotren | `route=train, operator=Euskotren` | 13 |
-| ❌ | TRAM Barcelona | `route=tram, ref=T1-T6` | ~20 |
-| ❌ | Metro Ligero Madrid | `route=light_rail` | ~6 |
+| Estado | Red | Plataformas | Pendiente |
+|--------|-----|-------------|-----------|
+| ✅ | Metro Madrid | 278 | Algunas líneas faltan (ej: L6 en Nuevos Ministerios) |
+| ✅ | TMB Metro | 157 | Parcial |
+| ✅ | Metro Bilbao | 55 | OK |
+| ✅ | FGC | 54 | Parcial |
+| ❌ | Renfe Cercanías | 0 | Extraer de OSM/GTFS |
+| ❌ | Euskotren | 0 | Extraer de OSM/GTFS |
+| ❌ | TRAM Barcelona | 0 | Extraer de OSM |
+| ❌ | Metro Ligero Madrid | 0 | Extraer de OSM |
 
-**Ver:** `docs/CORRESPONDENCIAS_Y_TRANSFERS.md` sección 12 para queries Overpass
+**Ver:** `docs/CORRESPONDENCIAS_Y_TRANSFERS.md` para queries Overpass
 
 ### Media Prioridad
-- [ ] Extraer coords Metro Valencia, Sevilla, Málaga (si existe en OSM)
+- [ ] Completar datos OSM faltantes (L6 Nuevos Ministerios, etc.)
+- [ ] Extraer coords de Renfe Cercanías desde GTFS
 - [ ] Completar Passeig de Gràcia con L2, L4 en cor_metro
-- [ ] Mejorar coords: distinguir Metro vs Cercanías con mismo nombre
-- [ ] Revisar transfers 250m-500m para añadir manualmente los que tengan sentido
 
 ### Baja Prioridad
 - [ ] Investigar por qué API de geoportal.valencia.es devuelve vacío
-- [ ] Metro Sevilla y Tranvía Sevilla: Requieren NAP ID 1583 y 1567 (descarga manual)
-- [ ] Metro Granada, Tenerife (coords OSM si disponible)
+- [ ] Metro Sevilla, Málaga, Granada, Tenerife
 
 ---
 

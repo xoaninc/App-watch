@@ -216,7 +216,7 @@ from src.gtfs_bc.province.province_lookup import (
 from src.gtfs_bc.realtime.infrastructure.services.estimated_positions import EstimatedPositionsService
 from src.gtfs_bc.realtime.infrastructure.services.gtfs_rt_fetcher import GTFSRealtimeFetcher
 from src.gtfs_bc.stop_route_sequence.infrastructure.models import StopRouteSequenceModel
-from src.gtfs_bc.transfer.infrastructure.models import LineTransferModel
+from src.gtfs_bc.stop.infrastructure.models.stop_platform_model import StopPlatformModel
 
 
 router = APIRouter(prefix="/gtfs", tags=["GTFS Query"])
@@ -442,26 +442,24 @@ class AgencyResponse(BaseModel):
         from_attributes = True
 
 
-class TransferResponse(BaseModel):
-    """Transfer/interchange information between stops or lines."""
+class PlatformResponse(BaseModel):
+    """Platform coordinates for a specific line at a stop."""
     id: int
-    from_stop_id: str
-    to_stop_id: str
-    from_route_id: Optional[str]
-    to_route_id: Optional[str]
-    transfer_type: int  # 0=recommended, 1=timed, 2=min time required, 3=not possible
-    min_transfer_time: Optional[int]  # seconds
-    from_stop_name: Optional[str]
-    to_stop_name: Optional[str]
-    from_line: Optional[str]
-    to_line: Optional[str]
-    network_id: Optional[str]
-    instructions: Optional[str]
-    exit_name: Optional[str]
+    stop_id: str
+    line: str
+    lat: float
+    lon: float
     source: Optional[str]
 
     class Config:
         from_attributes = True
+
+
+class StopPlatformsResponse(BaseModel):
+    """All platforms at a stop with their coordinates."""
+    stop_id: str
+    stop_name: str
+    platforms: List[PlatformResponse]
 
 
 @router.get("/agencies", response_model=List[AgencyResponse])
@@ -1961,41 +1959,36 @@ def get_route_operating_hours(route_id: str, db: Session = Depends(get_db)):
     )
 
 
-@router.get("/stops/{stop_id}/transfers", response_model=List[TransferResponse])
-def get_stop_transfers(
+@router.get("/stops/{stop_id}/platforms", response_model=StopPlatformsResponse)
+def get_stop_platforms(
     stop_id: str,
-    direction: Optional[str] = Query(
-        None,
-        description="Filter direction: 'from' (transfers FROM this stop), 'to' (transfers TO this stop), or None (both)"
-    ),
     db: Session = Depends(get_db),
 ):
-    """Get transfer/interchange information for a stop.
+    """Get platform coordinates for each line at a stop.
 
-    Returns transfer times and instructions between this stop and nearby lines.
-    Data comes from GTFS transfers.txt or manual entries.
+    Returns the specific coordinates for each platform/line at this station.
+    Useful for showing walking directions between platforms at interchanges.
 
-    Transfer types:
-    - 0: Recommended transfer point
-    - 1: Timed transfer (vehicle waits)
-    - 2: Minimum time required
-    - 3: Transfer not possible
+    Example response for Nuevos Ministerios:
+    - L6: (40.446620, -3.692410)
+    - L8: (40.446550, -3.692410)
+    - L10: (40.446590, -3.692410)
+    - C4a: (40.447100, -3.691800)
+
+    Data sources: GTFS stops.txt, OpenStreetMap, or manual entries.
     """
-    if direction == "from":
-        transfers = db.query(LineTransferModel).filter(
-            LineTransferModel.from_stop_id == stop_id
-        ).all()
-    elif direction == "to":
-        transfers = db.query(LineTransferModel).filter(
-            LineTransferModel.to_stop_id == stop_id
-        ).all()
-    else:
-        # Both directions
-        transfers = db.query(LineTransferModel).filter(
-            or_(
-                LineTransferModel.from_stop_id == stop_id,
-                LineTransferModel.to_stop_id == stop_id,
-            )
-        ).all()
+    # Get stop name
+    stop = db.query(StopModel).filter(StopModel.id == stop_id).first()
+    if not stop:
+        raise HTTPException(status_code=404, detail=f"Stop {stop_id} not found")
 
-    return transfers
+    # Get all platforms for this stop
+    platforms = db.query(StopPlatformModel).filter(
+        StopPlatformModel.stop_id == stop_id
+    ).order_by(StopPlatformModel.line).all()
+
+    return StopPlatformsResponse(
+        stop_id=stop_id,
+        stop_name=stop.name,
+        platforms=[PlatformResponse.model_validate(p) for p in platforms]
+    )

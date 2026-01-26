@@ -7,7 +7,63 @@
 
 ## 1. Conceptos Clave
 
-### 1.1 Correspondencias (cor_*)
+### 1.1 Plataformas (stop_platform) - NUEVO MODELO
+
+Tabla que almacena las coordenadas específicas de cada andén/plataforma por línea en una estación.
+
+**Estructura:**
+```sql
+stop_platform:
+  id: INTEGER PRIMARY KEY
+  stop_id: VARCHAR(100)     -- Referencia a gtfs_stops
+  line: VARCHAR(50)         -- L6, C4a, T1, E1, S1, etc.
+  lat: FLOAT
+  lon: FLOAT
+  source: VARCHAR(50)       -- 'gtfs', 'osm', 'manual'
+  UNIQUE(stop_id, line)
+```
+
+**Ejemplo - Nuevos Ministerios:**
+```
+stop_id: METRO_12345
+| line | lat       | lon       | source |
+|------|-----------|-----------|--------|
+| L6   | 40.446620 | -3.692410 | osm    |
+| L8   | 40.446550 | -3.692410 | osm    |
+| L10  | 40.446590 | -3.692410 | osm    |
+| C4a  | 40.447100 | -3.691800 | gtfs   |
+| C8a  | 40.447100 | -3.691800 | gtfs   |
+```
+
+**Endpoint:** `GET /api/v1/gtfs/stops/{stop_id}/platforms`
+
+**Respuesta:**
+```json
+{
+  "stop_id": "METRO_12345",
+  "stop_name": "Nuevos Ministerios",
+  "platforms": [
+    {"id": 1, "stop_id": "METRO_12345", "line": "L6", "lat": 40.446620, "lon": -3.692410, "source": "osm"},
+    {"id": 2, "stop_id": "METRO_12345", "line": "L8", "lat": 40.446550, "lon": -3.692410, "source": "osm"},
+    ...
+  ]
+}
+```
+
+### 1.2 Modelo Anterior (DEPRECADO) - line_transfer
+
+> **NOTA:** El modelo `line_transfer` fue eliminado en migración 029. Se documenta aquí para referencia histórica.
+
+El modelo anterior almacenaba transfers entre paradas (from_stop → to_stop) con tiempos de caminata.
+Fue reemplazado por `stop_platform` que es más simple y directo: almacena las coordenadas
+de cada andén sin necesidad de calcular transfers.
+
+Scripts deprecados movidos a `scripts/deprecated/`:
+- `import_transfers.py`
+- `import_proximity_transfers.py`
+- `import_platform_coords.py`
+
+### 1.3 Correspondencias (cor_*)
 
 Campos en la tabla `gtfs_stops` que indican qué líneas de cada tipo de transporte hay en/cerca de esa parada.
 
