@@ -7,38 +7,52 @@
 
 ## 1. Conceptos Clave
 
-### 1.1 Correspondencias (cor_*) - LÍNEAS DEL MISMO SISTEMA
+### 1.1 Correspondencias (cor_*)
 
-Campos en la tabla `gtfs_stops` que indican qué **líneas del mismo tipo de transporte** pasan por esa parada.
+Campos en la tabla `gtfs_stops` que indican qué líneas de cada tipo de transporte hay en/cerca de esa parada.
 
-| Tipo de parada | Campo usado | Contenido |
-|----------------|-------------|-----------|
-| Metro | `cor_metro` | Líneas de metro que pasan (L1, L6, L8) |
-| Cercanías/FGC/Euskotren | `cor_cercanias` | Líneas de cercanías que pasan (C3, C4a, R1, S1) |
-| Tranvía | `cor_tranvia` | Líneas de tranvía que pasan (T1, T2, T3) |
-| Metro Ligero | `cor_ml` | Líneas de ML que pasan (ML1, ML2) |
+| Campo | Descripción |
+|-------|-------------|
+| `cor_metro` | Líneas de metro |
+| `cor_cercanias` | Líneas de cercanías/rodalies/FGC/Euskotren |
+| `cor_tranvia` | Líneas de tranvía |
+| `cor_ml` | Líneas de metro ligero |
 
-**Uso:** Mostrar al usuario qué líneas del mismo sistema puede coger en esa parada.
+**Todos los campos están presentes en todas las paradas**, pero su uso varía:
 
-**Ejemplo - Parada de Metro:**
+| Situación | Uso |
+|-----------|-----|
+| **Mismo tipo de transporte** | ACTIVO - la app lo usa funcionalmente |
+| **Otro tipo de transporte** | INFORMATIVO - se muestra pero solo como referencia |
+
+**Ejemplo - Nuevos Ministerios (parada de METRO):**
 ```
 id: METRO_12345
 name: Nuevos Ministerios
-cor_metro: L6, L8, L10  ← líneas de metro que pasan aquí
+cor_metro: L6, L8, L10           ← ACTIVO (líneas de metro que pasan aquí)
+cor_cercanias: C3, C4a, C4b...   ← INFORMATIVO (cercanías cerca)
+cor_tranvia: null
+cor_ml: null
 ```
 
-**Ejemplo - Parada de Cercanías:**
+**Ejemplo - Nuevos Ministerios (parada de CERCANÍAS):**
 ```
 id: RENFE_17000
-name: Madrid-Atocha Cercanías
-cor_cercanias: C1, C2, C3, C4a, C4b, C5, C7, C8a, C8b, C10  ← líneas de cercanías
+name: Nuevos Ministerios
+cor_metro: L6, L8, L10           ← INFORMATIVO (metro cerca)
+cor_cercanias: C3, C4a, C4b...   ← ACTIVO (líneas de cercanías que pasan aquí)
+cor_tranvia: null
+cor_ml: null
 ```
 
-**Ejemplo - Parada de Tranvía Barcelona:**
+**Ejemplo - Glòries (parada de TRANVÍA Barcelona):**
 ```
 id: TRAM_BARCELONA_1234
 name: Glòries
-cor_tranvia: T4, T5, T6  ← líneas de tranvía que pasan aquí
+cor_metro: L1                    ← INFORMATIVO (metro cerca)
+cor_cercanias: null
+cor_tranvia: T4, T5, T6          ← ACTIVO (líneas de tranvía que pasan aquí)
+cor_ml: null
 ```
 
 ### 1.2 Line Transfers - DETALLADO
