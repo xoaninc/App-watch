@@ -21,7 +21,14 @@ API de información de transporte ferroviario en España. Proporciona datos de l
 | Metro Sevilla | `METRO_SEV_` |
 | Metro Valencia | `METRO_VAL_` |
 | Metro Málaga | `METRO_MAL_` |
-| Tranvías (varios) | `TRAM_*` |
+| Metro Granada | `METRO_GRA_` |
+| Metro Tenerife | `METRO_TEN_` |
+| TRAM Barcelona | `TRAM_BCN_` / `TRAM_BARCELONA_` |
+| TRAM Alicante | `TRAM_ALI_` |
+| Tranvía Zaragoza | `TRANVIA_ZARAGOZA_` |
+| Tranvía Murcia | `TRANVIA_MURCIA_` |
+| Tranvía Sevilla | `TRAM_SEV_` |
+| SFM Mallorca | `SFM_MALLORCA_` |
 
 ## Tech Stack
 
@@ -49,7 +56,10 @@ GET /api/v1/gtfs/coordinates/routes?lat=&lon= # Rutas por coordenadas
 ```
 GET /api/v1/gtfs/stops/by-coordinates?lat=&lon=  # Paradas cercanas
 GET /api/v1/gtfs/stops/{stop_id}/departures      # Próximas salidas
+GET /api/v1/gtfs/stops/{stop_id}/platforms       # Andenes/plataformas de la parada
+GET /api/v1/gtfs/stops/{stop_id}/correspondences # Conexiones a pie con otras paradas
 GET /api/v1/gtfs/routes/{route_id}/stops         # Paradas de una línea
+GET /api/v1/gtfs/routes/{route_id}/shape         # Geometría de la ruta (949 shapes)
 ```
 
 ### Tiempo Real
@@ -73,6 +83,17 @@ GET /api/v1/gtfs/realtime/scheduler/status   # Estado del scheduler
 - Logos de cada operador
 - Líneas ordenadas por `sort_order`
 - Colores por línea
+- Campo `transport_type`: cercanias, metro, metro_ligero, tranvia, fgc, euskotren, other
+
+### Paradas
+- Campo `is_hub`: true si conecta 2+ tipos de transporte (Metro↔Cercanías, etc.)
+- **Plataformas** (`/platforms`): 2,989 andenes con coordenadas por línea
+- **Correspondencias** (`/correspondences`): 218 conexiones a pie entre paradas
+
+### Shapes (Geometrías)
+- **949 shapes** con **650,332 puntos** para todas las redes
+- Trazados bidireccionales (ida y vuelta)
+- Fuentes: GTFS oficial, NAP, OpenStreetMap
 
 ## Server
 
@@ -111,9 +132,9 @@ ssh root@juanmacias.com "systemctl restart renfeserver"
 
 ## Documentación
 
-- [GTFS_REALTIME.md](./GTFS_REALTIME.md) - Integración tiempo real
-- [docs/ARCHITECTURE_NETWORK_PROVINCES.md](./docs/ARCHITECTURE_NETWORK_PROVINCES.md) - Arquitectura de redes
-- [docs/epics/](./docs/epics/) - Épicas de desarrollo
+- [docs/GTFS_OPERATORS_STATUS.md](./docs/GTFS_OPERATORS_STATUS.md) - Estado de operadores y URLs
+- [docs/TODO_PENDIENTE.md](./docs/TODO_PENDIENTE.md) - Tareas y estado actual
+- [docs/PLATFORMS_AND_CORRESPONDENCES.md](./docs/PLATFORMS_AND_CORRESPONDENCES.md) - Plataformas y correspondencias
 
 ## Licencia
 

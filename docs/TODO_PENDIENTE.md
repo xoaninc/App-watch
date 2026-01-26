@@ -259,17 +259,17 @@ Extraídos desde OpenStreetMap usando Overpass API con shapes bidireccionales:
 
 **Asignación de shapes:** Cada trip se asigna al shape de IDA o VUELTA basándose en la comparación de los números de estación de origen y destino.
 
-### Resumen Base de Datos (2026-01-26 FINAL)
+### Resumen Base de Datos (2026-01-27)
 
 | Datos | Total |
 |-------|-------|
 | Platforms | 2,989 |
 | Correspondencias | 218 |
 | Trips con headsign | 237,054 |
-| Trips con shape | 239,205 |
+| Trips con shape | 239,225 |
 | Trips sin shape | 1,218 |
-| Shape points | 591,925 |
-| Shapes | 888 |
+| Shape points | 650,332 |
+| Shapes | 949 |
 
 ---
 
@@ -312,9 +312,9 @@ Creadas rutas y trips para acceder a los shapes via endpoint estándar:
 | **TOTAL** | **218** |
 
 ### Shapes
-- 888 shapes (32 nuevos de Metrovalencia + TRAM Alicante)
-- 591,925 puntos
-- 239,205 trips con shape (99.5%)
+- 949 shapes (todas las redes completas)
+- 650,332 puntos
+- 239,225 trips con shape (99.5%)
 
 ---
 

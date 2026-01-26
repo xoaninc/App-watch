@@ -1,16 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from typing import Optional
 
 from core.database import get_db
-# GTFSImporter has been deprecated in favor of RenfeGeoJSONImporter
-# Only using official Renfe GeoJSON sources now
 from src.gtfs_bc.feed.infrastructure.models import FeedImportModel
-from adapters.http.api.gtfs.schemas.import_schemas import (
-    ImportRequest,
-    ImportResponse,
-    ImportStatusResponse,
-)
+from adapters.http.api.gtfs.schemas.import_schemas import ImportStatusResponse
 
 router = APIRouter(prefix="/gtfs", tags=["GTFS"])
 
