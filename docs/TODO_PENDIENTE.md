@@ -1,6 +1,6 @@
 # TODO - Tareas Pendientes
 
-**Última actualización:** 2026-01-27 00:30
+**Última actualización:** 2026-01-27 01:15
 
 ---
 
@@ -20,25 +20,60 @@
 |-----|--------|--------|--------|
 | TMB Metro Barcelona | 290 | 103,248 | ✅ Funciona |
 | SFM Mallorca | 243 | 257,515 | ✅ Importado 2026-01-26 |
-| Renfe Cercanías | 118 | 74,420 | ✅ Funciona |
+| Renfe Cercanías | 118 | 74,420 | ✅ Funciona (variantes de ruta) |
 | Euskotren | 115 | 60,886 | ✅ Funciona |
 | Metro Ligero Madrid | 38 | 61,816 | ✅ Funciona |
+| **Metro Madrid** | 30 | 57,474 | ✅ **Importado 2026-01-27** (15 líneas x 2 dir) |
 | Metro Bilbao | 33 | 13,271 | ✅ Funciona |
 | FGC | 42 | 11,591 | ✅ Funciona |
-| Tranvía Murcia | 2 | 634 | ✅ Importado 2026-01-26 |
+| Tranvía Murcia | 3 | 989 | ✅ L1 circular + L1B bidireccional |
 | Metro Málaga | 4 | 260 | ✅ Importado 2026-01-26 |
 | Tranvía Zaragoza | 2 | 252 | ✅ Importado 2026-01-26 |
 | Metro Tenerife | 4 | 132 | ✅ Importado 2026-01-26 |
 | Metro Sevilla | 2 | 212 | ✅ OSM sin depot 2026-01-26 |
 | TRAM Barcelona | 12 | 5,136 | ✅ Extraído de OSM 2026-01-26 |
-| Metro Granada | 1 | 26 | ✅ Creado desde estaciones 2026-01-26 |
+| Metro Granada | 2 | 52 | ✅ Bidireccional 2026-01-27 |
 | Metrovalencia | 20 | 11,390 | ✅ Extraído de OSM 2026-01-26 (10 líneas x 2 dir) |
 | TRAM Alicante | 12 | 6,858 | ✅ Extraído de OSM 2026-01-26 (6 líneas x 2 dir) |
 | Tranvía Sevilla (Metrocentro) | 2 | 552 | ✅ Extraído de OSM 2026-01-27 |
 
-**Total en producción:** 890 shapes, 592,477 puntos
-**Trips con shape:** 239,207
+**Total en producción:** 949 shapes, 650,332 puntos
+**Trips con shape:** 239,225
 **Trips sin shape:** 1,218 (trips huérfanos)
+
+---
+
+## Tareas Completadas (2026-01-27)
+
+### ✅ Metro Madrid - Importación Completa
+
+Importados shapes desde GTFS oficial de CRTM (Consorcio Regional de Transportes de Madrid):
+
+| Dato | Valor |
+|------|-------|
+| Shapes | 30 (15 líneas × 2 direcciones) |
+| Puntos | 57,474 |
+| Trips | 18 |
+| Fuente | `https://crtm.maps.arcgis.com/sharing/rest/content/items/5c7f2951962540d69ffe8f640d94c246/data` |
+
+**Shape IDs:** `METRO_MAD_4__1____1__IT_1` (L1 ida), `METRO_MAD_4__1____2__IT_1` (L1 vuelta), etc.
+
+**Nota:** La documentación anterior decía incorrectamente que el GTFS de Metro Madrid no tenía shapes. El GTFS SÍ incluye shapes.txt con 57k puntos.
+
+### ✅ Shapes Bidireccionales Arreglados
+
+| Red | Antes | Después | Acción |
+|-----|-------|---------|--------|
+| Metro Granada | 1 shape | 2 shapes | Creado reverse |
+| TRAM Barcelona (real) | 1 shape/ruta | 2 shapes/ruta | Asignados shapes OSM a trips reales |
+| Tranvía Murcia L1B | 1 shape | 2 shapes | Creado reverse |
+
+### ✅ Tranvía Sevilla (Metrocentro) - Añadido
+
+Extraído desde OSM (tracks `railway=tram`):
+- 2 shapes (ida/vuelta)
+- 552 puntos
+- Shape IDs: `TRAM_SEV_T1_OSM`, `TRAM_SEV_T1_OSM_REV`
 
 ---
 
@@ -349,4 +384,26 @@ curl "https://redcercanias.com/api/v1/gtfs/routes/METRO_SEV_L1_CE_OQ/shape"
 
 # Tranvía Sevilla (Metrocentro) T1
 curl "https://juanmacias.com/api/v1/gtfs/routes/TRAM_SEV_T1/shape"
+```
+
+### Metro Madrid (NUEVO 2026-01-27)
+
+```bash
+# Metro Madrid - todas las líneas disponibles
+curl "https://juanmacias.com/api/v1/gtfs/routes/METRO_1/shape"   # L1 Pinar de Chamartín - Valdecarros
+curl "https://juanmacias.com/api/v1/gtfs/routes/METRO_2/shape"   # L2 Las Rosas - Cuatro Caminos
+curl "https://juanmacias.com/api/v1/gtfs/routes/METRO_3/shape"   # L3 Villaverde Alto - Moncloa
+curl "https://juanmacias.com/api/v1/gtfs/routes/METRO_4/shape"   # L4 Argüelles - Pinar de Chamartín
+curl "https://juanmacias.com/api/v1/gtfs/routes/METRO_5/shape"   # L5 Alameda de Osuna - Casa de Campo
+curl "https://juanmacias.com/api/v1/gtfs/routes/METRO_6/shape"   # L6 Circular
+curl "https://juanmacias.com/api/v1/gtfs/routes/METRO_7/shape"   # L7 Pitis - Estadio Metropolitano
+curl "https://juanmacias.com/api/v1/gtfs/routes/METRO_7B/shape"  # L7B Estadio Metropolitano - Hospital del Henares
+curl "https://juanmacias.com/api/v1/gtfs/routes/METRO_8/shape"   # L8 Nuevos Ministerios - Aeropuerto T4
+curl "https://juanmacias.com/api/v1/gtfs/routes/METRO_9/shape"   # L9 Paco de Lucía - Puerta de Arganda
+curl "https://juanmacias.com/api/v1/gtfs/routes/METRO_9B/shape"  # L9B Puerta de Arganda - Arganda del Rey
+curl "https://juanmacias.com/api/v1/gtfs/routes/METRO_10/shape"  # L10 Tres Olivos - Puerta del Sur
+curl "https://juanmacias.com/api/v1/gtfs/routes/METRO_10B/shape" # L10B Hospital Infanta Sofía - Tres Olivos
+curl "https://juanmacias.com/api/v1/gtfs/routes/METRO_11/shape"  # L11 Plaza Elíptica - La Fortuna
+curl "https://juanmacias.com/api/v1/gtfs/routes/METRO_12/shape"  # L12 MetroSur (Circular)
+curl "https://juanmacias.com/api/v1/gtfs/routes/METRO_R/shape"   # R Ópera - Príncipe Pío
 ```

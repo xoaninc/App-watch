@@ -67,7 +67,7 @@
 | Tranvía Murcia | 🔧 NAP | ❌ | ❌ | 🔧 NAP |
 | SFM Mallorca | 🔧 NAP | ❌ | ❌ | 🔧 NAP |
 | **Renfe Cercanías** | ✅ | ✅ JSON | ✅ (19)* | ✅ 74k pts |
-| Metro Madrid (CRTM) | ✅ | ❌ | ❌ | ❌ No en GTFS |
+| Metro Madrid (CRTM) | ✅ | ❌ | ❌ | ✅ 57k pts (importado 2026-01-27) |
 | Metro Ligero Madrid | ✅ | ❌ | ❌ | ✅ 62k pts |
 
 **Leyenda:**
