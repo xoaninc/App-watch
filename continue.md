@@ -1,6 +1,6 @@
 # Estado del Proyecto - GTFS y APIs de Transporte
 
-**Última actualización:** 2026-01-26 05:00 CET
+**Última actualización:** 2026-01-26 05:45 CET
 
 ---
 
@@ -252,30 +252,41 @@ Cuando los datos del CSV difieren de la BD, **NO se sobreescribe**. Se guarda en
   - Nuevo endpoint: `GET /stops/{stop_id}/platforms`
   - 553 plataformas importadas (Metro MAD: 278, TMB: 157, Bilbao: 55, FGC: 54)
 
-### Alta Prioridad - Extraer OSM de redes faltantes
-⚠️ **IMPORTANTE:** Solo 3 redes tienen coordenadas de plataformas
+### Próximas Tareas - Plan de Plataformas
 
-| Estado | Red | Plataformas | Pendiente |
-|--------|-----|-------------|-----------|
-| ✅ | Metro Madrid | 278 | Algunas líneas faltan (ej: L6 en Nuevos Ministerios) |
-| ✅ | TMB Metro | 157 | Parcial |
-| ✅ | Metro Bilbao | 55 | OK |
-| ✅ | FGC | 54 | Parcial |
-| ❌ | Renfe Cercanías | 0 | Extraer de OSM/GTFS |
-| ❌ | Euskotren | 0 | Extraer de OSM/GTFS |
-| ❌ | TRAM Barcelona | 0 | Extraer de OSM |
-| ❌ | Metro Ligero Madrid | 0 | Extraer de OSM |
+**Ver documentación completa:** `docs/CORRESPONDENCIAS_Y_TRANSFERS.md` sección 13
 
-**Ver:** `docs/CORRESPONDENCIAS_Y_TRANSFERS.md` para queries Overpass
+#### Fase 1: Cambio de Modelo
+- [ ] Migración 030: Cambiar `line` → `lines` en stop_platform
+- [ ] Actualizar modelo StopPlatformModel
+- [ ] Actualizar endpoint /platforms
 
-### Media Prioridad
-- [ ] Completar datos OSM faltantes (L6 Nuevos Ministerios, etc.)
-- [ ] Extraer coords de Renfe Cercanías desde GTFS
+#### Fase 2: Importar Plataformas por Red
+
+| # | Red | Tipo | Fuente | Estado |
+|---|-----|------|--------|--------|
+| 1 | Metro Madrid | Metro | OSM | ✅ 278 (re-importar con `lines`) |
+| 2 | TMB Metro | Metro | OSM | ✅ 157 (re-importar con `lines`) |
+| 3 | Metro Bilbao | Metro | OSM | ✅ 55 (re-importar con `lines`) |
+| 4 | Cercanías Madrid | Tren | OSM + GTFS + manual | ❌ Pendiente |
+| 5 | Rodalies Barcelona | Tren | OSM + GTFS + manual | ❌ Pendiente |
+| 6 | FGC | Tren | OSM | ⚠️ 54 parcial |
+| 7 | Euskotren | Tren | OSM + GTFS | ❌ Pendiente |
+| 8 | TRAM Barcelona | Tranvía | OSM | ❌ Pendiente |
+| 9 | Metro Ligero Madrid | ML | OSM | ❌ Pendiente |
+| 10 | Metros secundarios | Metro | OSM/GTFS | ❌ Pendiente |
+| 11 | Resto Cercanías | Tren | GTFS | ❌ Pendiente |
+
+#### Fase 3: Matching Manual Intercambiadores
+- [ ] Nuevos Ministerios (4 plataformas → 8 líneas)
+- [ ] Atocha Cercanías (~10 plataformas)
+- [ ] Chamartín (~6 plataformas)
+- [ ] Sol, Príncipe Pío
+- [ ] Passeig de Gràcia, Sants, Plaça Catalunya (Barcelona)
+
+### Otras Tareas
 - [ ] Completar Passeig de Gràcia con L2, L4 en cor_metro
-
-### Baja Prioridad
-- [ ] Investigar por qué API de geoportal.valencia.es devuelve vacío
-- [ ] Metro Sevilla, Málaga, Granada, Tenerife
+- [ ] Investigar API Valencia (devuelve vacío)
 
 ---
 

@@ -82,12 +82,12 @@ def import_from_csv(session, csv_path: str, network_prefixes: list, source: str 
         reader = csv.DictReader(f)
         for row in reader:
             station_name = row['station_name']
-            line = row['line']
+            lines = row['line']  # CSV has 'line' column, we store as 'lines'
             lat = float(row['lat'])
             lon = float(row['lon'])
 
             # Skip Unknown lines
-            if line == 'Unknown':
+            if lines == 'Unknown':
                 skipped += 1
                 continue
 
@@ -117,16 +117,16 @@ def import_from_csv(session, csv_path: str, network_prefixes: list, source: str 
             try:
                 session.execute(
                     text("""
-                        INSERT INTO stop_platform (stop_id, line, lat, lon, source)
-                        VALUES (:stop_id, :line, :lat, :lon, :source)
-                        ON CONFLICT (stop_id, line) DO UPDATE SET
+                        INSERT INTO stop_platform (stop_id, lines, lat, lon, source)
+                        VALUES (:stop_id, :lines, :lat, :lon, :source)
+                        ON CONFLICT (stop_id, lines) DO UPDATE SET
                             lat = :lat,
                             lon = :lon,
                             source = :source
                     """),
                     {
                         "stop_id": stop_id,
-                        "line": line,
+                        "lines": lines,
                         "lat": lat,
                         "lon": lon,
                         "source": source
@@ -134,7 +134,7 @@ def import_from_csv(session, csv_path: str, network_prefixes: list, source: str 
                 )
                 imported += 1
             except Exception as e:
-                print(f"  [ERROR] {station_name} {line}: {e}")
+                print(f"  [ERROR] {station_name} {lines}: {e}")
                 skipped += 1
 
     session.commit()

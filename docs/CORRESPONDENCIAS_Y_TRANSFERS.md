@@ -7,32 +7,42 @@
 
 ## 1. Conceptos Clave
 
-### 1.1 Plataformas (stop_platform) - NUEVO MODELO
+### 1.1 Plataformas (stop_platform) - MODELO ACTUAL
 
-Tabla que almacena las coordenadas específicas de cada andén/plataforma por línea en una estación.
+Tabla que almacena las coordenadas específicas de cada andén/plataforma en una estación.
 
 **Estructura:**
 ```sql
 stop_platform:
   id: INTEGER PRIMARY KEY
   stop_id: VARCHAR(100)     -- Referencia a gtfs_stops
-  line: VARCHAR(50)         -- L6, C4a, T1, E1, S1, etc.
+  lines: VARCHAR(255)       -- Una o varias líneas: "L6" o "C2, C3, C4a, C4b"
   lat: FLOAT
   lon: FLOAT
   source: VARCHAR(50)       -- 'gtfs', 'osm', 'manual'
-  UNIQUE(stop_id, line)
+  UNIQUE(stop_id, lines)
 ```
 
-**Ejemplo - Nuevos Ministerios:**
+**Lógica de agrupación:**
+- Si varias líneas comparten el mismo andén (mismas coordenadas) → se agrupan en `lines`
+- Si cada línea tiene coordenadas diferentes → una entrada por línea
+
+**Ejemplo - METRO_120 (Nuevos Ministerios Metro):**
 ```
-stop_id: METRO_12345
-| line | lat       | lon       | source |
-|------|-----------|-----------|--------|
-| L6   | 40.446620 | -3.692410 | osm    |
-| L8   | 40.446550 | -3.692410 | osm    |
-| L10  | 40.446590 | -3.692410 | osm    |
-| C4a  | 40.447100 | -3.691800 | gtfs   |
-| C8a  | 40.447100 | -3.691800 | gtfs   |
+| lines | lat       | lon       | source |
+|-------|-----------|-----------|--------|
+| L6    | 40.446620 | -3.692410 | osm    |
+| L8    | 40.446550 | -3.692380 | osm    |
+| L10   | 40.446590 | -3.692400 | osm    |
+```
+
+**Ejemplo - RENFE_18002 (Nuevos Ministerios Cercanías):**
+```
+| lines              | lat       | lon       | source |
+|--------------------|-----------|-----------|--------|
+| C3, C4a, C4b       | 40.445306 | -3.692042 | osm    |
+| C7, C8a, C8b, C10  | 40.445187 | -3.692495 | osm    |
+| C2                 | 40.445194 | -3.693120 | osm    |
 ```
 
 **Endpoint:** `GET /api/v1/gtfs/stops/{stop_id}/platforms`
@@ -40,12 +50,12 @@ stop_id: METRO_12345
 **Respuesta:**
 ```json
 {
-  "stop_id": "METRO_12345",
+  "stop_id": "RENFE_18002",
   "stop_name": "Nuevos Ministerios",
   "platforms": [
-    {"id": 1, "stop_id": "METRO_12345", "line": "L6", "lat": 40.446620, "lon": -3.692410, "source": "osm"},
-    {"id": 2, "stop_id": "METRO_12345", "line": "L8", "lat": 40.446550, "lon": -3.692410, "source": "osm"},
-    ...
+    {"id": 1, "lines": "C3, C4a, C4b", "lat": 40.445306, "lon": -3.692042, "source": "osm"},
+    {"id": 2, "lines": "C7, C8a, C8b, C10", "lat": 40.445187, "lon": -3.692495, "source": "osm"},
+    {"id": 3, "lines": "C2", "lat": 40.445194, "lon": -3.693120, "source": "osm"}
   ]
 }
 ```
@@ -929,27 +939,138 @@ ORDER BY total DESC;
 
 ---
 
-## 13. Próximos Pasos Recomendados
+## 13. Plan de Importación de Plataformas - TODAS LAS REDES
 
-### Fase 1: Extraer OSM de redes principales (Estimación: inmediato)
-1. Ejecutar query Overpass para Renfe Cercanías España
-2. Ejecutar query Overpass para FGC Cataluña
-3. Ejecutar query Overpass para Euskotren País Vasco
-4. Ejecutar query Overpass para TRAM Barcelona
-5. Ejecutar query Overpass para Metro Ligero Madrid
+### 13.1 Cambio de Modelo Pendiente
 
-### Fase 2: Procesar y actualizar BD
-1. Procesar JSON de cada red con script Python
-2. Generar CSVs con coordenadas por línea
-3. Actualizar line_transfer con nuevas coordenadas
-4. Verificar resultados
+**Migración 030:** Cambiar `line` → `lines` en `stop_platform`
+```sql
+ALTER TABLE stop_platform RENAME COLUMN line TO lines;
+ALTER TABLE stop_platform ALTER COLUMN lines TYPE VARCHAR(255);
+```
 
-### Fase 3: Redes secundarias
-1. Verificar disponibilidad en OSM de: Metro Valencia, Sevilla, Málaga, Granada, Tenerife
-2. Extraer y procesar los que estén disponibles
-3. Para los que no estén en OSM: coordenadas manuales de Google Maps o GTFS
+### 13.2 Estrategia por Tipo de Transporte
 
-### Fase 4: Refinamiento
-1. Añadir from_line/to_line a transfers que no los tienen
-2. Completar correspondencias cor_* faltantes
-3. Revisar discrepancias y correcciones manuales
+#### METRO (coords diferentes por línea)
+
+| Red | Prefijo stop_id | Fuente OSM | Estado |
+|-----|-----------------|------------|--------|
+| Metro Madrid | METRO_ | `route=subway` | ✅ 278 plataformas |
+| TMB Metro Barcelona | TMB_METRO_ | `route=subway` | ✅ 157 plataformas |
+| Metro Bilbao | METRO_BILBAO_ | `route=subway` | ✅ 55 plataformas |
+| Metro Valencia | METRO_VALENCIA_ | `route=subway` | ❌ Pendiente |
+| Metro Sevilla | METRO_SEV_ | `route=subway` | ❌ Pendiente |
+| Metro Málaga | METRO_MALAGA_ | `route=subway` | ❌ Pendiente |
+| Metro Granada | METRO_GRANADA_ | `route=subway` | ❌ Pendiente |
+| Metro Tenerife | METRO_TENERIFE_ | `route=subway` | ❌ Pendiente |
+
+**Lógica:** Una entrada por línea (L1, L2, etc.) con coords específicas de OSM.
+
+#### CERCANÍAS/RODALIES (coords agrupadas por andén)
+
+| Red | Prefijo stop_id | Fuente | Intercambiadores clave |
+|-----|-----------------|--------|------------------------|
+| Cercanías Madrid (10T) | RENFE_ | OSM plataformas + GTFS fallback | Nuevos Ministerios, Atocha, Chamartín, Sol, Príncipe Pío |
+| Rodalies Barcelona (50T) | RENFE_ | OSM plataformas + GTFS fallback | Passeig de Gràcia, Sants, Plaça Catalunya |
+| Cercanías Valencia (40T) | RENFE_ | GTFS | Xàtiva, Nord |
+| Cercanías Sevilla (51T) | RENFE_ | GTFS | Santa Justa, San Bernardo |
+| Cercanías Bilbao (60T) | RENFE_ | GTFS | Abando |
+| Otros núcleos | RENFE_ | GTFS | - |
+
+**Lógica:**
+1. **Intercambiadores grandes:** Buscar plataformas en OSM, asignar líneas manualmente
+2. **Resto de estaciones:** Usar coord de GTFS, agrupar todas las líneas en `lines`
+
+**Ejemplo intercambiador (OSM disponible):**
+```
+RENFE_18002 (Nuevos Ministerios):
+  lines: "C3, C4a, C4b" → (40.4453, -3.6920)  -- Andén 1
+  lines: "C7, C8a, C8b, C10" → (40.4452, -3.6925)  -- Andén 2
+  lines: "C2" → (40.4452, -3.6931)  -- Andén 3
+```
+
+**Ejemplo estación normal (solo GTFS):**
+```
+RENFE_18100 (Getafe Centro):
+  lines: "C3, C4a, C4b" → (40.3051, -3.7329)  -- Una sola coord
+```
+
+#### FGC (coords por línea donde haya datos)
+
+| Red | Prefijo stop_id | Fuente |
+|-----|-----------------|--------|
+| FGC Barcelona | FGC_ | OSM `route=train, operator=FGC` |
+
+**Estado actual:** 54 plataformas importadas (parcial)
+**Pendiente:** Completar con rutas S1, S2, L6, L7, L8, L12
+
+#### EUSKOTREN (coords agrupadas)
+
+| Red | Prefijo stop_id | Fuente |
+|-----|-----------------|--------|
+| Euskotren | EUSKOTREN_ | OSM `route=train, operator=Euskotren` + GTFS fallback |
+
+**Lógica:** Similar a cercanías. Líneas E1, E2, E3 suelen compartir andén.
+
+#### TRANVÍA (coords por línea)
+
+| Red | Prefijo stop_id | Fuente OSM |
+|-----|-----------------|------------|
+| TRAM Barcelona | TRAM_BARCELONA_ | `route=tram, ref=T1-T6` |
+| Tranvía Zaragoza | TRANVIA_ZARAGOZA_ | `route=tram` |
+| Tranvía Alicante | TRAM_ALICANTE_ | `route=tram` |
+| Tranvía Murcia | TRANVIA_MURCIA_ | `route=tram` |
+
+**Lógica:** Una entrada por línea (T1, T2, etc.)
+
+#### METRO LIGERO (coords por línea)
+
+| Red | Prefijo stop_id | Fuente OSM |
+|-----|-----------------|------------|
+| Metro Ligero Madrid | ML_ | `route=light_rail` |
+
+**Lógica:** Una entrada por línea (ML1, ML2, ML3)
+
+### 13.3 Proceso de Importación
+
+```
+Para cada red:
+1. Intentar extraer de OSM (plataformas con coords por línea)
+2. Si OSM tiene datos específicos → usar coords de OSM
+3. Si OSM no tiene datos o son incompletos → usar GTFS (coord general)
+4. Si varias líneas tienen mismas coords → agrupar en `lines`
+5. Para intercambiadores clave → matching manual de líneas a plataformas
+```
+
+### 13.4 Intercambiadores que Requieren Matching Manual
+
+Estaciones donde hay múltiples plataformas en OSM pero sin indicar qué líneas pasan:
+
+| Ciudad | Estación | Plataformas OSM | Líneas a asignar |
+|--------|----------|-----------------|------------------|
+| Madrid | Nuevos Ministerios | 4 | C2, C3, C4a, C4b, C7, C8a, C8b, C10 |
+| Madrid | Atocha Cercanías | ~10 | C1, C2, C3, C4, C5, C7, C10 |
+| Madrid | Chamartín | ~6 | C1, C2, C3, C4, C7, C8, C10 |
+| Madrid | Sol | 2 | C3, C4a, C4b |
+| Madrid | Príncipe Pío | 2 | C7, C10 |
+| Barcelona | Passeig de Gràcia | 4 | R1, R2, R3, R4 |
+| Barcelona | Sants | ~8 | R1, R2, R3, R4, R11-R16 |
+| Barcelona | Plaça Catalunya | 2 | R1, R2, R3, R4 |
+
+**Fuentes para matching:**
+1. Google Maps (vista satélite)
+2. Planos oficiales de ADIF/Renfe
+3. Wikipedia (esquemas de estaciones)
+
+### 13.5 Orden de Ejecución
+
+1. **Migración 030:** Cambiar `line` → `lines`
+2. **Re-importar Metro** (ya hecho, solo actualizar campo)
+3. **Importar Cercanías Madrid:** OSM plataformas + GTFS + matching manual
+4. **Importar Rodalies Barcelona:** OSM + GTFS + matching manual
+5. **Importar FGC:** Completar con OSM
+6. **Importar Euskotren:** OSM + GTFS
+7. **Importar Tranvías:** OSM
+8. **Importar Metro Ligero:** OSM
+9. **Importar Metros secundarios:** Valencia, Sevilla, Málaga, etc.
+10. **Importar resto de Cercanías:** GTFS (Sevilla, Valencia, Bilbao, etc.)
