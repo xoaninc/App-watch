@@ -34,5 +34,9 @@ class StopPlatformModel(Base):
     # Data source
     source = Column(String(50), nullable=True)  # 'gtfs', 'osm', 'manual'
 
+    # Line color (hex without #) and platform description
+    color = Column(String(6), nullable=True)  # e.g., 'FF0000' for red
+    description = Column(String(255), nullable=True)  # e.g., 'Dirección Nuevos Ministerios'
+
     def __repr__(self):
         return f"<StopPlatform {self.stop_id} - {self.lines}: ({self.lat}, {self.lon})>"

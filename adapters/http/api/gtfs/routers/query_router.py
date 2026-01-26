@@ -217,6 +217,7 @@ from src.gtfs_bc.realtime.infrastructure.services.estimated_positions import Est
 from src.gtfs_bc.realtime.infrastructure.services.gtfs_rt_fetcher import GTFSRealtimeFetcher
 from src.gtfs_bc.stop_route_sequence.infrastructure.models import StopRouteSequenceModel
 from src.gtfs_bc.stop.infrastructure.models.stop_platform_model import StopPlatformModel
+from src.gtfs_bc.stop.infrastructure.models.stop_correspondence_model import StopCorrespondenceModel
 
 
 router = APIRouter(prefix="/gtfs", tags=["GTFS Query"])
@@ -450,6 +451,8 @@ class PlatformResponse(BaseModel):
     lat: float
     lon: float
     source: Optional[str]
+    color: Optional[str] = None  # Hex color without # (e.g., 'FF0000')
+    description: Optional[str] = None  # Platform direction (e.g., 'Dirección Nuevos Ministerios')
 
     class Config:
         from_attributes = True
@@ -460,6 +463,42 @@ class StopPlatformsResponse(BaseModel):
     stop_id: str
     stop_name: str
     platforms: List[PlatformResponse]
+
+
+class CorrespondenceResponse(BaseModel):
+    """Walking connection to another station."""
+    id: int
+    to_stop_id: str
+    to_stop_name: str
+    to_lines: Optional[str]  # Lines at destination (cor_metro, cor_cercanias, etc.)
+    to_transport_types: List[str]  # Transport types at destination: metro, cercanias, metro_ligero, tranvia
+    distance_m: Optional[int]
+    walk_time_s: Optional[int]
+    source: Optional[str]
+
+    class Config:
+        from_attributes = True
+
+
+class StopCorrespondencesResponse(BaseModel):
+    """Walking correspondences from a stop to nearby stations."""
+    stop_id: str
+    stop_name: str
+    correspondences: List[CorrespondenceResponse]
+
+
+class ShapePointResponse(BaseModel):
+    """A single point in a route shape."""
+    lat: float
+    lon: float
+    sequence: int
+
+
+class RouteShapeResponse(BaseModel):
+    """Shape (path) of a route for drawing on maps."""
+    route_id: str
+    route_short_name: str
+    shape: List[ShapePointResponse]
 
 
 @router.get("/agencies", response_model=List[AgencyResponse])
@@ -1959,6 +1998,60 @@ def get_route_operating_hours(route_id: str, db: Session = Depends(get_db)):
     )
 
 
+@router.get("/routes/{route_id}/shape", response_model=RouteShapeResponse)
+def get_route_shape(route_id: str, db: Session = Depends(get_db)):
+    """Get the shape (path) of a route for drawing on maps.
+
+    Returns the sequence of coordinates that define the physical path
+    of the route. Useful for drawing the actual line trajectory on maps
+    (showing curves, tunnels, etc.) instead of just straight lines between stops.
+
+    Data source: shapes.txt from GTFS feed.
+    """
+    from src.gtfs_bc.trip.infrastructure.models import TripModel
+    from src.gtfs_bc.shape.infrastructure.models.shape_model import ShapeModel, ShapePointModel
+
+    # Verify route exists
+    route = db.query(RouteModel).filter(RouteModel.id == route_id).first()
+    if not route:
+        raise HTTPException(status_code=404, detail=f"Route {route_id} not found")
+
+    # Get a trip for this route to find its shape_id
+    trip = db.query(TripModel).filter(
+        TripModel.route_id == route_id,
+        TripModel.shape_id.isnot(None)
+    ).first()
+
+    if not trip or not trip.shape_id:
+        # No shape data for this route
+        return RouteShapeResponse(
+            route_id=route_id,
+            route_short_name=route.short_name.strip() if route.short_name else "",
+            shape=[]
+        )
+
+    # Get all shape points ordered by sequence
+    shape_points = (
+        db.query(ShapePointModel)
+        .filter(ShapePointModel.shape_id == trip.shape_id)
+        .order_by(ShapePointModel.sequence)
+        .all()
+    )
+
+    return RouteShapeResponse(
+        route_id=route_id,
+        route_short_name=route.short_name.strip() if route.short_name else "",
+        shape=[
+            ShapePointResponse(
+                lat=point.lat,
+                lon=point.lon,
+                sequence=point.sequence
+            )
+            for point in shape_points
+        ]
+    )
+
+
 @router.get("/stops/{stop_id}/platforms", response_model=StopPlatformsResponse)
 def get_stop_platforms(
     stop_id: str,
@@ -1987,8 +2080,88 @@ def get_stop_platforms(
         StopPlatformModel.stop_id == stop_id
     ).order_by(StopPlatformModel.lines).all()
 
+    # Build response with color lookup from routes if not stored
+    platform_responses = []
+    for p in platforms:
+        resp = PlatformResponse.model_validate(p)
+        # If no color in platform, try to get it from the route
+        if not resp.color and resp.lines:
+            # Get first line (e.g., "L6" from "L6" or "C2" from "C2, C3, C4a")
+            first_line = resp.lines.split(",")[0].strip()
+            # Find route with this short_name
+            route = db.query(RouteModel).filter(
+                RouteModel.short_name == first_line
+            ).first()
+            if route and route.color:
+                resp.color = route.color
+        platform_responses.append(resp)
+
     return StopPlatformsResponse(
         stop_id=stop_id,
         stop_name=stop.name,
-        platforms=[PlatformResponse.model_validate(p) for p in platforms]
+        platforms=platform_responses
+    )
+
+
+@router.get("/stops/{stop_id}/correspondences", response_model=StopCorrespondencesResponse)
+def get_stop_correspondences(
+    stop_id: str,
+    db: Session = Depends(get_db),
+):
+    """Get walking correspondences to nearby stations.
+
+    Returns stations connected via walking passages (different from platforms
+    at the same station). Example: Acacias (L5) ↔ Embajadores (L3, C5).
+
+    These are different stations that share underground walking connections.
+    """
+    # Get stop
+    stop = db.query(StopModel).filter(StopModel.id == stop_id).first()
+    if not stop:
+        raise HTTPException(status_code=404, detail=f"Stop {stop_id} not found")
+
+    # Get correspondences FROM this stop
+    correspondences = db.query(StopCorrespondenceModel).filter(
+        StopCorrespondenceModel.from_stop_id == stop_id
+    ).all()
+
+    result = []
+    for corr in correspondences:
+        # Get destination stop info
+        to_stop = db.query(StopModel).filter(StopModel.id == corr.to_stop_id).first()
+        if to_stop:
+            # Get all lines at destination (combine all types)
+            lines_parts = []
+            transport_types = []
+
+            if to_stop.cor_metro:
+                lines_parts.append(to_stop.cor_metro)
+                transport_types.append("metro")
+            if to_stop.cor_cercanias:
+                lines_parts.append(to_stop.cor_cercanias)
+                transport_types.append("cercanias")
+            if to_stop.cor_ml:
+                lines_parts.append(to_stop.cor_ml)
+                transport_types.append("metro_ligero")
+            if to_stop.cor_tranvia:
+                lines_parts.append(to_stop.cor_tranvia)
+                transport_types.append("tranvia")
+
+            to_lines = ", ".join(lines_parts) if lines_parts else None
+
+            result.append(CorrespondenceResponse(
+                id=corr.id,
+                to_stop_id=corr.to_stop_id,
+                to_stop_name=to_stop.name,
+                to_lines=to_lines,
+                to_transport_types=transport_types,
+                distance_m=corr.distance_m,
+                walk_time_s=corr.walk_time_s,
+                source=corr.source
+            ))
+
+    return StopCorrespondencesResponse(
+        stop_id=stop_id,
+        stop_name=stop.name,
+        correspondences=result
     )
