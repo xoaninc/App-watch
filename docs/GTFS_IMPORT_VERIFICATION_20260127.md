@@ -120,7 +120,45 @@ El archivo GTFS de Renfe usa IDs de núcleo (primeros 2 dígitos del route_id) q
 - `docs/RAPTOR_IMPLEMENTATION_PLAN.md` - Documentación actualizada
 - `docs/GTFS_IMPORT_VERIFICATION_20260127.md` - Este documento
 
+## Redes Pendientes de Importar Stop Times
+
+### Metro Sevilla ❌
+
+| Dato | Valor |
+|------|-------|
+| Rutas en BD | 1 (L1) |
+| Paradas en BD | 21 |
+| Trips | 0 |
+| Stop Times | 0 |
+| GTFS disponible | ✅ https://metro-sevilla.es/google-transit/google_transit.zip |
+
+**Problema:** Los stop_ids del archivo GTFS no coinciden con nuestra BD:
+- GTFS usa: `L1-E1`, `L1-E2`, etc.
+- BD espera: `METRO_SEV_L1_E1`, `METRO_SEV_L1_E2`, etc.
+
+**Solución necesaria:** Crear script de importación con mapeo:
+```python
+def map_metro_sev_stop_id(gtfs_id):
+    # L1-E1 -> METRO_SEV_L1_E1
+    return f"METRO_SEV_{gtfs_id.replace('-', '_')}"
+```
+
+### Metro Granada ❌
+
+| Dato | Valor |
+|------|-------|
+| Rutas en BD | 1 (L1) |
+| Paradas en BD | 26 |
+| Trips | 0 |
+| Stop Times | 0 |
+| GTFS disponible | ✅ NAP ID 1370 |
+
+**Problema:** Pendiente verificar formato de stop_ids en el archivo GTFS.
+
+**Nota:** Ambos metros funcionan con frequencies en lugar de stop_times exactos, pero sería útil importar los stop_times para el route-planner RAPTOR.
+
 ## Referencias
 
 - `docs/ARCHITECTURE_NETWORK_PROVINCES.md` - Sistema de networks y provincias
+- `docs/GTFS_OPERATORS_STATUS.md` - Estado de operadores y URLs GTFS
 - `alembic/versions/024_replace_nucleos_with_network_provinces.py` - Migración que eliminó nucleo_id
