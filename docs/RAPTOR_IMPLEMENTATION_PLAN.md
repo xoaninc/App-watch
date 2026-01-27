@@ -1,22 +1,53 @@
 # Plan de Implementación RAPTOR
 
 **Fecha:** 2026-01-27
-**Estado:** EN DESARROLLO
+**Última actualización:** 2026-01-27
+**Estado:** FASE 2 COMPLETADA - FASE 3/4 EN PROGRESO
 
-### Progreso:
+---
+
+## Estado de Fases
+
+| Fase | Estado | Descripción |
+|------|--------|-------------|
+| **Fase 1: Desarrollo** | ✅ COMPLETADA | Implementación core RAPTOR |
+| **Fase 2: Deploy** | ✅ COMPLETADA | Deploy a producción |
+| **Fase 3: Limpieza** | 🔄 EN PROGRESO | Eliminar código legacy |
+| **Fase 4: Optimización** | 🔄 EN PROGRESO | Tests, cache, rendimiento |
+
+---
+
+### Progreso Detallado:
+
+#### Fase 1-2: Implementación y Deploy ✅
 - [x] Implementar estructuras de datos RAPTOR (`raptor.py`)
 - [x] Implementar algoritmo de rondas con filtro Pareto
 - [x] Crear RaptorService para integración API (`raptor_service.py`)
 - [x] Actualizar schemas (`routing_schemas.py`)
 - [x] Integrar con endpoint route-planner (`query_router.py`)
+- [x] Añadir parámetro `departure_time`
+- [x] Añadir `alerts` al response
+- [x] Añadir `suggested_heading` a segments
 - [x] Fix: manejo de direcciones (trips bidireccionales)
 - [x] Deploy inicial a producción
 - [x] Fix: importar paradas faltantes (`import_missing_stops`)
 - [x] Fix: soporte para calendar_dates (excepciones de servicio)
 - [x] Fix: migración de nucleo_id a network_id (schema actualizado)
 - [x] Re-importar GTFS con fixes (243 paradas faltantes, 1.84M stop_times)
-- [ ] **Tests unitarios** ← PENDIENTE
-- [ ] **Optimizaciones de rendimiento** ← PENDIENTE
+
+#### Fase 3: Limpieza 🔄
+- [ ] Eliminar `routing_service.py` (Dijkstra legacy)
+- [ ] Limpiar Makefile (referencias a frontend inexistente)
+
+#### Fase 4: Optimización 🔄
+- [ ] **Ejecutar import Metro Sevilla stop_times** ← URGENTE (tiempos incorrectos)
+- [ ] **Ejecutar import Metro Granada stop_times** ← URGENTE (tiempos incorrectos)
+- [ ] Crear estructura de tests (`tests/`)
+- [ ] Tests unitarios para RAPTOR
+- [ ] Tests de integración endpoint route-planner
+- [ ] Optimizar queries con índices BD
+- [ ] Cache de trips activos por fecha
+- [ ] Implementar `?compact=true` en departures (widget/Siri)
 
 ---
 
