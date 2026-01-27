@@ -40,14 +40,160 @@
 - [ ] Limpiar Makefile (referencias a frontend inexistente)
 
 #### Fase 4: Optimización 🔄
-- [ ] **Ejecutar import Metro Sevilla stop_times** ← URGENTE (tiempos incorrectos)
-- [ ] **Ejecutar import Metro Granada stop_times** ← URGENTE (tiempos incorrectos)
+- [x] ~~Ejecutar import Metro Sevilla stop_times~~ ✅ COMPLETADO
+- [x] ~~Ejecutar import Metro Granada stop_times~~ ✅ COMPLETADO
 - [ ] Crear estructura de tests (`tests/`)
 - [ ] Tests unitarios para RAPTOR
 - [ ] Tests de integración endpoint route-planner
 - [ ] Optimizar queries con índices BD
 - [ ] Cache de trips activos por fecha
 - [ ] Implementar `?compact=true` en departures (widget/Siri)
+
+---
+
+## Migración App iOS
+
+La migración de la app iOS consiste en mover lógica del cliente al servidor, eliminando ~580 líneas de código Swift.
+
+### Estado de Migración
+
+| Componente | API (Backend) | App (Frontend) |
+|------------|---------------|----------------|
+| Normalización Shapes | ✅ `?max_gap` implementado | ⏳ Pendiente migrar |
+| Route Planner RAPTOR | ✅ `/route-planner` funcionando | ⏳ Pendiente migrar |
+| Alternativas Pareto | ✅ `journeys[]` array | ⏳ Pendiente UI |
+| Alertas de servicio | ✅ `alerts[]` en response | ⏳ Pendiente UI |
+| Compact departures | ⏳ Pendiente `?compact=true` | ⏳ Pendiente widget/Siri |
+
+### Fase App-1: Normalización de Shapes (cambio pequeño, ~50 líneas)
+
+**API ya soporta:** `GET /routes/{id}/shape?max_gap=50`
+
+**Tareas en la App:**
+- [ ] Añadir parámetro `maxGap` a `fetchRouteShape()`
+- [ ] Eliminar `AnimationController.normalizeRoute()`
+- [ ] Eliminar `AnimationController.sphericalInterpolate()`
+- [ ] Probar animaciones 3D con shapes normalizados del servidor
+
+**Código a eliminar:**
+```swift
+// ELIMINAR de AnimationController.swift
+func normalizeRoute(_ coords: [Coordinate], maxSegmentMeters: Double) -> [Coordinate]
+func sphericalInterpolate(from: Coordinate, to: Coordinate, fraction: Double) -> Coordinate
+```
+
+### Fase App-2: Route Planner RAPTOR (cambio grande, ~530 líneas)
+
+**API ya soporta:** `GET /route-planner?from=STOP&to=STOP&departure_time=HH:MM`
+
+**Tareas en la App:**
+- [ ] Crear nuevos modelos Swift:
+  - `RoutePlannerResponse`
+  - `Journey`
+  - `JourneySegment`
+  - `JourneyStop`
+- [ ] Crear función `planRoute()` en DataService
+- [ ] Reemplazar todas las llamadas a RoutingService
+- [ ] Eliminar `RoutingService.swift` completo
+
+**Código a eliminar:**
+```swift
+// ELIMINAR archivos/funciones:
+- RoutingService.swift (completo)
+- TransitNode, TransitEdge, EdgeType en Journey.swift
+- buildGraph()
+- dijkstra()
+- buildSegments()
+- extractShapeSegment()
+- Llamadas a fetchCorrespondences() para construir grafo
+```
+
+**Modelos Swift sugeridos:**
+```swift
+struct RoutePlannerResponse: Codable {
+    let success: Bool
+    let message: String?
+    let journeys: [Journey]
+    let alerts: [JourneyAlert]?
+}
+
+struct Journey: Codable {
+    let departure: String  // ISO8601
+    let arrival: String    // ISO8601
+    let durationMinutes: Int
+    let transfers: Int
+    let walkingMinutes: Int
+    let segments: [JourneySegment]
+}
+
+struct JourneySegment: Codable {
+    let type: String       // "transit" | "walking"
+    let mode: String       // "metro" | "cercanias" | "walking"
+    let lineId: String?
+    let lineName: String?
+    let lineColor: String?
+    let headsign: String?
+    let origin: JourneyStop
+    let destination: JourneyStop
+    let departure: String?
+    let arrival: String?
+    let durationMinutes: Int
+    let intermediateStops: [JourneyStop]
+    let distanceMeters: Int?
+    let coordinates: [Coordinate]
+    let suggestedHeading: Double?
+}
+
+struct JourneyStop: Codable {
+    let id: String
+    let name: String
+    let lat: Double
+    let lon: Double
+}
+
+struct JourneyAlert: Codable {
+    let id: String
+    let lineId: String?
+    let lineName: String?
+    let message: String
+    let severity: String
+}
+```
+
+### Fase App-3: Nuevas Features UI
+
+**Requiere completar Fase App-2 primero.**
+
+- [ ] **Selector de alternativas:** UI para elegir entre 2-3 rutas Pareto-óptimas
+- [ ] **Heading en animación 3D:** Usar `suggestedHeading` para orientar cámara
+- [ ] **Mostrar alertas:** UI para avisos de suspensiones/retrasos en el journey
+
+### Fase App-4: Widget y Siri
+
+**Requiere que API implemente `?compact=true` primero.**
+
+- [ ] Widget iOS con próximas salidas (response < 5KB)
+- [ ] Siri shortcut para consultar salidas (latencia < 500ms)
+
+### Orden de Migración Recomendado
+
+1. **Fase App-1** (Shapes) - Cambio pequeño, bajo riesgo
+2. **Fase App-2** (Route Planner) - Cambio grande, requiere testing
+3. **Fase App-3** (UI) - Nuevas features, puede hacerse gradualmente
+4. **Fase App-4** (Widget/Siri) - Depende de API `?compact=true`
+
+### Testing de Endpoints
+
+```bash
+# Shape normalizado (YA FUNCIONA)
+curl "https://juanmacias.com/api/v1/gtfs/routes/METRO_SEV_L1_CE_OQ/shape?max_gap=50"
+
+# Route planner RAPTOR (YA FUNCIONA)
+curl "https://juanmacias.com/api/v1/gtfs/route-planner?from=METRO_SEV_L1_E21&to=RENFE_43004&departure_time=08:30"
+
+# Con alternativas
+curl "https://juanmacias.com/api/v1/gtfs/route-planner?from=METRO_SEV_L1_E21&to=RENFE_43004&max_alternatives=3"
+```
 
 ---
 
