@@ -35,7 +35,8 @@ logger = logging.getLogger(__name__)
 BATCH_SIZE = 5000
 
 # Metro Sevilla configuration
-METRO_SEV_ROUTE_ID = 'METRO_SEV_L1'
+# Route ID in database is METRO_SEV_L1_CE_OQ (not METRO_SEV_L1)
+METRO_SEV_ROUTE_ID = 'METRO_SEV_L1_CE_OQ'
 METRO_SEV_NETWORK_ID = 'METRO_SEV'
 
 
