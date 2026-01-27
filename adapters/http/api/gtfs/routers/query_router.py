@@ -29,6 +29,11 @@ from adapters.http.api.gtfs.schemas import (
     TripStopResponse,
     TripDetailResponse,
     AgencyResponse,
+    JourneyStopResponse,
+    JourneyCoordinate,
+    JourneySegmentResponse,
+    JourneyResponse,
+    RoutePlannerResponse,
 )
 
 from core.database import get_db
@@ -49,6 +54,7 @@ from src.gtfs_bc.realtime.infrastructure.services.gtfs_rt_fetcher import GTFSRea
 from src.gtfs_bc.stop_route_sequence.infrastructure.models import StopRouteSequenceModel
 from src.gtfs_bc.stop.infrastructure.models.stop_platform_model import StopPlatformModel
 from src.gtfs_bc.stop.infrastructure.models.stop_correspondence_model import StopCorrespondenceModel
+from src.gtfs_bc.routing import RoutingService
 
 
 router = APIRouter(prefix="/gtfs", tags=["GTFS Query"])
@@ -1760,4 +1766,267 @@ def get_stop_correspondences(
         stop_id=stop_id,
         stop_name=stop.name,
         correspondences=result
+    )
+
+
+@router.get("/route-planner", response_model=RoutePlannerResponse)
+def plan_route(
+    from_stop: str = Query(..., alias="from", description="Origin stop ID"),
+    to_stop: str = Query(..., alias="to", description="Destination stop ID"),
+    max_transfers: int = Query(3, ge=0, le=5, description="Maximum number of transfers allowed"),
+    max_gap: Optional[float] = Query(
+        50,
+        ge=10,
+        le=500,
+        description="Maximum gap in meters for shape normalization. Set to null to disable."
+    ),
+    db: Session = Depends(get_db),
+):
+    """Plan a route between two stops.
+
+    Finds the optimal route using Dijkstra's algorithm, considering:
+    - Direct routes on the same line
+    - Transfers between lines at the same station
+    - Walking transfers between nearby stations
+
+    Returns a complete journey with segments, including:
+    - Transit segments (riding a train/metro/tram)
+    - Walking segments (transfers between stations)
+
+    Each segment includes normalized coordinates for smooth map animations.
+
+    **Example request:**
+    ```
+    GET /gtfs/route-planner?from=METRO_SEV_L1_E21&to=RENFE_43004
+    ```
+
+    **Use cases:**
+    - Journey planning in mobile apps
+    - 3D route animations
+    - Multi-modal trip planning
+    """
+    # Initialize routing service
+    routing_service = RoutingService(db)
+
+    # Find route
+    path = routing_service.find_route(from_stop, to_stop, max_transfers)
+
+    if not path:
+        # Check if stops exist
+        origin = db.query(StopModel).filter(StopModel.id == from_stop).first()
+        destination = db.query(StopModel).filter(StopModel.id == to_stop).first()
+
+        if not origin:
+            return RoutePlannerResponse(
+                success=False,
+                message=f"Origin stop not found: {from_stop}"
+            )
+        if not destination:
+            return RoutePlannerResponse(
+                success=False,
+                message=f"Destination stop not found: {to_stop}"
+            )
+
+        return RoutePlannerResponse(
+            success=False,
+            message=f"No route found from {origin.name} to {destination.name}. "
+                    f"Try increasing max_transfers or check if stops are connected."
+        )
+
+    # Build journey response from path
+    origin_stop = db.query(StopModel).filter(StopModel.id == from_stop).first()
+    destination_stop = db.query(StopModel).filter(StopModel.id == to_stop).first()
+
+    # Group consecutive transit edges into segments
+    segments = []
+    current_segment_edges = []
+    current_route_id = None
+
+    for edge in path:
+        if edge.edge_type == "transit":
+            if edge.route_id != current_route_id:
+                # Save previous segment if exists
+                if current_segment_edges:
+                    segments.append(("transit", current_route_id, current_segment_edges))
+                current_segment_edges = [edge]
+                current_route_id = edge.route_id
+            else:
+                current_segment_edges.append(edge)
+        elif edge.edge_type == "transfer_walking":
+            # Save current transit segment
+            if current_segment_edges:
+                segments.append(("transit", current_route_id, current_segment_edges))
+                current_segment_edges = []
+                current_route_id = None
+            # Add walking segment
+            segments.append(("walking", None, [edge]))
+        elif edge.edge_type in ("transfer_same_station", "board"):
+            # These don't create visible segments, just continue
+            pass
+
+    # Don't forget the last segment
+    if current_segment_edges:
+        segments.append(("transit", current_route_id, current_segment_edges))
+
+    # Convert segments to response format
+    journey_segments = []
+    total_duration = 0
+    total_walking = 0
+    total_transit = 0
+    transfer_count = 0
+
+    for seg_type, route_id, edges in segments:
+        if not edges:
+            continue
+
+        first_edge = edges[0]
+        last_edge = edges[-1]
+
+        # Get origin and destination stops for this segment
+        seg_origin = db.query(StopModel).filter(StopModel.id == first_edge.from_node.stop_id).first()
+        seg_destination = db.query(StopModel).filter(StopModel.id == last_edge.to_node.stop_id).first()
+
+        if not seg_origin or not seg_destination:
+            continue
+
+        # Calculate segment duration
+        segment_duration = sum(e.time_minutes for e in edges)
+        total_duration += segment_duration
+
+        if seg_type == "transit":
+            total_transit += segment_duration
+
+            # Get route info
+            route = db.query(RouteModel).filter(RouteModel.id == route_id).first()
+
+            # Get intermediate stops
+            intermediate_stops = []
+            for edge in edges:
+                for stop_id in edge.intermediate_stops:
+                    stop = db.query(StopModel).filter(StopModel.id == stop_id).first()
+                    if stop:
+                        intermediate_stops.append(JourneyStopResponse(
+                            id=stop.id,
+                            name=stop.name,
+                            lat=stop.lat,
+                            lon=stop.lon
+                        ))
+
+            # Get shape coordinates
+            shape_coords = routing_service.extract_segment_shape(
+                route_id,
+                first_edge.from_node.stop_id,
+                last_edge.to_node.stop_id,
+                max_gap=max_gap
+            )
+
+            # Determine transport mode from route type
+            transport_mode = "transit"
+            if route:
+                if route.route_type == 1:
+                    transport_mode = "metro"
+                elif route.route_type == 2:
+                    transport_mode = "cercanias"
+                elif route.route_type == 0:
+                    transport_mode = "tram"
+
+            # Get headsign (last stop on route)
+            route_stops = routing_service._get_stops_on_route(route_id)
+            headsign = None
+            if route_stops:
+                last_route_stop_id = route_stops[-1][0]
+                last_route_stop = db.query(StopModel).filter(StopModel.id == last_route_stop_id).first()
+                if last_route_stop:
+                    headsign = last_route_stop.name
+
+            journey_segments.append(JourneySegmentResponse(
+                type="transit",
+                transport_mode=transport_mode,
+                line_id=route_id,
+                line_name=route.short_name.strip() if route and route.short_name else None,
+                line_color=route.color if route else None,
+                headsign=headsign,
+                origin=JourneyStopResponse(
+                    id=seg_origin.id,
+                    name=seg_origin.name,
+                    lat=seg_origin.lat,
+                    lon=seg_origin.lon
+                ),
+                destination=JourneyStopResponse(
+                    id=seg_destination.id,
+                    name=seg_destination.name,
+                    lat=seg_destination.lat,
+                    lon=seg_destination.lon
+                ),
+                intermediate_stops=intermediate_stops,
+                duration_minutes=int(segment_duration),
+                coordinates=[
+                    JourneyCoordinate(lat=lat, lon=lon)
+                    for lat, lon in shape_coords
+                ]
+            ))
+
+        elif seg_type == "walking":
+            total_walking += segment_duration
+            transfer_count += 1
+
+            # Calculate distance
+            from adapters.http.api.gtfs.utils.shape_utils import haversine_distance
+            distance_m = int(haversine_distance(
+                seg_origin.lat, seg_origin.lon,
+                seg_destination.lat, seg_destination.lon
+            ))
+
+            # Interpolate walking path (15 points for smooth animation)
+            walking_coords = []
+            for i in range(15):
+                t = i / 14.0
+                lat = seg_origin.lat + (seg_destination.lat - seg_origin.lat) * t
+                lon = seg_origin.lon + (seg_destination.lon - seg_origin.lon) * t
+                walking_coords.append(JourneyCoordinate(lat=lat, lon=lon))
+
+            journey_segments.append(JourneySegmentResponse(
+                type="walking",
+                transport_mode="walking",
+                origin=JourneyStopResponse(
+                    id=seg_origin.id,
+                    name=seg_origin.name,
+                    lat=seg_origin.lat,
+                    lon=seg_origin.lon
+                ),
+                destination=JourneyStopResponse(
+                    id=seg_destination.id,
+                    name=seg_destination.name,
+                    lat=seg_destination.lat,
+                    lon=seg_destination.lon
+                ),
+                duration_minutes=int(segment_duration),
+                distance_meters=distance_m,
+                coordinates=walking_coords
+            ))
+
+    # Build final response
+    journey = JourneyResponse(
+        origin=JourneyStopResponse(
+            id=origin_stop.id,
+            name=origin_stop.name,
+            lat=origin_stop.lat,
+            lon=origin_stop.lon
+        ),
+        destination=JourneyStopResponse(
+            id=destination_stop.id,
+            name=destination_stop.name,
+            lat=destination_stop.lat,
+            lon=destination_stop.lon
+        ),
+        total_duration_minutes=int(total_duration),
+        total_walking_minutes=int(total_walking),
+        total_transit_minutes=int(total_transit),
+        transfer_count=transfer_count,
+        segments=journey_segments
+    )
+
+    return RoutePlannerResponse(
+        success=True,
+        journey=journey
     )

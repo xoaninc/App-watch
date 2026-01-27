@@ -49,6 +49,14 @@ from .realtime_schemas import (
 
 from .import_schemas import ImportStatusResponse
 
+from .routing_schemas import (
+    JourneyStopResponse,
+    JourneyCoordinate,
+    JourneySegmentResponse,
+    JourneyResponse,
+    RoutePlannerResponse,
+)
+
 # Required schemas that must exist for the API to function
 REQUIRED_SCHEMAS = [
     # Route schemas
@@ -88,6 +96,12 @@ REQUIRED_SCHEMAS = [
     "CreateAlertResponse",
     # Import schemas
     "ImportStatusResponse",
+    # Routing schemas
+    "JourneyStopResponse",
+    "JourneyCoordinate",
+    "JourneySegmentResponse",
+    "JourneyResponse",
+    "RoutePlannerResponse",
 ]
 
 # Export all required schemas
