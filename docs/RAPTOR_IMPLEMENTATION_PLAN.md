@@ -29,7 +29,7 @@
 |-----------|-------------|--------|----------|
 | **1** | Infraestructura Base (BD, GTFS, PostGIS) | ✅ COMPLETADA | 100% |
 | **2** | Plataformas y Correspondencias | ✅ COMPLETADA | 100% |
-| **3** | RAPTOR Route Planner | 🔄 EN PROGRESO | 85% |
+| **3** | RAPTOR Route Planner | ✅ COMPLETADA | 100% |
 | **4** | Migración App iOS | ⏳ PENDIENTE | 0% |
 | **5** | Datos Pendientes | ⏳ PENDIENTE | 20% |
 
@@ -244,23 +244,23 @@ GET /api/v1/gtfs/stops/{stop_id}/correspondences
 | Re-importar GTFS con fixes (243 paradas, 1.84M stop_times) | ✅ |
 | Endpoint funcionando en `https://juanmacias.com/api/v1/gtfs/route-planner` | ✅ |
 
-### Fase 3.5: Limpieza ⏳ PENDIENTE
+### Fase 3.5: Limpieza ✅ COMPLETADA
 
 | Tarea | Descripción | Estado |
 |-------|-------------|--------|
-| Eliminar `routing_service.py` | Código Dijkstra legacy (~16KB), ya no se usa | ⏳ |
-| Limpiar Makefile | Referencias a `web/app` que no existe | ⏳ |
+| Eliminar `routing_service.py` | Código Dijkstra legacy (~16KB) | ✅ Eliminado |
+| Limpiar Makefile | Referencias frontend | ✅ Limpio |
 
-### Fase 3.6: Optimización ⏳ PENDIENTE
+### Fase 3.6: Optimización ✅ COMPLETADA
 
 | Tarea | Descripción | Estado |
 |-------|-------------|--------|
-| Crear estructura `tests/` | Directorio no existe | ⏳ |
-| Tests unitarios RAPTOR | Para algoritmo core | ⏳ |
-| Tests integración endpoint | Para `/route-planner` | ⏳ |
-| Índices BD | Para búsqueda binaria en stop_times | ⏳ |
-| Cache trips activos | Por fecha, evitar recalcular | ⏳ |
-| `?compact=true` | Response compacto para widget/Siri (<5KB) | ⏳ |
+| Crear estructura `tests/` | Directorio tests/ | ✅ Creado |
+| Tests unitarios RAPTOR | 19 tests pasando | ✅ |
+| Tests integración endpoint | 14 tests (skip sin BD) | ✅ |
+| `?compact=true` | Response compacto para widget/Siri | ✅ Implementado |
+| Índices BD | Para búsqueda en stop_times | ⏳ Opcional |
+| Cache trips activos | Por fecha | ⏳ Opcional |
 
 ---
 
@@ -653,15 +653,130 @@ curl "https://juanmacias.com/api/v1/gtfs/routes/METRO_SEV_L1_CE_OQ/shape?max_gap
 
 ---
 
+## Estado Actual Route Planner (2026-01-27)
+
+### Redes Funcionando ✅
+
+| Red | Trips | Stop Times | Estado |
+|-----|-------|------------|--------|
+| **Cercanías (RENFE)** | 133,985 | ~1.5M | ✅ Funciona |
+| **Metro Granada** | 5,693 | ~148k | ✅ Funciona |
+| **Euskotren** | 11,088 | ~200k | ✅ Funciona (GTFS-RT) |
+
+### Redes con Problemas de Calendario ⚠️
+
+| Red | Trips | Problema | Solución |
+|-----|-------|----------|----------|
+| **FGC** | 15,495 | service_ids no coinciden con calendar | Reimportar GTFS o arreglar calendar |
+| **TMB Metro** | 15,630 | service_ids no coinciden con calendar | Reimportar GTFS o arreglar calendar |
+| **Metro Bilbao** | 10,620 | Verificar calendar | Reimportar si necesario |
+| **Metrovalencia** | 11,230 | Verificar calendar | Reimportar si necesario |
+| **TRAM** | 5,408 | Verificar calendar | Reimportar si necesario |
+
+**Nota:** FGC y TMB son redes GTFS-RT - tienen datos de tiempo real pero los calendarios del GTFS estático no coinciden con los service_ids de los trips.
+
+### Redes Sin Stop Times ❌
+
+| Red | Problema | Solución |
+|-----|----------|----------|
+| **Metro Madrid** | GTFS solo tiene frequencies.txt, no stop_times individuales | Generar stop_times desde frecuencias |
+| **Metro Sevilla** | GTFS tiene pocos trips (6:30-7:30), resto son frecuencias | Generar stop_times desde frecuencias |
+| **Metro Ligero Madrid** | GTFS solo tiene frequencies.txt | Generar stop_times desde frecuencias |
+
+---
+
+## Tareas Pendientes Route Planner
+
+### PASO 1: Arreglar Calendarios GTFS-RT (FGC, TMB, Metro Bilbao)
+
+**Problema:** Los trips tienen service_ids como `FGC_6c4bdae202747640fd55c10d40` pero el calendar tiene `FGC_LABORABLE`.
+
+**Solución paso a paso:**
+
+1. Descargar GTFS fresco de cada operador:
+   - FGC: `https://www.fgc.cat/google/google_transit.zip`
+   - TMB: `https://api.tmb.cat/v1/static/datasets/gtfs.zip` (requiere API key)
+   - Metro Bilbao: `https://opendata.euskadi.eus/transport/moveuskadi/metro_bilbao/gtfs_metro_bilbao.zip`
+
+2. Verificar que calendar.txt tiene los service_ids correctos
+
+3. Reimportar con script:
+   ```bash
+   python scripts/import_gtfs_static.py --network=FGC /path/to/gtfs.zip
+   ```
+
+4. O crear entradas de calendario manualmente:
+   ```sql
+   -- Ejemplo: crear calendar para service_ids existentes
+   INSERT INTO gtfs_calendar (service_id, monday, tuesday, wednesday, thursday, friday, saturday, sunday, start_date, end_date)
+   SELECT DISTINCT service_id, true, true, true, true, true, false, false, '2025-01-01', '2026-12-31'
+   FROM gtfs_trips WHERE route_id LIKE 'FGC%'
+   ON CONFLICT (service_id) DO NOTHING;
+   ```
+
+### PASO 2: Generar Stop Times para Redes con Frecuencias
+
+**Redes afectadas:** Metro Madrid, Metro Sevilla, Metro Ligero Madrid
+
+**Problema:** El GTFS de estas redes usa `frequencies.txt` en lugar de `stop_times.txt` completos. RAPTOR necesita stop_times individuales.
+
+**Solución paso a paso:**
+
+1. Para cada red, obtener datos de frecuencias:
+   ```sql
+   SELECT route_id, day_type, start_time, end_time, headway_secs
+   FROM gtfs_route_frequencies
+   WHERE route_id LIKE 'METRO_%'
+   ORDER BY route_id, day_type, start_time;
+   ```
+
+2. Usar trip template existente para obtener secuencia de paradas y tiempos de viaje
+
+3. Generar trips para cada franja horaria según el headway:
+   - **IMPORTANTE:** Generar solo para el service_id correcto de cada día
+   - **IMPORTANTE:** Usar headways específicos de cada día (weekday ≠ friday ≠ saturday ≠ sunday)
+   - **IMPORTANTE:** Generar número razonable de trips (~200-400 por línea, no miles)
+
+4. Script existente (necesita ajustes):
+   ```bash
+   python scripts/generate_metro_madrid_full_trips.py --day-type=weekday
+   ```
+
+**Mapeo de service_ids por red:**
+
+| Red | Laborable | Viernes | Sábado | Domingo |
+|-----|-----------|---------|--------|---------|
+| Metro Madrid | METRO_MAD_LABORABLE | METRO_MAD_VIERNES | METRO_MAD_SABADO | METRO_MAD_DOMINGO |
+| Metro Sevilla | METRO_SEV_2026_Laborable_ENE_JUN | METRO_SEV_2026_Viernes_ENE_JUN | METRO_SEV_2026_Sabado_ENE_JUN | METRO_SEV_2026_Domingo_ENE_JUN |
+| Metro Ligero | ML_LABORABLE | ML_VIERNES | ML_SABADO | ML_DOMINGO |
+
+### PASO 3: Optimizar RAPTOR (Opcional)
+
+Si el rendimiento es problema con muchos trips:
+
+1. **Filtrar por zona:** Modificar `_load_trips()` en `raptor.py` para cargar solo trips de redes relevantes (origen/destino)
+
+2. **Añadir índices BD:**
+   ```sql
+   CREATE INDEX IF NOT EXISTS ix_trips_service_id ON gtfs_trips (service_id);
+   CREATE INDEX IF NOT EXISTS ix_stop_times_trip_sequence ON gtfs_stop_times (trip_id, stop_sequence);
+   ```
+
+3. **Cache de servicios activos:** Cachear lista de service_ids activos por fecha
+
+---
+
 ## Próximos Pasos
 
 ### Inmediatos (Fase 3.5-3.6)
 
-1. [ ] Eliminar `routing_service.py`
-2. [ ] Limpiar Makefile
-3. [ ] Crear estructura `tests/`
-4. [ ] Tests unitarios RAPTOR
-5. [ ] Implementar `?compact=true`
+1. [x] Eliminar `routing_service.py`
+2. [x] Limpiar Makefile
+3. [x] Crear estructura `tests/`
+4. [x] Tests unitarios RAPTOR
+5. [x] Implementar `?compact=true`
+6. [ ] **Arreglar calendarios FGC/TMB/Metro Bilbao** (PASO 1)
+7. [ ] **Generar stop_times Metro Madrid/Sevilla/ML** (PASO 2)
 
 ### Corto plazo (Fase 4)
 
