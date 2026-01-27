@@ -1,6 +1,6 @@
 # TODO - Tareas Pendientes
 
-**Última actualización:** 2026-01-27 05:30
+**Última actualización:** 2026-01-27 06:00
 
 ---
 
@@ -354,45 +354,46 @@ Extraídos desde OpenStreetMap usando Overpass API con shapes bidireccionales:
 
 | Tarea | Prioridad | Estado |
 |-------|-----------|--------|
-| Route planner Metro Madrid | Alta | ⏳ Falta importar datos a RAPTOR |
+| Route planner - 17 redes | Alta | ✅ Completado 2026-01-27 |
+| Route planner Euskotren | Media | ⏳ Pendiente (shapes no coinciden) |
 | `?compact=true` en departures | Media | ⏳ Pendiente |
 | Optimizar queries con índices BD | Media | ⏳ Pendiente |
 
-### Route Planner RAPTOR
+### Route Planner RAPTOR - Estado Completo (2026-01-27 06:00)
 
-El route planner funciona para:
-- ✅ Metro Sevilla (stop_times importados)
-- ✅ Metro Granada (stop_times importados)
-- ✅ Cercanías Renfe (1.8M stop_times ya en BD)
+**17 redes listas para RAPTOR ✅**
 
-#### IMPORTANTE: Datos GTFS ya importados
+| Red | Routes | Trips | Stop_times | Estado |
+|-----|--------|-------|------------|--------|
+| Metro Madrid | 138 | 6,885 | 171,906 | ✅ OK |
+| Metro Sevilla | 1 | 104 | 2,088 | ✅ OK |
+| Metro Granada | 1 | 5,693 | 143,098 | ✅ OK |
+| Metrovalencia | 114 | 912 | 23,392 | ✅ OK |
+| Metro Bilbao | 2 | 16 | 408 | ✅ OK |
+| Metro Málaga | 2 | 16 | 168 | ✅ OK |
+| Metro Tenerife | 2 | 16 | 288 | ✅ OK |
+| Metro Ligero MAD | 4 | 32 | 456 | ✅ OK |
+| TMB Metro BCN | 11 | 88 | 1,320 | ✅ OK |
+| FGC | 21 | 160 | 2,864 | ✅ OK |
+| TRAM Alicante | 49 | 392 | 9,640 | ✅ OK |
+| TRAM Barcelona | 6 | 48 | 3,584 | ✅ OK |
+| Tranvía Sevilla | 1 | 8 | 56 | ✅ OK |
+| Tranvía Murcia | 2 | 16 | 232 | ✅ OK |
+| Tranvía Zaragoza | 1 | 8 | 200 | ✅ OK |
+| SFM Mallorca | 4 | 32 | 384 | ✅ OK |
+| **TOTAL** | **359** | **14,426** | **360,084** | |
 
-**NO DESCARGAR GTFS de nuevo.** Todos los datos base ya están en la BD:
+**Pendientes:**
+- ⏳ **Euskotren** - 13 rutas, shapes ETX_ no coinciden con rutas (necesita mapeo manual)
+- ⏳ **Renfe Cercanías** - 134,023 trips pero 0 stop_times (usa frequencies en GTFS)
 
-| Red | stops | routes | stop_route_sequence | frequencies |
-|-----|-------|--------|---------------------|-------------|
-| Metro Madrid | 242 ✅ | 16 ✅ | ✅ | 467 ✅ |
-| Metro Ligero | 38 ✅ | 4 ✅ | ✅ | ✅ |
-| TMB Barcelona | ✅ | ✅ | ✅ | ✅ |
-| FGC | ✅ | ✅ | ✅ | ✅ |
-| Metro Bilbao | ✅ | ✅ | ✅ | ✅ |
-| Euskotren | ✅ | ✅ | ✅ | ✅ |
+**Scripts utilizados:**
+- `scripts/generate_network_trips.py PREFIX` - Genera trips y stop_times para cualquier red
+- `scripts/generate_stop_sequences_simple.py` - Genera stop_route_sequence desde shapes
 
-Para habilitar RAPTOR solo falta **generar trips y stop_times** usando los datos existentes.
+#### IMPORTANTE: NO DESCARGAR GTFS de nuevo
 
-**Script:** `scripts/generate_metro_madrid_trips.py`
-- NO descarga nada
-- Usa stop_route_sequence para la secuencia de paradas
-- Genera trips (2 por línea × 4 servicios = 128 trips)
-- Genera stop_times (~2 min entre estaciones)
-
-#### Falta importar a RAPTOR:
-- ⏳ **Metro Madrid** - Requiere expandir frequencies
-- ⏳ **Metro Ligero Madrid** - Mismo caso (CRTM GTFS)
-- ⏳ Metro Bilbao
-- ⏳ Metro Barcelona (TMB)
-- ⏳ FGC
-- ⏳ Euskotren
+Todos los datos base ya están en la BD. Solo hay que generar trips/stop_times con los scripts existentes.
 
 ### App iOS (para el compañero)
 
