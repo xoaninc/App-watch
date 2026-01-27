@@ -365,31 +365,26 @@ El route planner funciona para:
 - ✅ Metro Granada (stop_times importados)
 - ✅ Cercanías Renfe (1.8M stop_times ya en BD)
 
-#### Análisis GTFS Metro Madrid (2026-01-27)
+#### IMPORTANTE: Datos GTFS ya importados
 
-El GTFS del CRTM usa **frequencies.txt** en vez de stop_times explícitos:
+**NO DESCARGAR GTFS de nuevo.** Todos los datos base ya están en la BD:
 
-| Archivo | Filas | Descripción |
-|---------|-------|-------------|
-| routes.txt | 13 | L1-L12 + R |
-| trips.txt | 120 | ~2 templates por línea (ida/vuelta) × servicios |
-| stop_times.txt | 2,217 | Solo tiempos de un viaje "template" por trip |
-| frequencies.txt | 1,200+ | Define horarios y frecuencias |
+| Red | stops | routes | stop_route_sequence | frequencies |
+|-----|-------|--------|---------------------|-------------|
+| Metro Madrid | 242 ✅ | 16 ✅ | ✅ | 467 ✅ |
+| Metro Ligero | 38 ✅ | 4 ✅ | ✅ | ✅ |
+| TMB Barcelona | ✅ | ✅ | ✅ | ✅ |
+| FGC | ✅ | ✅ | ✅ | ✅ |
+| Metro Bilbao | ✅ | ✅ | ✅ | ✅ |
+| Euskotren | ✅ | ✅ | ✅ | ✅ |
 
-**Problema:** RAPTOR necesita stop_times explícitos. El GTFS de Metro Madrid define un "trip template" y frequencies que dicen "este trip se repite cada X segundos entre hora A y hora B".
+Para habilitar RAPTOR solo falta **generar trips y stop_times** usando los datos existentes.
 
-**Solución:** Expandir frequencies a stop_times explícitos:
-```
-frequency: L1 dir=0, 07:00-10:00, headway=420s (7 min)
-→ Genera trips: 07:00, 07:07, 07:14, ..., 09:53
-→ Cada trip con sus stop_times (28 paradas × 26 trips = 728 stop_times)
-```
-
-**Mapeos necesarios:**
-- stop_id: `par_4_X` (CRTM) → `METRO_X` (nuestra BD)
-- route_id: `4__X___` (CRTM) → `METRO_X` (nuestra BD)
-
-**Script:** `scripts/import_metro_madrid_gtfs.py` (por crear)
+**Script:** `scripts/generate_metro_madrid_trips.py`
+- NO descarga nada
+- Usa stop_route_sequence para la secuencia de paradas
+- Genera trips (2 por línea × 4 servicios = 128 trips)
+- Genera stop_times (~2 min entre estaciones)
 
 #### Falta importar a RAPTOR:
 - ⏳ **Metro Madrid** - Requiere expandir frequencies
