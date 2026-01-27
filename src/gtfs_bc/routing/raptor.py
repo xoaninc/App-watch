@@ -171,11 +171,11 @@ class RaptorAlgorithm:
         routes = self.db.query(RouteModel).all()
         self._routes = {r.id: r for r in routes}
 
-        # Load route patterns from stop_route_sequence
-        self._load_route_patterns()
-
         # Load trips and stop_times for the given date
         self._load_trips(travel_date)
+
+        # Build route patterns from loaded trips (ensures correct travel direction)
+        self._build_route_patterns_from_trips()
 
         # Load transfers (walking connections)
         self._load_transfers()
@@ -183,37 +183,68 @@ class RaptorAlgorithm:
         self._data_loaded = True
 
     def _load_route_patterns(self) -> None:
-        """Load route patterns (stop sequences) from the database."""
-        sequences = (
-            self.db.query(StopRouteSequenceModel)
-            .order_by(StopRouteSequenceModel.route_id, StopRouteSequenceModel.stop_sequence)
-            .all()
-        )
+        """Load route patterns from stop_times data.
 
-        current_route_id = None
-        current_stops = []
+        Instead of using stop_route_sequence (geometry order), we derive
+        route patterns from actual trip stop_times. This ensures correct
+        travel order for each route.
+        """
+        # This method now does nothing - patterns will be derived from trips
+        # in _load_trips after we have the actual stop_times data.
+        pass
 
-        for seq in sequences:
-            if seq.route_id != current_route_id:
-                if current_route_id and current_stops:
-                    self._route_patterns[current_route_id] = RoutePattern(
-                        route_id=current_route_id,
-                        stops=current_stops
-                    )
-                    for stop_id in current_stops:
-                        self._stop_routes[stop_id].add(current_route_id)
-                current_route_id = seq.route_id
-                current_stops = []
-            current_stops.append(seq.stop_id)
+    def _build_route_patterns_from_trips(self) -> None:
+        """Build route patterns from loaded trip data.
 
-        # Don't forget the last route
-        if current_route_id and current_stops:
-            self._route_patterns[current_route_id] = RoutePattern(
-                route_id=current_route_id,
-                stops=current_stops
-            )
-            for stop_id in current_stops:
-                self._stop_routes[stop_id].add(current_route_id)
+        Each trip defines a stop sequence. Routes can have trips going
+        in opposite directions, so we create a pattern for EACH unique
+        stop sequence (identified by route_id + direction hash).
+        """
+        # Group stop sequences by route
+        route_sequences: Dict[str, Dict[tuple, int]] = defaultdict(lambda: defaultdict(int))
+
+        for route_id, trips in self._trips_by_route.items():
+            for trip in trips:
+                # Get the stop sequence for this trip
+                stop_seq = tuple(st.stop_id for st in trip.stop_times)
+                route_sequences[route_id][stop_seq] += 1
+
+        # Create a pattern for each unique stop sequence
+        # Use pattern_id = route_id + "_dir_" + hash to distinguish directions
+        for route_id, sequences in route_sequences.items():
+            if not sequences:
+                continue
+
+            for idx, (stop_seq, count) in enumerate(sorted(sequences.items(), key=lambda x: -x[1])):
+                # Create pattern ID that includes direction
+                pattern_id = f"{route_id}_dir_{idx}" if len(sequences) > 1 else route_id
+
+                self._route_patterns[pattern_id] = RoutePattern(
+                    route_id=route_id,  # Original route_id for display
+                    stops=list(stop_seq)
+                )
+
+                # Update stop->route mapping (use pattern_id so algorithm can find it)
+                for stop_id in stop_seq:
+                    self._stop_routes[stop_id].add(pattern_id)
+
+                # Also update _trips_by_route to use pattern_id
+                # Move trips that match this pattern to the pattern_id
+                if pattern_id != route_id:
+                    if pattern_id not in self._trips_by_route:
+                        self._trips_by_route[pattern_id] = []
+
+                    # Find trips that match this pattern and move them
+                    original_trips = self._trips_by_route.get(route_id, [])
+                    for trip in original_trips[:]:  # Copy list to modify
+                        trip_seq = tuple(st.stop_id for st in trip.stop_times)
+                        if trip_seq == stop_seq:
+                            self._trips_by_route[pattern_id].append(trip)
+
+            # Clean up: if we created sub-patterns, remove trips from original route_id
+            if len(sequences) > 1:
+                # Keep only the trips in sub-patterns
+                self._trips_by_route[route_id] = []
 
     def _load_trips(self, travel_date: date) -> None:
         """Load trips and their stop times for a specific date.
@@ -296,7 +327,7 @@ class RaptorAlgorithm:
         """Load walking transfers from stop_correspondence table."""
         correspondences = (
             self.db.query(StopCorrespondenceModel)
-            .filter(StopCorrespondenceModel.walk_seconds.isnot(None))
+            .filter(StopCorrespondenceModel.walk_time_s.isnot(None))
             .all()
         )
 
@@ -304,7 +335,7 @@ class RaptorAlgorithm:
             self._transfers[corr.from_stop_id].append(Transfer(
                 from_stop_id=corr.from_stop_id,
                 to_stop_id=corr.to_stop_id,
-                walk_seconds=corr.walk_seconds
+                walk_seconds=corr.walk_time_s
             ))
 
     def plan(
@@ -509,8 +540,10 @@ class RaptorAlgorithm:
                         boarding_time = arrival_at_stop
 
             # If we're on a trip, check if we improve arrival at this stop
-            if current_trip:
-                arrival_time = self._get_arrival_time(current_trip, stop_id, idx)
+            if current_trip and boarding_stop_id:
+                arrival_time = self._get_arrival_time_with_boarding(
+                    current_trip, stop_id, boarding_stop_id
+                )
 
                 if arrival_time is not None and arrival_time < best_arrival[stop_id]:
                     # Found improvement
@@ -571,8 +604,44 @@ class RaptorAlgorithm:
                 return arr1 < arr2
         return False
 
+    def _get_arrival_time_with_boarding(
+        self,
+        trip: Trip,
+        stop_id: str,
+        boarding_stop_id: Optional[str]
+    ) -> Optional[int]:
+        """Get arrival time at a stop for a trip, ensuring correct direction.
+
+        Args:
+            trip: The trip to check
+            stop_id: The stop to get arrival time for
+            boarding_stop_id: The stop where we boarded (must come before stop_id in trip)
+
+        Returns:
+            Arrival time in seconds, or None if stop not found or wrong direction
+        """
+        boarding_seq = None
+        stop_seq = None
+        arrival_time = None
+
+        for st in trip.stop_times:
+            if st.stop_id == boarding_stop_id:
+                boarding_seq = st.stop_sequence
+            if st.stop_id == stop_id:
+                stop_seq = st.stop_sequence
+                arrival_time = st.arrival_seconds
+
+        # Only return if destination comes AFTER boarding in the trip
+        if boarding_seq is not None and stop_seq is not None and stop_seq > boarding_seq:
+            return arrival_time
+        elif boarding_stop_id is None:
+            # No boarding yet, just return the arrival time if found
+            return arrival_time if stop_seq is not None else None
+
+        return None
+
     def _get_arrival_time(self, trip: Trip, stop_id: str, expected_idx: int) -> Optional[int]:
-        """Get arrival time at a stop for a trip."""
+        """Get arrival time at a stop for a trip (legacy, use _get_arrival_time_with_boarding)."""
         for st in trip.stop_times:
             if st.stop_id == stop_id:
                 return st.arrival_seconds
@@ -656,11 +725,23 @@ class RaptorAlgorithm:
                     current_stop = from_stop
             elif label.boarding_stop_id:
                 # Transit leg
+                # Look up actual departure time from trip's stop_times
+                actual_departure = label.boarding_time or 0
+                if label.trip_id and label.route_id:
+                    trips = self._trips_by_route.get(label.route_id, [])
+                    for trip in trips:
+                        if trip.trip_id == label.trip_id:
+                            for st in trip.stop_times:
+                                if st.stop_id == label.boarding_stop_id:
+                                    actual_departure = st.departure_seconds
+                                    break
+                            break
+
                 legs.append(JourneyLeg(
                     type="transit",
                     from_stop_id=label.boarding_stop_id,
                     to_stop_id=current_stop,
-                    departure_time=label.boarding_time or 0,
+                    departure_time=actual_departure,
                     arrival_time=label.arrival_time,
                     route_id=label.route_id,
                     trip_id=label.trip_id
