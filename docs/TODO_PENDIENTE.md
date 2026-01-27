@@ -360,6 +360,7 @@ Extraídos desde OpenStreetMap usando Overpass API con shapes bidireccionales:
 | **Fix calendarios FGC/TMB** | Alta | ✅ **COMPLETADO** |
 | **Generar stop_times Metro Madrid** | Alta | ✅ Ejecutado en producción |
 | **Generar stop_times Metro Sevilla** | Alta | ✅ Ejecutado en producción |
+| **Vincular shapes Metro Madrid** | Media | ✅ 19,658 trips (2026-01-27) |
 | Optimizar queries con índices BD | Baja | ⏳ Opcional |
 
 ---
