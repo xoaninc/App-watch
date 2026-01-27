@@ -54,6 +54,7 @@ from .routing_schemas import (
     JourneyCoordinate,
     JourneySegmentResponse,
     JourneyResponse,
+    JourneyAlertResponse,
     RoutePlannerResponse,
 )
 
@@ -101,6 +102,7 @@ REQUIRED_SCHEMAS = [
     "JourneyCoordinate",
     "JourneySegmentResponse",
     "JourneyResponse",
+    "JourneyAlertResponse",
     "RoutePlannerResponse",
 ]
 
