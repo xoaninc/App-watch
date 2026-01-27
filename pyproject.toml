@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Renfe Server Backend"
 authors = [{name = "Juan Macias", email = "extjmv@gmail.com"}]
 readme = "README.md"
-requires-python = ">=3.13,<4.0"
+requires-python = ">=3.12,<4.0"
 dependencies = [
     "alembic>=1.13.2",
     "bcrypt>=4.3.0",
@@ -66,7 +66,7 @@ python_functions = ["test_*"]
 asyncio_mode = "auto"
 
 [tool.mypy]
-python_version = "3.13"
+python_version = "3.12"
 warn_return_any = true
 warn_unused_configs = true
 ignore_missing_imports = true
