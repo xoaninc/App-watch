@@ -124,20 +124,39 @@ El archivo GTFS de Renfe usa IDs de núcleo (primeros 2 dígitos del route_id) q
 
 ## Metros Andalucía - PENDIENTE IMPORTAR
 
-### Metro Sevilla ⏳ PENDIENTE
+### Metro Sevilla ⚠️ DATOS EXPIRADOS
 
 | Dato | Valor |
 |------|-------|
-| Rutas en BD | ✅ 1 (METRO_SEV_L1) |
+| Rutas en BD | ✅ 1 (METRO_SEV_L1_CE_OQ) |
 | Paradas en BD | ✅ 21 (METRO_SEV_L1_E1 a METRO_SEV_L1_E21) |
-| Trips | ❌ 0 - FALTA IMPORTAR |
-| Stop Times | ❌ 0 - FALTA IMPORTAR |
+| Trips | ✅ 104 importados |
+| Stop Times | ✅ 2,088 importados |
 | GTFS disponible | ✅ https://metro-sevilla.es/google-transit/google_transit.zip |
 | Script de importación | ✅ `scripts/import_metro_sevilla_gtfs.py` |
 
-**Verificado 2026-01-27:**
-- `/departures` devuelve `[]`
+**Importado 2026-01-27 03:35:**
+- Calendar: 40 entries
+- Calendar dates: 98 exceptions
+- Trips: 104
+- Stop times: 2,088
+
+**⚠️ PROBLEMA: GTFS expirado**
+```
+Calendar date ranges:
+  start_date: 2025-01-01
+  end_date:   2025-12-31
+```
+El archivo GTFS de Metro Sevilla NO tiene datos para 2026. Todos los servicios expiraron el 31/12/2025.
+
+**Resultado:**
+- `/departures` devuelve `[]` (no hay servicios válidos para hoy)
 - `/route-planner` devuelve "No route found"
+
+**🔄 VERIFICAR DE NUEVO:**
+- Esperar a que Metro Sevilla actualice su GTFS con datos 2026
+- URL: https://metro-sevilla.es/google-transit/google_transit.zip
+- Cuando actualicen, re-ejecutar: `python scripts/import_metro_sevilla_gtfs.py /tmp/metro_sevilla.zip`
 
 **Estructura GTFS de Metro Sevilla:**
 - **Estaciones** (location_type=1): `L1-E1`, `L1-E2`, ..., `L1-E21`
