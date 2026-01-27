@@ -17,21 +17,12 @@ Author: Claude (Anthropic)
 Date: 2026-01-27
 """
 
-import math
 from dataclasses import dataclass, field
-from datetime import datetime, date, time, timedelta
-from typing import Dict, List, Optional, Set, Tuple, NamedTuple
+from datetime import date, time
+from typing import Dict, List, Optional, Set
 from collections import defaultdict
 
-from sqlalchemy.orm import Session
-
-from src.gtfs_bc.stop.infrastructure.models import StopModel
-from src.gtfs_bc.route.infrastructure.models import RouteModel
-from src.gtfs_bc.trip.infrastructure.models import TripModel
-from src.gtfs_bc.stop_time.infrastructure.models import StopTimeModel
-from src.gtfs_bc.calendar.infrastructure.models import CalendarModel, CalendarDateModel
-from src.gtfs_bc.stop_route_sequence.infrastructure.models import StopRouteSequenceModel
-from src.gtfs_bc.stop.infrastructure.models.stop_correspondence_model import StopCorrespondenceModel
+from src.gtfs_bc.routing.gtfs_store import gtfs_store
 
 
 # =============================================================================
@@ -47,42 +38,6 @@ TRANSFER_PENALTY_SECONDS = 180  # 3 minutes penalty for each transfer
 # =============================================================================
 # Data Structures
 # =============================================================================
-
-@dataclass
-class StopTime:
-    """A single stop time event (arrival/departure at a stop)."""
-    trip_id: str
-    stop_id: str
-    stop_sequence: int
-    arrival_seconds: int  # Seconds since midnight
-    departure_seconds: int
-
-
-@dataclass
-class Trip:
-    """A trip with its stop times."""
-    trip_id: str
-    route_id: str
-    service_id: str
-    headsign: Optional[str]
-    stop_times: List[StopTime] = field(default_factory=list)
-
-
-@dataclass
-class Transfer:
-    """A walking transfer between two stops."""
-    from_stop_id: str
-    to_stop_id: str
-    walk_seconds: int
-
-
-@dataclass
-class RoutePattern:
-    """A pattern of stops for a route (sequence of stop_ids)."""
-    route_id: str
-    stops: List[str]  # Ordered list of stop_ids
-    trips: List[Trip] = field(default_factory=list)
-
 
 @dataclass
 class Label:
@@ -140,303 +95,19 @@ class RaptorAlgorithm:
     Finds Pareto-optimal journeys between two stops, considering:
     - Arrival time (minimize)
     - Number of transfers (minimize)
+
+    Uses GTFSStore singleton for in-memory data access (no SQL queries).
     """
 
-    def __init__(self, db: Session):
-        self.db = db
-        self._data_loaded = False
-
-        # Data structures populated by _load_data()
-        self._stops: Dict[str, StopModel] = {}
-        self._routes: Dict[str, RouteModel] = {}
-        self._route_patterns: Dict[str, RoutePattern] = {}  # route_id -> RoutePattern
-        self._stop_routes: Dict[str, Set[str]] = defaultdict(set)  # stop_id -> set of route_ids
-        self._transfers: Dict[str, List[Transfer]] = defaultdict(list)  # from_stop_id -> [Transfer]
-        self._trips_by_route: Dict[str, List[Trip]] = defaultdict(list)  # route_id -> [Trip] sorted by departure
-
-    def _load_data(self, travel_date: date, origin_stop_id: str = None, destination_stop_id: str = None) -> None:
-        """Load all required data from the database.
+    def __init__(self, db=None):
+        """Initialize RAPTOR algorithm.
 
         Args:
-            travel_date: The date of travel (for calendar filtering)
-            origin_stop_id: Origin stop for network filtering
-            destination_stop_id: Destination stop for network filtering
+            db: Deprecated - kept for backwards compatibility. Not used.
         """
-        if self._data_loaded:
-            return
-
-        # Load stops
-        stops = self.db.query(StopModel).all()
-        self._stops = {s.id: s for s in stops}
-
-        # Load routes
-        routes = self.db.query(RouteModel).all()
-        self._routes = {r.id: r for r in routes}
-
-        # Get relevant networks based on origin and destination
-        relevant_networks = self._get_relevant_networks(origin_stop_id, destination_stop_id)
-
-        # Load trips and stop_times for the given date (filtered by networks)
-        self._load_trips(travel_date, relevant_networks)
-
-        # Build route patterns from loaded trips (ensures correct travel direction)
-        self._build_route_patterns_from_trips()
-
-        # Load transfers (walking connections)
-        self._load_transfers()
-
-        self._data_loaded = True
-
-    def _get_relevant_networks(self, origin_stop_id: str, destination_stop_id: str) -> Set[str]:
-        """Get networks that could be relevant for a journey.
-
-        Returns network prefixes (e.g., 'RENFE', 'METRO_SEV', 'TMB_METRO') that
-        serve the origin or destination, plus connected networks via correspondences.
-        """
-        relevant = set()
-
-        # Extract network prefix from stop IDs
-        def get_network(stop_id: str) -> str:
-            if stop_id.startswith('RENFE_'):
-                return 'RENFE'
-            elif stop_id.startswith('METRO_SEV'):
-                return 'METRO_SEV'
-            elif stop_id.startswith('METRO_MAL'):
-                return 'METRO_MAL'
-            elif stop_id.startswith('METRO_GR'):
-                return 'METRO_GR'
-            elif stop_id.startswith('METRO_BIL'):
-                return 'METRO_BIL'
-            elif stop_id.startswith('METRO_VAL'):
-                return 'METRO_VAL'
-            elif stop_id.startswith('METRO_TEN'):
-                return 'METRO_TEN'
-            elif stop_id.startswith('METRO_LIGERO'):
-                return 'METRO_LIGERO'
-            elif stop_id.startswith('METRO_'):
-                return 'METRO'  # Metro Madrid
-            elif stop_id.startswith('ML_'):
-                return 'ML'  # Metro Ligero
-            elif stop_id.startswith('TMB_METRO'):
-                return 'TMB_METRO'
-            elif stop_id.startswith('FGC_'):
-                return 'FGC'
-            elif stop_id.startswith('TRAM_'):
-                return 'TRAM'
-            elif stop_id.startswith('TRANVIA_'):
-                return 'TRANVIA'
-            elif stop_id.startswith('EUSKOTREN'):
-                return 'EUSKOTREN'
-            elif stop_id.startswith('SFM_'):
-                return 'SFM'
-            else:
-                return stop_id.split('_')[0] if '_' in stop_id else stop_id
-
-        if origin_stop_id:
-            relevant.add(get_network(origin_stop_id))
-        if destination_stop_id:
-            relevant.add(get_network(destination_stop_id))
-
-        # Add connected networks via correspondences
-        connected = set()
-        for stop_id in [origin_stop_id, destination_stop_id]:
-            if not stop_id:
-                continue
-            for transfer in self._transfers.get(stop_id, []):
-                connected.add(get_network(transfer.to_stop_id))
-
-        # Also check correspondences from DB (transfers not loaded yet on first call)
-        from sqlalchemy import text
-        result = self.db.execute(text('''
-            SELECT DISTINCT to_stop_id FROM stop_correspondence
-            WHERE from_stop_id IN (:origin, :dest)
-        '''), {'origin': origin_stop_id or '', 'dest': destination_stop_id or ''})
-        for row in result:
-            connected.add(get_network(row[0]))
-
-        relevant.update(connected)
-
-        return relevant
-
-    def _load_route_patterns(self) -> None:
-        """Load route patterns from stop_times data.
-
-        Instead of using stop_route_sequence (geometry order), we derive
-        route patterns from actual trip stop_times. This ensures correct
-        travel order for each route.
-        """
-        # This method now does nothing - patterns will be derived from trips
-        # in _load_trips after we have the actual stop_times data.
-        pass
-
-    def _build_route_patterns_from_trips(self) -> None:
-        """Build route patterns from loaded trip data.
-
-        Each trip defines a stop sequence. Routes can have trips going
-        in opposite directions, so we create a pattern for EACH unique
-        stop sequence (identified by route_id + direction hash).
-        """
-        # Group stop sequences by route
-        route_sequences: Dict[str, Dict[tuple, int]] = defaultdict(lambda: defaultdict(int))
-
-        for route_id, trips in self._trips_by_route.items():
-            for trip in trips:
-                # Get the stop sequence for this trip
-                stop_seq = tuple(st.stop_id for st in trip.stop_times)
-                route_sequences[route_id][stop_seq] += 1
-
-        # Create a pattern for each unique stop sequence
-        # Use pattern_id = route_id + "_dir_" + hash to distinguish directions
-        for route_id, sequences in route_sequences.items():
-            if not sequences:
-                continue
-
-            for idx, (stop_seq, count) in enumerate(sorted(sequences.items(), key=lambda x: -x[1])):
-                # Create pattern ID that includes direction
-                pattern_id = f"{route_id}_dir_{idx}" if len(sequences) > 1 else route_id
-
-                self._route_patterns[pattern_id] = RoutePattern(
-                    route_id=route_id,  # Original route_id for display
-                    stops=list(stop_seq)
-                )
-
-                # Update stop->route mapping (use pattern_id so algorithm can find it)
-                for stop_id in stop_seq:
-                    self._stop_routes[stop_id].add(pattern_id)
-
-                # Also update _trips_by_route to use pattern_id
-                # Move trips that match this pattern to the pattern_id
-                if pattern_id != route_id:
-                    if pattern_id not in self._trips_by_route:
-                        self._trips_by_route[pattern_id] = []
-
-                    # Find trips that match this pattern and move them
-                    original_trips = self._trips_by_route.get(route_id, [])
-                    for trip in original_trips[:]:  # Copy list to modify
-                        trip_seq = tuple(st.stop_id for st in trip.stop_times)
-                        if trip_seq == stop_seq:
-                            self._trips_by_route[pattern_id].append(trip)
-
-            # Clean up: if we created sub-patterns, remove trips from original route_id
-            if len(sequences) > 1:
-                # Keep only the trips in sub-patterns
-                self._trips_by_route[route_id] = []
-
-    def _load_trips(self, travel_date: date, relevant_networks: Set[str] = None) -> None:
-        """Load trips and their stop times for a specific date.
-
-        Args:
-            travel_date: The date to get active services for
-            relevant_networks: Set of network prefixes to load (None = all)
-        """
-        # Get day of week
-        day_of_week = travel_date.weekday()  # 0=Monday, 6=Sunday
-        day_columns = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
-        day_column = day_columns[day_of_week]
-
-        # Step 1: Get services active by regular calendar
-        calendars = (
-            self.db.query(CalendarModel)
-            .filter(CalendarModel.start_date <= travel_date)
-            .filter(CalendarModel.end_date >= travel_date)
-            .all()
-        )
-
-        active_service_ids = set()
-        for cal in calendars:
-            if getattr(cal, day_column, False):
-                active_service_ids.add(cal.service_id)
-
-        # Step 2: Apply calendar_dates exceptions
-        # exception_type=1: service ADDED for this date
-        # exception_type=2: service REMOVED for this date
-        calendar_dates = (
-            self.db.query(CalendarDateModel)
-            .filter(CalendarDateModel.date == travel_date)
-            .all()
-        )
-
-        for cd in calendar_dates:
-            if cd.exception_type == 1:
-                # Service added - include even if not in regular calendar
-                active_service_ids.add(cd.service_id)
-            elif cd.exception_type == 2:
-                # Service removed - exclude even if in regular calendar
-                active_service_ids.discard(cd.service_id)
-
-        if not active_service_ids:
-            return
-
-        # Load trips for active services (filtered by network if specified)
-        query = self.db.query(TripModel).filter(TripModel.service_id.in_(active_service_ids))
-
-        # Filter by relevant networks to reduce memory usage
-        if relevant_networks:
-            from sqlalchemy import or_
-            network_filters = []
-            for network in relevant_networks:
-                network_filters.append(TripModel.route_id.like(f'{network}%'))
-            if network_filters:
-                query = query.filter(or_(*network_filters))
-
-        trips = query.all()
-
-        trip_ids = [t.id for t in trips]
-        trips_dict = {t.id: t for t in trips}
-
-        # Load stop times for these trips
-        stop_times = (
-            self.db.query(StopTimeModel)
-            .filter(StopTimeModel.trip_id.in_(trip_ids))
-            .order_by(StopTimeModel.trip_id, StopTimeModel.stop_sequence)
-            .all()
-        )
-
-        # Group stop times by trip
-        trip_stop_times: Dict[str, List[StopTime]] = defaultdict(list)
-        for st in stop_times:
-            trip_stop_times[st.trip_id].append(StopTime(
-                trip_id=st.trip_id,
-                stop_id=st.stop_id,
-                stop_sequence=st.stop_sequence,
-                arrival_seconds=st.arrival_seconds or 0,
-                departure_seconds=st.departure_seconds or 0
-            ))
-
-        # Create Trip objects and group by route
-        for trip_id, trip_model in trips_dict.items():
-            if trip_id not in trip_stop_times:
-                continue
-
-            trip = Trip(
-                trip_id=trip_id,
-                route_id=trip_model.route_id,
-                service_id=trip_model.service_id,
-                headsign=trip_model.headsign,
-                stop_times=trip_stop_times[trip_id]
-            )
-            self._trips_by_route[trip_model.route_id].append(trip)
-
-        # Sort trips by first departure time
-        for route_id in self._trips_by_route:
-            self._trips_by_route[route_id].sort(
-                key=lambda t: t.stop_times[0].departure_seconds if t.stop_times else INFINITY
-            )
-
-    def _load_transfers(self) -> None:
-        """Load walking transfers from stop_correspondence table."""
-        correspondences = (
-            self.db.query(StopCorrespondenceModel)
-            .filter(StopCorrespondenceModel.walk_time_s.isnot(None))
-            .all()
-        )
-
-        for corr in correspondences:
-            self._transfers[corr.from_stop_id].append(Transfer(
-                from_stop_id=corr.from_stop_id,
-                to_stop_id=corr.to_stop_id,
-                walk_seconds=corr.walk_time_s
-            ))
+        self.store = gtfs_store
+        self._travel_date: Optional[date] = None
+        self._active_services: Set[str] = set()
 
     def plan(
         self,
@@ -458,13 +129,14 @@ class RaptorAlgorithm:
         Returns:
             List of Pareto-optimal journeys
         """
-        # Load data if not already loaded (filtered by relevant networks)
-        self._load_data(travel_date, origin_stop_id, destination_stop_id)
+        # Get active services for this date from GTFSStore
+        self._travel_date = travel_date
+        self._active_services = self.store.get_active_services(travel_date)
 
-        # Validate stops
-        if origin_stop_id not in self._stops:
+        # Validate stops using GTFSStore
+        if origin_stop_id not in self.store.stops_info:
             raise ValueError(f"Origin stop not found: {origin_stop_id}")
-        if destination_stop_id not in self._stops:
+        if destination_stop_id not in self.store.stops_info:
             raise ValueError(f"Destination stop not found: {destination_stop_id}")
 
         # Convert departure time to seconds since midnight
