@@ -55,7 +55,7 @@ from src.gtfs_bc.realtime.infrastructure.services.gtfs_rt_fetcher import GTFSRea
 from src.gtfs_bc.stop_route_sequence.infrastructure.models import StopRouteSequenceModel
 from src.gtfs_bc.stop.infrastructure.models.stop_platform_model import StopPlatformModel
 from src.gtfs_bc.stop.infrastructure.models.stop_correspondence_model import StopCorrespondenceModel
-from src.gtfs_bc.routing import RoutingService, RaptorService
+from src.gtfs_bc.routing import RaptorService
 
 
 router = APIRouter(prefix="/gtfs", tags=["GTFS Query"])

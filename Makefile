@@ -1,4 +1,4 @@
-.PHONY: start stop start-docker start-backend start-frontend start-stripe start-stripe-bg queue start-queue-bg install install-backend install-frontend logs db-migrate db-upgrade test test-backend test-frontend test-contract pre-deploy lint clean deploy deploy-backend deploy-frontend deploy-site
+.PHONY: start stop start-docker start-backend queue start-queue-bg install logs db-migrate db-upgrade db-downgrade test lint clean deploy
 
 # Colors for terminal output
 GREEN := \033[0;32m
@@ -9,22 +9,19 @@ NC := \033[0m # No Color
 # Main Commands
 # =============================================================================
 
-## Start all services (Docker + Backend + Frontend + Stripe + Celery)
+## Start all services (Docker + Backend + Celery)
 start:
 	@echo "$(GREEN)Starting all services...$(NC)"
 	@make start-docker
 	@echo "$(GREEN)Waiting for Docker services to be healthy...$(NC)"
 	@sleep 3
-	@make start-stripe-bg
 	@make start-queue-bg
-	@make -j2 start-backend start-frontend
+	@make start-backend
 
 ## Stop all services
 stop:
 	@echo "$(YELLOW)Stopping all services...$(NC)"
 	@-pkill -f "uvicorn app:app" 2>/dev/null || true
-	@-pkill -f "vite" 2>/dev/null || true
-	@-pkill -f "stripe listen" 2>/dev/null || true
 	@-pkill -f "celery" 2>/dev/null || true
 	@docker-compose down
 	@echo "$(GREEN)All services stopped$(NC)"
@@ -33,36 +30,18 @@ stop:
 # Individual Services
 # =============================================================================
 
-## Start Docker containers (PostgreSQL, Redis, Mailpit)
+## Start Docker containers (PostgreSQL, Redis)
 start-docker:
 	@echo "$(GREEN)Starting Docker containers...$(NC)"
 	@docker-compose up -d
 	@echo "$(GREEN)Docker services:$(NC)"
 	@echo "  - PostgreSQL: localhost:5443"
 	@echo "  - Redis: localhost:6398"
-	@echo "  - Mailpit UI: http://localhost:8027"
 
 ## Start backend (FastAPI with auto-reload)
 start-backend:
 	@echo "$(GREEN)Starting backend API...$(NC)"
 	@PYTHONPATH=src uv run uvicorn app:app --reload --host 0.0.0.0 --port 8000
-
-## Start frontend (Vite dev server)
-start-frontend:
-	@echo "$(GREEN)Installing frontend dependencies and starting dev server...$(NC)"
-	@cd web/app && npm install && npm run dev
-
-## Start Stripe CLI (webhook forwarding)
-start-stripe:
-	@echo "$(GREEN)Starting Stripe CLI webhook listener...$(NC)"
-	@~/bin/stripe listen --forward-to localhost:8000/api/v1/billing/webhook
-
-## Start Stripe CLI in background
-start-stripe-bg:
-	@echo "$(GREEN)Starting Stripe CLI in background...$(NC)"
-	@~/bin/stripe listen --forward-to localhost:8000/api/v1/billing/webhook > /tmp/stripe-cli.log 2>&1 &
-	@echo "  - Stripe webhooks: forwarding to localhost:8000/api/v1/billing/webhook"
-	@echo "  - Stripe logs: /tmp/stripe-cli.log"
 
 ## Start Celery worker for background tasks (all queues)
 queue:
@@ -80,18 +59,10 @@ start-queue-bg:
 # Installation
 # =============================================================================
 
-## Install all dependencies
-install: install-backend install-frontend
-
-## Install backend dependencies
-install-backend:
-	@echo "$(GREEN)Installing backend dependencies...$(NC)"
+## Install dependencies
+install:
+	@echo "$(GREEN)Installing dependencies...$(NC)"
 	@uv sync --all-extras
-
-## Install frontend dependencies
-install-frontend:
-	@echo "$(GREEN)Installing frontend dependencies...$(NC)"
-	@cd web/app && npm install
 
 # =============================================================================
 # Database
@@ -116,43 +87,10 @@ db-downgrade:
 # Testing
 # =============================================================================
 
-## Run all tests
-test: test-backend test-frontend
-
-## Run backend tests
-test-backend:
-	@echo "$(GREEN)Running backend tests...$(NC)"
+## Run tests
+test:
+	@echo "$(GREEN)Running tests...$(NC)"
 	@PYTHONPATH=src pytest tests/ -v
-
-## Run frontend tests
-test-frontend:
-	@echo "$(GREEN)Running frontend tests...$(NC)"
-	@cd web/app && npm run test:run
-
-## Run contract tests (frontend-backend API compatibility)
-test-contract:
-	@echo "$(GREEN)Running frontend-backend contract tests...$(NC)"
-	@echo "Testing API contracts between frontend and backend..."
-	@PYTHONPATH=src pytest tests/integration/auth_bc/test_frontend_register_contract.py -v --tb=short
-	@PYTHONPATH=src pytest tests/integration/test_database_setup.py -v --tb=short
-	@echo "$(GREEN)Contract tests passed!$(NC)"
-
-# =============================================================================
-# Pre-Deploy Checks
-# =============================================================================
-
-## Run all checks before deploy (contract tests, lint, build)
-pre-deploy: test-contract lint build-frontend
-	@echo ""
-	@echo "$(GREEN)=============================================$(NC)"
-	@echo "$(GREEN)  All pre-deploy checks passed!$(NC)"
-	@echo "$(GREEN)=============================================$(NC)"
-	@echo ""
-	@echo "Safe to deploy. Checklist:"
-	@echo "  [x] Contract tests (frontend-backend compatibility)"
-	@echo "  [x] Linting (code quality)"
-	@echo "  [x] Frontend build (production bundle)"
-	@echo ""
 
 # =============================================================================
 # Code Quality
@@ -163,12 +101,6 @@ lint:
 	@echo "$(GREEN)Running linters...$(NC)"
 	@PYTHONPATH=src mypy src/
 	@flake8 src/
-	@cd web/app && npm run lint
-
-## Build frontend for production
-build-frontend:
-	@echo "$(GREEN)Building frontend...$(NC)"
-	@cd web/app && npm run build
 
 # =============================================================================
 # Utilities
@@ -184,38 +116,23 @@ clean:
 	@find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
 	@find . -type d -name ".pytest_cache" -exec rm -rf {} + 2>/dev/null || true
 	@find . -type d -name ".mypy_cache" -exec rm -rf {} + 2>/dev/null || true
-	@rm -rf web/app/dist 2>/dev/null || true
 	@echo "$(GREEN)Cleanup complete$(NC)"
 
 # =============================================================================
 # Deployment
 # =============================================================================
 
-## Deploy everything (backend + frontend + site)
-deploy: deploy-backend deploy-frontend deploy-site
-	@echo ""
-	@echo "$(GREEN)=============================================$(NC)"
-	@echo "$(GREEN)  All deployments complete!$(NC)"
-	@echo "$(GREEN)=============================================$(NC)"
-	@echo ""
-	@echo "  - Site: http://localhost:5173"
-	@echo "  - App:  http://localhost:5173/app"
-	@echo "  - API:  http://localhost:8000/api/v1"
-
-## Deploy backend
-deploy-backend:
-	@echo "$(GREEN)Deploying Backend...$(NC)"
-	@echo "TODO: Configure deployment"
-
-## Deploy frontend
-deploy-frontend:
-	@echo "$(GREEN)Building Frontend...$(NC)"
-	@cd web/app && npm run build
-	@echo "$(GREEN)TODO: Configure deployment$(NC)"
-
-## Deploy site
-deploy-site:
-	@echo "$(GREEN)TODO: Configure deployment$(NC)"
+## Deploy to production server
+deploy:
+	@echo "$(GREEN)Deploying to production...$(NC)"
+	rsync -avz --exclude='.git' --exclude='__pycache__' --exclude='*.pyc' \
+		--exclude='.env' --exclude='.env.local' --exclude='venv' --exclude='.venv' \
+		--exclude='data' --exclude='*.sql' \
+		./ root@juanmacias.com:/var/www/renfeserver/
+	@echo "$(GREEN)Restarting service...$(NC)"
+	ssh root@juanmacias.com "systemctl restart renfeserver"
+	@echo "$(GREEN)Deploy complete!$(NC)"
+	@echo "  - API: https://redcercanias.com/api/v1/gtfs/"
 
 # =============================================================================
 # Help
@@ -225,32 +142,25 @@ deploy-site:
 help:
 	@echo "Available commands:"
 	@echo ""
-	@echo "  $(GREEN)make start$(NC)          - Start all services (Docker + Backend + Frontend)"
+	@echo "  $(GREEN)make start$(NC)          - Start all services (Docker + Backend + Celery)"
 	@echo "  $(GREEN)make stop$(NC)           - Stop all services"
 	@echo ""
 	@echo "  $(GREEN)make start-docker$(NC)   - Start Docker containers only"
 	@echo "  $(GREEN)make start-backend$(NC)  - Start backend API only"
-	@echo "  $(GREEN)make start-frontend$(NC) - Start frontend dev server only"
-	@echo "  $(GREEN)make start-stripe$(NC)   - Start Stripe CLI webhook listener"
-	@echo "  $(GREEN)make queue$(NC)          - Start Celery worker (reports queue)"
+	@echo "  $(GREEN)make queue$(NC)          - Start Celery worker"
 	@echo ""
-	@echo "  $(GREEN)make install$(NC)        - Install all dependencies"
+	@echo "  $(GREEN)make install$(NC)        - Install dependencies"
 	@echo "  $(GREEN)make db-upgrade$(NC)     - Apply database migrations"
+	@echo "  $(GREEN)make db-downgrade$(NC)   - Rollback one migration"
 	@echo ""
-	@echo "  $(GREEN)make test$(NC)           - Run all tests"
-	@echo "  $(GREEN)make test-contract$(NC)  - Run contract tests (frontend-backend API)"
-	@echo "  $(GREEN)make pre-deploy$(NC)     - Run all checks before deploy"
+	@echo "  $(GREEN)make test$(NC)           - Run tests"
 	@echo "  $(GREEN)make lint$(NC)           - Run linters"
 	@echo "  $(GREEN)make logs$(NC)           - Show Docker logs"
+	@echo "  $(GREEN)make clean$(NC)          - Clean generated files"
 	@echo ""
-	@echo "  $(GREEN)make deploy$(NC)         - Deploy everything to production"
-	@echo "  $(GREEN)make deploy-backend$(NC) - Deploy backend (git push)"
-	@echo "  $(GREEN)make deploy-frontend$(NC)- Deploy frontend (build + rsync)"
-	@echo "  $(GREEN)make deploy-site$(NC)    - Deploy marketing site (git push)"
+	@echo "  $(GREEN)make deploy$(NC)         - Deploy to production"
 	@echo ""
 	@echo "Services:"
 	@echo "  - Backend API:  http://localhost:8000"
-	@echo "  - Frontend:     http://localhost:5173"
 	@echo "  - API Docs:     http://localhost:8000/docs"
-	@echo "  - Mailpit:      http://localhost:8027"
-	@echo "  - Stripe CLI:   forwarding webhooks to /api/v1/billing/webhook"
+	@echo "  - Production:   https://redcercanias.com/api/v1/gtfs/"
