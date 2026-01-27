@@ -1,79 +1,285 @@
-# Plan de Implementación RAPTOR
+# Plan de Implementación - Migración Completa del Proyecto
 
-**Fecha:** 2026-01-27
+**Fecha inicio:** 2026-01-16
 **Última actualización:** 2026-01-27
-**Estado:** FASE 2 COMPLETADA - FASE 3/4 EN PROGRESO
+**Estado general:** MEGA-FASES 1-2 COMPLETADAS, MEGA-FASE 3 AL 85%, MEGA-FASES 4-5 PENDIENTES
 
 ---
 
-## Estado de Fases
+## Índice
 
-| Fase | Estado | Descripción |
-|------|--------|-------------|
-| **Fase 1: Desarrollo** | ✅ COMPLETADA | Implementación core RAPTOR |
-| **Fase 2: Deploy** | ✅ COMPLETADA | Deploy a producción |
-| **Fase 3: Limpieza** | 🔄 EN PROGRESO | Eliminar código legacy |
-| **Fase 4: Optimización** | 🔄 EN PROGRESO | Tests, cache, rendimiento |
-
----
-
-### Progreso Detallado:
-
-#### Fase 1-2: Implementación y Deploy ✅
-- [x] Implementar estructuras de datos RAPTOR (`raptor.py`)
-- [x] Implementar algoritmo de rondas con filtro Pareto
-- [x] Crear RaptorService para integración API (`raptor_service.py`)
-- [x] Actualizar schemas (`routing_schemas.py`)
-- [x] Integrar con endpoint route-planner (`query_router.py`)
-- [x] Añadir parámetro `departure_time`
-- [x] Añadir `alerts` al response
-- [x] Añadir `suggested_heading` a segments
-- [x] Fix: manejo de direcciones (trips bidireccionales)
-- [x] Deploy inicial a producción
-- [x] Fix: importar paradas faltantes (`import_missing_stops`)
-- [x] Fix: soporte para calendar_dates (excepciones de servicio)
-- [x] Fix: migración de nucleo_id a network_id (schema actualizado)
-- [x] Re-importar GTFS con fixes (243 paradas faltantes, 1.84M stop_times)
-
-#### Fase 3: Limpieza 🔄
-- [ ] Eliminar `routing_service.py` (Dijkstra legacy)
-- [ ] Limpiar Makefile (referencias a frontend inexistente)
-
-#### Fase 4: Optimización 🔄
-- [x] ~~Ejecutar import Metro Sevilla stop_times~~ ✅ COMPLETADO
-- [x] ~~Ejecutar import Metro Granada stop_times~~ ✅ COMPLETADO
-- [ ] Crear estructura de tests (`tests/`)
-- [ ] Tests unitarios para RAPTOR
-- [ ] Tests de integración endpoint route-planner
-- [ ] Optimizar queries con índices BD
-- [ ] Cache de trips activos por fecha
-- [ ] Implementar `?compact=true` en departures (widget/Siri)
+1. [Resumen Ejecutivo](#resumen-ejecutivo)
+2. [MEGA-FASE 1: Infraestructura Base](#mega-fase-1-infraestructura-base)
+3. [MEGA-FASE 2: Plataformas y Correspondencias](#mega-fase-2-plataformas-y-correspondencias)
+4. [MEGA-FASE 3: RAPTOR Route Planner](#mega-fase-3-raptor-route-planner)
+5. [MEGA-FASE 4: Migración App iOS](#mega-fase-4-migración-app-ios)
+6. [MEGA-FASE 5: Datos Pendientes](#mega-fase-5-datos-pendientes)
+7. [Referencia Técnica RAPTOR](#referencia-técnica-raptor)
+8. [Endpoints API](#endpoints-api)
+9. [Archivos Clave](#archivos-clave)
+10. [Historial de Bugs y Fixes](#historial-de-bugs-y-fixes)
 
 ---
 
-## Migración App iOS
+## Resumen Ejecutivo
 
-La migración de la app iOS consiste en mover lógica del cliente al servidor, eliminando ~580 líneas de código Swift.
+### Estado por Mega-Fase
 
-### Estado de Migración
+| Mega-Fase | Descripción | Estado | Progreso |
+|-----------|-------------|--------|----------|
+| **1** | Infraestructura Base (BD, GTFS, PostGIS) | ✅ COMPLETADA | 100% |
+| **2** | Plataformas y Correspondencias | ✅ COMPLETADA | 100% |
+| **3** | RAPTOR Route Planner | 🔄 EN PROGRESO | 85% |
+| **4** | Migración App iOS | ⏳ PENDIENTE | 0% |
+| **5** | Datos Pendientes | ⏳ PENDIENTE | 20% |
 
-| Componente | API (Backend) | App (Frontend) |
-|------------|---------------|----------------|
-| Normalización Shapes | ✅ `?max_gap` implementado | ⏳ Pendiente migrar |
-| Route Planner RAPTOR | ✅ `/route-planner` funcionando | ⏳ Pendiente migrar |
-| Alternativas Pareto | ✅ `journeys[]` array | ⏳ Pendiente UI |
-| Alertas de servicio | ✅ `alerts[]` en response | ⏳ Pendiente UI |
-| Compact departures | ⏳ Pendiente `?compact=true` | ⏳ Pendiente widget/Siri |
+### Métricas del Proyecto
 
-### Fase App-1: Normalización de Shapes (cambio pequeño, ~50 líneas)
+| Métrica | Valor |
+|---------|-------|
+| Migraciones de BD | 32 |
+| Operadores GTFS | 18 |
+| Operadores GTFS-RT | 5 |
+| Paradas totales | 6,709 |
+| Stop times | 1,988,956 |
+| Shapes | 949 (650,332 puntos) |
+| Plataformas | 2,550 |
+| Correspondencias | 166 (83 pares) |
 
-**API ya soporta:** `GET /routes/{id}/shape?max_gap=50`
+### Decisiones Arquitectónicas
 
-**Tareas en la App:**
-- [ ] Añadir parámetro `maxGap` a `fetchRouteShape()`
-- [ ] Eliminar `AnimationController.normalizeRoute()`
-- [ ] Eliminar `AnimationController.sphericalInterpolate()`
-- [ ] Probar animaciones 3D con shapes normalizados del servidor
+| Aspecto | Decisión |
+|---------|----------|
+| Algoritmo routing | RAPTOR (reemplaza Dijkstra) |
+| Ubicación routing | Servidor (no cliente) |
+| Alternativas | Múltiples rutas Pareto-óptimas |
+| Time-dependent | Sí, con `departure_time` |
+| Referencia implementación | `planarnetwork/raptor` (TypeScript → Python) |
+
+---
+
+## MEGA-FASE 1: Infraestructura Base
+
+**Estado:** ✅ COMPLETADA
+**Migraciones:** 001-025
+**Período:** 2026-01-16 a 2026-01-18
+
+### Migraciones Detalladas
+
+| # | Migración | Descripción | Estado |
+|---|-----------|-------------|--------|
+| 001 | `create_gtfs_tables` | Tablas base: routes, stops, trips, stop_times, calendar, shapes | ✅ |
+| 002 | `create_gtfs_rt_tables` | GTFS-RT: trip_updates, vehicle_positions, stop_time_updates | ✅ |
+| 003 | `create_eta_tables` | Tablas ETA para predicciones | ✅ |
+| 004 | `create_network_table` | Tabla gtfs_networks (31 redes) | ✅ |
+| 005 | `add_province_to_stops` | Campo province en stops | ✅ |
+| 006 | `enable_postgis` | Extensión PostGIS para geolocalización | ✅ |
+| 007 | `create_provinces_table` | Tabla spanish_provinces con polígonos | ✅ |
+| 008 | `create_nucleos_table` | Tabla gtfs_nucleos (obsoleta, ver 024) | ✅ |
+| 009 | `add_nucleo_to_stops` | Campo nucleo_id en stops (obsoleto, ver 024) | ✅ |
+| 010 | `add_nucleo_to_routes` | Campo nucleo_id en routes (obsoleto, ver 024) | ✅ |
+| 011 | `add_nucleo_to_provinces` | Relación nucleos-provinces (obsoleta) | ✅ |
+| 012 | `add_lineas_to_stops` | Campos cor_metro, cor_cercanias, etc. | ✅ |
+| 013 | `create_stop_route_sequence` | Orden de paradas por ruta | ✅ |
+| 014 | `create_gtfs_rt_alerts_tables` | Alertas de servicio GTFS-RT | ✅ |
+| 015 | `add_platform_to_stop_time_updates` | Platform en predicciones | ✅ |
+| 016 | `create_platform_history` | Historial de plataformas | ✅ |
+| 017 | `add_observation_date` | Fecha observación en historial | ✅ |
+| 018 | `add_route_frequencies` | Frecuencias de rutas + alert source | ✅ |
+| 019 | `add_route_short_name_to_alerts` | Nombre corto en alertas | ✅ |
+| 020 | `add_cor_tranvia_to_stops` | Campo cor_tranvia | ✅ |
+| 021 | `add_nucleo_id_to_networks` | Nucleo en networks (temporal) | ✅ |
+| 022 | `expand_color_columns` | Colores con prefijo # | ✅ |
+| 023 | `restructure_nucleos_provinces` | Preparación para migración 024 | ✅ |
+| **024** | **`replace_nucleos_with_network_provinces`** | **IMPORTANTE: Elimina nucleos, crea network_provinces** | ✅ |
+| 025 | `add_occupancy` | Ocupación en stop_time_updates | ✅ |
+
+### Cambio Importante: Migración 024
+
+La migración 024 eliminó el sistema de "nucleos" y lo reemplazó por `network_provinces`:
+
+**Antes:**
+- `gtfs_nucleos` tabla separada
+- `nucleo_id` en routes y stops
+
+**Después:**
+- Tabla `network_provinces` (relación N:M entre networks y provincias)
+- `network_id` en routes (referencia a `gtfs_networks.code`)
+- Sin `nucleo_id` en ninguna tabla
+
+**Mapeo GTFS nucleo → network_id:**
+
+| GTFS Nucleo | Nombre | Network ID |
+|-------------|--------|------------|
+| 10 | Madrid | 10T |
+| 20 | Asturias | 20T |
+| 30 | Sevilla | 30T |
+| 31 | Cádiz | **33T** |
+| 32 | Málaga | **34T** |
+| 40 | Valencia | 40T |
+| 41 | Murcia/Alicante | 41T |
+| 51 | Barcelona (Rodalies) | 51T |
+| 60 | Bilbao | 60T |
+| 61 | San Sebastián | 61T |
+| 62 | Santander | 62T |
+| 70 | Zaragoza | 70T |
+| 90 | C-9 Cotos | 10T |
+
+---
+
+## MEGA-FASE 2: Plataformas y Correspondencias
+
+**Estado:** ✅ COMPLETADA
+**Migraciones:** 026-032
+**Período:** 2026-01-25 a 2026-01-26
+
+### Migraciones Detalladas
+
+| # | Migración | Descripción | Estado |
+|---|-----------|-------------|--------|
+| 026 | `create_line_transfer_table` | Tabla line_transfer (temporal) | ✅ |
+| 027 | `add_correspondence_columns` | Campos cor_ml, cor_cercanias en stops | ✅ |
+| 028 | `add_coords_to_line_transfer` | Coordenadas en transfers | ✅ |
+| **029** | **`replace_line_transfer_with_stop_platform`** | **Elimina line_transfer, crea stop_platform** | ✅ |
+| 030 | `rename_line_to_lines` | Campo `line` → `lines` (array) | ✅ |
+| **031** | **`create_stop_correspondence_table`** | **Nueva tabla para conexiones a pie** | ✅ |
+| 032 | `add_color_description_to_platform` | Color y descripción en plataformas | ✅ |
+
+### Datos Importados
+
+#### Plataformas (stop_platform): 2,550 total
+
+| Red | Plataformas | Paradas | Fuente |
+|-----|-------------|---------|--------|
+| Renfe Cercanías | 797 | 791 | GTFS |
+| Euskotren | 746 | 740 | GTFS |
+| Metro Madrid | 281 | 233 | OSM |
+| TRAM Barcelona | 172 | 172 | GTFS |
+| TMB Metro BCN | 157 | 131 | OSM |
+| Metro Valencia | 144 | 144 | GTFS |
+| Metro Ligero | 56 | 56 | GTFS |
+| Metro Bilbao | 55 | 42 | OSM |
+| FGC | 54 | 34 | OSM |
+| Metro Granada | 26 | 26 | GTFS |
+| Metro Málaga | 25 | 25 | GTFS |
+| Metro Sevilla | 21 | 21 | GTFS |
+
+#### Correspondencias (stop_correspondence): 166 total (83 pares)
+
+| Fuente | Cantidad | Ejemplos |
+|--------|----------|----------|
+| Manual | 32 | Acacias↔Embajadores, Nervión↔Eduardo Dato, Abando |
+| OSM | 72 | Barcelona stop_area_groups (Catalunya, Sants) |
+| Proximidad (<300m) | 62 | Atocha Metro↔Cercanías, Nuevos Ministerios |
+
+**Por ciudad:**
+- Madrid Metro: 17 pares
+- Barcelona (TMB+FGC): 25 pares
+- Bilbao (Metro+Euskotren): 5 pares
+- Sevilla (Metro+Tranvía): 6 pares
+- Valencia: 1 par (Sant Isidre)
+- Zaragoza: 9 pares (Delicias, Plaza Aragón)
+
+### Nuevos Endpoints
+
+```
+GET /api/v1/gtfs/stops/{stop_id}/platforms
+GET /api/v1/gtfs/stops/{stop_id}/correspondences
+```
+
+### Nuevos Campos en API
+
+| Campo | Endpoint | Descripción |
+|-------|----------|-------------|
+| `transport_type` | `/networks` | Tipo: cercanias, metro, tranvia, etc. |
+| `is_hub` | `/stops/*` | true si 2+ tipos de transporte |
+| `cor_ml` | stops | Correspondencia metro ligero |
+| `cor_cercanias` | stops | Correspondencia cercanías |
+
+---
+
+## MEGA-FASE 3: RAPTOR Route Planner
+
+**Estado:** 🔄 EN PROGRESO (85%)
+**Período:** 2026-01-27
+
+### Fase 3.1: Desarrollo Core ✅ COMPLETADA
+
+| Tarea | Archivo | Estado |
+|-------|---------|--------|
+| Estructuras de datos RAPTOR | `src/gtfs_bc/routing/raptor.py` | ✅ |
+| Algoritmo de rondas | `raptor.py` | ✅ |
+| Filtro Pareto (alternativas óptimas) | `raptor.py` | ✅ |
+| RaptorService | `src/gtfs_bc/routing/raptor_service.py` | ✅ |
+| Schemas de routing | `adapters/http/api/gtfs/schemas/routing_schemas.py` | ✅ |
+
+### Fase 3.2: Integración API ✅ COMPLETADA
+
+| Tarea | Estado |
+|-------|--------|
+| Endpoint `/route-planner` en query_router.py | ✅ |
+| Parámetro `departure_time` (hora de salida) | ✅ |
+| Parámetro `max_alternatives` (1-5 rutas) | ✅ |
+| Parámetro `max_transfers` (0-5 transbordos) | ✅ |
+| Response con array `journeys[]` | ✅ |
+| Campo `suggested_heading` por segmento | ✅ |
+| Array `alerts[]` con avisos de servicio | ✅ |
+
+### Fase 3.3: Fixes y Datos ✅ COMPLETADA
+
+| Bug/Tarea | Causa | Solución | Estado |
+|-----------|-------|----------|--------|
+| Direcciones bidireccionales | stop_route_sequence usa orden geométrico | Construir patrones desde stop_times | ✅ |
+| Paradas faltantes | Script saltaba stop_times sin stop_id | Función `import_missing_stops()` | ✅ |
+| calendar_dates | No soportaba excepciones | Añadir consulta a calendar_dates | ✅ |
+| nucleo_id → network_id | Columna eliminada en migración 024 | Actualizar scripts importación | ✅ |
+| Metro Sevilla stop_times | Sin horarios reales | Script `import_metro_sevilla_gtfs.py` | ✅ |
+| Metro Granada stop_times | Sin horarios reales | Script `import_metro_granada_gtfs.py` | ✅ |
+
+### Fase 3.4: Deploy ✅ COMPLETADA
+
+| Tarea | Estado |
+|-------|--------|
+| Deploy inicial a producción | ✅ |
+| Re-importar GTFS con fixes (243 paradas, 1.84M stop_times) | ✅ |
+| Endpoint funcionando en `https://juanmacias.com/api/v1/gtfs/route-planner` | ✅ |
+
+### Fase 3.5: Limpieza ⏳ PENDIENTE
+
+| Tarea | Descripción | Estado |
+|-------|-------------|--------|
+| Eliminar `routing_service.py` | Código Dijkstra legacy (~16KB), ya no se usa | ⏳ |
+| Limpiar Makefile | Referencias a `web/app` que no existe | ⏳ |
+
+### Fase 3.6: Optimización ⏳ PENDIENTE
+
+| Tarea | Descripción | Estado |
+|-------|-------------|--------|
+| Crear estructura `tests/` | Directorio no existe | ⏳ |
+| Tests unitarios RAPTOR | Para algoritmo core | ⏳ |
+| Tests integración endpoint | Para `/route-planner` | ⏳ |
+| Índices BD | Para búsqueda binaria en stop_times | ⏳ |
+| Cache trips activos | Por fecha, evitar recalcular | ⏳ |
+| `?compact=true` | Response compacto para widget/Siri (<5KB) | ⏳ |
+
+---
+
+## MEGA-FASE 4: Migración App iOS
+
+**Estado:** ⏳ PENDIENTE (0%)
+**Responsable:** Compañero de equipo (app iOS)
+
+### Fase 4.1: Normalización de Shapes
+
+**API:** ✅ COMPLETADA (`?max_gap` implementado)
+**App:** ⏳ PENDIENTE
+
+| Tarea en App | Líneas a eliminar |
+|--------------|-------------------|
+| Añadir parámetro `maxGap` a `fetchRouteShape()` | - |
+| Eliminar `AnimationController.normalizeRoute()` | ~30 |
+| Eliminar `AnimationController.sphericalInterpolate()` | ~20 |
+| **Total** | **~50** |
 
 **Código a eliminar:**
 ```swift
@@ -82,23 +288,23 @@ func normalizeRoute(_ coords: [Coordinate], maxSegmentMeters: Double) -> [Coordi
 func sphericalInterpolate(from: Coordinate, to: Coordinate, fraction: Double) -> Coordinate
 ```
 
-### Fase App-2: Route Planner RAPTOR (cambio grande, ~530 líneas)
+### Fase 4.2: Route Planner RAPTOR
 
-**API ya soporta:** `GET /route-planner?from=STOP&to=STOP&departure_time=HH:MM`
+**API:** ✅ COMPLETADA (endpoint funcionando)
+**App:** ⏳ PENDIENTE
 
-**Tareas en la App:**
-- [ ] Crear nuevos modelos Swift:
-  - `RoutePlannerResponse`
-  - `Journey`
-  - `JourneySegment`
-  - `JourneyStop`
-- [ ] Crear función `planRoute()` en DataService
-- [ ] Reemplazar todas las llamadas a RoutingService
-- [ ] Eliminar `RoutingService.swift` completo
+| Tarea en App | Líneas a eliminar |
+|--------------|-------------------|
+| Crear nuevos modelos Swift | - |
+| Crear función `planRoute()` en DataService | - |
+| Eliminar `RoutingService.swift` completo | ~400 |
+| Eliminar `buildGraph()`, `dijkstra()`, `buildSegments()` | ~100 |
+| Eliminar `extractShapeSegment()` | ~30 |
+| **Total** | **~530** |
 
 **Código a eliminar:**
 ```swift
-// ELIMINAR archivos/funciones:
+// ELIMINAR archivos/funciones completos:
 - RoutingService.swift (completo)
 - TransitNode, TransitEdge, EdgeType en Journey.swift
 - buildGraph()
@@ -108,7 +314,7 @@ func sphericalInterpolate(from: Coordinate, to: Coordinate, fraction: Double) ->
 - Llamadas a fetchCorrespondences() para construir grafo
 ```
 
-**Modelos Swift sugeridos:**
+**Modelos Swift nuevos necesarios:**
 ```swift
 struct RoutePlannerResponse: Codable {
     let success: Bool
@@ -118,8 +324,8 @@ struct RoutePlannerResponse: Codable {
 }
 
 struct Journey: Codable {
-    let departure: String  // ISO8601
-    let arrival: String    // ISO8601
+    let departure: String      // ISO8601
+    let arrival: String        // ISO8601
     let durationMinutes: Int
     let transfers: Int
     let walkingMinutes: Int
@@ -127,8 +333,8 @@ struct Journey: Codable {
 }
 
 struct JourneySegment: Codable {
-    let type: String       // "transit" | "walking"
-    let mode: String       // "metro" | "cercanias" | "walking"
+    let type: String           // "transit" | "walking"
+    let mode: String           // "metro" | "cercanias" | "walking"
     let lineId: String?
     let lineName: String?
     let lineColor: String?
@@ -160,301 +366,85 @@ struct JourneyAlert: Codable {
 }
 ```
 
-### Fase App-3: Nuevas Features UI
+### Fase 4.3: Nuevas Features UI
 
-**Requiere completar Fase App-2 primero.**
+**API:** ✅ COMPLETADA
+**App:** ⏳ PENDIENTE
 
-- [ ] **Selector de alternativas:** UI para elegir entre 2-3 rutas Pareto-óptimas
-- [ ] **Heading en animación 3D:** Usar `suggestedHeading` para orientar cámara
-- [ ] **Mostrar alertas:** UI para avisos de suspensiones/retrasos en el journey
+| Feature | Descripción | Dependencia |
+|---------|-------------|-------------|
+| Selector alternativas | UI para elegir entre 2-3 rutas Pareto | Fase 4.2 |
+| Heading animación 3D | Usar `suggestedHeading` para orientar cámara | Fase 4.2 |
+| Mostrar alertas | UI para avisos de servicio en journey | Fase 4.2 |
 
-### Fase App-4: Widget y Siri
+### Fase 4.4: Widget y Siri
 
-**Requiere que API implemente `?compact=true` primero.**
+**API:** ⏳ PENDIENTE (`?compact=true`)
+**App:** ⏳ PENDIENTE
 
-- [ ] Widget iOS con próximas salidas (response < 5KB)
-- [ ] Siri shortcut para consultar salidas (latencia < 500ms)
+| Feature | Requisito API | Requisito App |
+|---------|---------------|---------------|
+| Widget iOS | Response <5KB | Widget extension |
+| Siri shortcut | Latencia <500ms | Siri intent |
 
-### Orden de Migración Recomendado
+### Resumen Migración App
 
-1. **Fase App-1** (Shapes) - Cambio pequeño, bajo riesgo
-2. **Fase App-2** (Route Planner) - Cambio grande, requiere testing
-3. **Fase App-3** (UI) - Nuevas features, puede hacerse gradualmente
-4. **Fase App-4** (Widget/Siri) - Depende de API `?compact=true`
-
-### Testing de Endpoints
-
-```bash
-# Shape normalizado (YA FUNCIONA)
-curl "https://juanmacias.com/api/v1/gtfs/routes/METRO_SEV_L1_CE_OQ/shape?max_gap=50"
-
-# Route planner RAPTOR (YA FUNCIONA)
-curl "https://juanmacias.com/api/v1/gtfs/route-planner?from=METRO_SEV_L1_E21&to=RENFE_43004&departure_time=08:30"
-
-# Con alternativas
-curl "https://juanmacias.com/api/v1/gtfs/route-planner?from=METRO_SEV_L1_E21&to=RENFE_43004&max_alternatives=3"
-```
+| Fase | API | App | Líneas |
+|------|-----|-----|--------|
+| 4.1 Shapes | ✅ | ⏳ | ~50 eliminar |
+| 4.2 Route Planner | ✅ | ⏳ | ~530 eliminar |
+| 4.3 UI Features | ✅ | ⏳ | Nueva UI |
+| 4.4 Widget/Siri | ⏳ | ⏳ | Nueva feature |
+| **Total eliminar** | | | **~580 líneas** |
 
 ---
 
-## 0. Decisión de Implementación
+## MEGA-FASE 5: Datos Pendientes
 
-### Contexto del proyecto
+**Estado:** ⏳ PENDIENTE (20%)
 
-| Métrica | Valor |
-|---------|-------|
-| Estaciones totales | ~2,054 |
-| Operadores | 18 |
-| Redes principales | RENFE, Metro Madrid, Metro Bilbao, Valencia, Barcelona |
+### Intercambiadores Grandes
 
-### Opciones evaluadas
+Estaciones con múltiples líneas que necesitan mapeo manual de plataformas:
 
-| Opción | Descripción | Veredicto |
-|--------|-------------|-----------|
-| A) Desde cero siguiendo paper | Control total, más trabajo | - |
-| B) Portar `planarnetwork/raptor` (TS→Py) | Código limpio, referencia clara | ✅ **ELEGIDA** |
-| C) Adaptar `transnetlab/transit-routing` | Ya en Python, pero académico | ❌ Código difícil de mantener |
+| Estación | Ciudad | Líneas | Estado |
+|----------|--------|--------|--------|
+| Nuevos Ministerios | Madrid | L6, L8, L10, Cercanías | ⏳ |
+| Atocha Cercanías | Madrid | ~10 plataformas | ⏳ |
+| Chamartín | Madrid | ~6 plataformas | ⏳ |
+| Sol | Madrid | L1, L2, L3, Cercanías | ⏳ |
+| Príncipe Pío | Madrid | L6, L10, R, Cercanías | ⏳ |
+| Passeig de Gràcia | Barcelona | L2, L3, L4, Rodalies | ⏳ |
+| Sants | Barcelona | Metro, Rodalies, AVE | ⏳ |
+| Plaça Catalunya | Barcelona | L1, L3, FGC, Rodalies | ⏳ |
 
-### Razones de la elección
+### Otras Tareas de Datos
 
-1. **Código limpio:** `planarnetwork/raptor` tiene arquitectura clara
-2. **Sin dependencias externas:** Implementamos nosotros, integrado con PostgreSQL
-3. **Mantenibilidad:** El equipo podrá entender y modificar el código
-4. **Extensibilidad:** Arquitectura preparada para añadir CSA, isócronas, etc.
-5. **Rendimiento:** Para ~2,000 paradas, <500ms es alcanzable fácilmente
-
-### Tiempo estimado
-
-| Fase | Duración |
-|------|----------|
-| Estudiar referencia | 1 día |
-| Diseñar estructuras | 1 día |
-| Implementar RAPTOR core | 3-4 días |
-| Integrar endpoint + tests | 1-2 días |
-| **Total** | **1-2 semanas** |
+| Tarea | Prioridad | Estado |
+|-------|-----------|--------|
+| Completar Passeig de Gràcia (L2, L4 en cor_metro) | Media | ⏳ |
+| Investigar API Valencia (devuelve vacío) | Baja | ⏳ |
+| Investigar CIVIS Madrid | Baja | ⏳ |
+| Coordenadas OSM metros secundarios (Valencia, Sevilla, Málaga, Granada) | Baja | ⏳ |
+| Metro Tenerife (datos de líneas en cor_metro) | Baja | ⏳ |
 
 ---
 
-## 1. Resumen Ejecutivo
+## Referencia Técnica RAPTOR
 
-Migración del algoritmo de routing de Dijkstra a RAPTOR para el endpoint `/route-planner`.
+### ¿Qué es RAPTOR?
 
-### Decisiones tomadas:
+**RAPTOR** = Round-bAsed Public Transit Optimized Router
 
-| Aspecto | Decisión |
-|---------|----------|
-| Algoritmo | RAPTOR (Round-bAsed Public Transit Optimized Router) |
-| Ubicación del routing | Server (con cache en app) |
-| Alternativas | 3 rutas Pareto-óptimas |
-| Time-dependent | Sí, con parámetro `departure_time` |
-| Breaking change | Aprobado |
+Algoritmo diseñado específicamente para transporte público. Usado por Google Maps, Moovit, Citymapper, Transit App.
 
----
-
-## 2. Arquitectura
-
-### Actual (Dijkstra):
-```
-App → GET /route-planner?from=A&to=B → 1 ruta con tiempos estimados
-```
-
-### Nueva (RAPTOR):
-```
-App → GET /route-planner?from=A&to=B&departure_time=08:30 → 3 rutas con tiempos reales
-```
-
-### Diagrama:
-```
-┌─────────────────────────────────────────┐
-│              App iOS                     │
-│  ┌─────────────────────────────────┐    │
-│  │ Cache local:                     │    │
-│  │ - Paradas (nombres, coords)      │    │
-│  │ - Líneas (colores, nombres)      │    │
-│  │ - Favoritos                      │    │
-│  │ - Últimas búsquedas              │    │
-│  └─────────────────────────────────┘    │
-└─────────────────────────────────────────┘
-                    │
-                    ▼
-┌─────────────────────────────────────────┐
-│              Server (FastAPI)            │
-│  ┌─────────────────────────────────┐    │
-│  │ RAPTOR Engine:                   │    │
-│  │ - Consulta stop_times            │    │
-│  │ - Calcula rutas Pareto-óptimas   │    │
-│  │ - Devuelve 3 alternativas        │    │
-│  └─────────────────────────────────┘    │
-└─────────────────────────────────────────┘
-```
-
----
-
-## 3. Nuevo Schema del API
-
-### Request
-
-```
-GET /api/v1/gtfs/route-planner?from=STOP_ID&to=STOP_ID&departure_time=HH:MM
-```
-
-| Parámetro | Tipo | Requerido | Default | Descripción |
-|-----------|------|-----------|---------|-------------|
-| `from` | string | Sí | - | ID parada origen |
-| `to` | string | Sí | - | ID parada destino |
-| `departure_time` | string | No | Hora actual | Formato HH:MM o ISO8601 |
-| `max_transfers` | int | No | 3 | Máximo transbordos (0-5) |
-| `max_alternatives` | int | No | 3 | Máximo alternativas (1-5) |
-
-### Response
-
-```json
-{
-  "success": true,
-  "journeys": [
-    {
-      "departure": "2026-01-28T08:32:00",
-      "arrival": "2026-01-28T09:07:00",
-      "duration_minutes": 35,
-      "transfers": 2,
-      "walking_minutes": 5,
-      "segments": [
-        {
-          "type": "transit",
-          "mode": "metro",
-          "line_id": "METRO_SEV_L1",
-          "line_name": "L1",
-          "line_color": "ED1C24",
-          "headsign": "Ciudad Expo",
-          "departure": "2026-01-28T08:32:00",
-          "arrival": "2026-01-28T08:47:00",
-          "origin": {
-            "id": "METRO_SEV_L1_E10",
-            "name": "Nervión",
-            "lat": 37.3891,
-            "lon": -5.9723
-          },
-          "destination": {
-            "id": "METRO_SEV_L1_E05",
-            "name": "San Bernardo",
-            "lat": 37.3801,
-            "lon": -5.9784
-          },
-          "intermediate_stops": [
-            {"id": "...", "name": "Gran Plaza", "lat": ..., "lon": ...},
-            {"id": "...", "name": "El Greco", "lat": ..., "lon": ...}
-          ],
-          "stop_count": 5,
-          "coordinates": [
-            {"lat": 37.3891, "lon": -5.9723},
-            {"lat": 37.3885, "lon": -5.9730},
-            ...
-          ],
-          "suggested_heading": 225.0
-        },
-        {
-          "type": "walking",
-          "mode": "walking",
-          "duration_minutes": 3,
-          "distance_meters": 200,
-          "origin": {...},
-          "destination": {...},
-          "coordinates": [...],
-          "suggested_heading": 180.0
-        },
-        {
-          "type": "transit",
-          "mode": "cercanias",
-          ...
-        }
-      ]
-    },
-    {
-      "departure": "2026-01-28T08:35:00",
-      "arrival": "2026-01-28T09:15:00",
-      "duration_minutes": 40,
-      "transfers": 1,
-      "walking_minutes": 2,
-      "segments": [...]
-    },
-    {
-      "departure": "2026-01-28T08:40:00",
-      "arrival": "2026-01-28T09:20:00",
-      "duration_minutes": 40,
-      "transfers": 0,
-      "walking_minutes": 8,
-      "segments": [...]
-    }
-  ],
-  "alerts": [
-    {
-      "id": "alert_001",
-      "line_id": "METRO_SEV_L1",
-      "line_name": "L1",
-      "message": "Frecuencia reducida por obras en Conde de Bustillo",
-      "severity": "warning",
-      "active_from": "2026-01-27T06:00:00",
-      "active_until": "2026-01-30T23:59:59"
-    }
-  ]
-}
-```
-
-### Cambios vs schema actual
-
-| Campo | Antes | Después |
-|-------|-------|---------|
-| Root | `journey` (objeto) | `journeys` (array) |
-| Timestamps | No | `departure`, `arrival` en ISO8601 |
-| Alertas | No | `alerts[]` con líneas afectadas |
-| Heading | No | `suggested_heading` por segment |
-
----
-
-## 4. Endpoint Widget/Siri
-
-### Request
-
-```
-GET /api/v1/gtfs/stops/{stop_id}/departures?compact=true&limit=3
-```
-
-### Response (compact)
-
-```json
-{
-  "stop_id": "METRO_SOL",
-  "stop_name": "Sol",
-  "departures": [
-    {"line": "L1", "minutes": 3, "headsign": "Valdecarros"},
-    {"line": "L2", "minutes": 5, "headsign": "Las Rosas"},
-    {"line": "L3", "minutes": 2, "headsign": "Moncloa"}
-  ],
-  "updated_at": "2026-01-27T15:30:00Z"
-}
-```
-
-### Requisitos
-
-- Response < 5KB (ideal ~500 bytes)
-- Latencia < 500ms (para Siri timeout)
-- Parámetro `limit` para controlar cantidad
-
----
-
-## 5. Algoritmo RAPTOR
-
-### Referencia de implementación
-
-**Repositorio:** https://github.com/planarnetwork/raptor (TypeScript)
-
-### Concepto básico
+### Cómo funciona
 
 1. **Rondas:** Cada ronda = 1 transbordo adicional
    - Ronda 0: Rutas directas (sin transbordos)
    - Ronda 1: Con 1 transbordo
    - Ronda 2: Con 2 transbordos
-   - Máximo: 5 rondas (configurable)
+   - Máximo configurable (default: 5)
 
 2. **Por cada ronda:**
    ```
@@ -464,11 +454,22 @@ GET /api/v1/gtfs/stops/{stop_id}/departures?compact=true&limit=3
    4. Actualizar tiempos de llegada (EarliestArrivalLabel)
    ```
 
-3. **Filtro Pareto:**
-   - Retener rutas donde ninguna otra es mejor en TODOS los criterios
-   - Criterios: tiempo total, número de transbordos, tiempo caminando
+3. **Filtro Pareto:** Retener rutas donde ninguna otra es mejor en TODOS los criterios:
+   - Tiempo total
+   - Número de transbordos
+   - Tiempo caminando
 
-### Estructuras de datos
+### Ventajas sobre Dijkstra
+
+| Aspecto | Dijkstra (antes) | RAPTOR (ahora) |
+|---------|------------------|----------------|
+| Tiempos | Estimados (velocidad comercial) | Reales (stop_times) |
+| Hora salida | No considera | Sí (time-dependent) |
+| Resultados | 1 ruta | Múltiples alternativas |
+| Optimización | Solo tiempo | Multi-criterio Pareto |
+| Complejidad | O(E log V) | O(K × R × T) |
+
+### Estructuras de Datos
 
 ```python
 @dataclass
@@ -495,244 +496,184 @@ class StopTime:
     stop_sequence: int
 ```
 
-### Queries de BD necesarias
+### Referencias
 
-```sql
--- Trips activos en una fecha
-SELECT t.id, t.route_id, t.service_id, t.headsign
-FROM gtfs_trips t
-JOIN gtfs_calendar c ON t.service_id = c.service_id
-WHERE c.start_date <= :date AND c.end_date >= :date
-  AND (CASE EXTRACT(DOW FROM :date)
-       WHEN 0 THEN c.sunday
-       WHEN 1 THEN c.monday
-       -- etc
-       END) = true;
-
--- Stop times para trips activos
-SELECT trip_id, stop_id, arrival_seconds, departure_seconds, stop_sequence
-FROM gtfs_stop_times
-WHERE trip_id IN (:active_trips)
-ORDER BY trip_id, stop_sequence;
-
--- Transferencias a pie
-SELECT from_stop_id, to_stop_id, walk_seconds
-FROM stop_correspondence
-WHERE walk_seconds IS NOT NULL;
-```
-
----
-
-## 6. Campo `suggested_heading`
-
-### Cálculo
-
-```python
-import math
-
-def calculate_heading(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
-    """
-    Calcula el bearing (heading) entre dos puntos.
-    Retorna grados 0-360 donde 0=Norte, 90=Este, 180=Sur, 270=Oeste.
-    """
-    lat1, lon1, lat2, lon2 = map(math.radians, [lat1, lon1, lat2, lon2])
-
-    dlon = lon2 - lon1
-    x = math.sin(dlon) * math.cos(lat2)
-    y = math.cos(lat1) * math.sin(lat2) - math.sin(lat1) * math.cos(lat2) * math.cos(dlon)
-
-    bearing = math.atan2(x, y)
-    bearing = math.degrees(bearing)
-    bearing = (bearing + 360) % 360
-
-    return round(bearing, 1)
-```
-
-### Uso en segmento
-
-Se calcula desde el primer punto hasta el último punto del segmento para dar la dirección general.
-
----
-
-## 7. Cache en App (Recomendaciones)
-
-| Dato | Cachear | TTL | Storage |
-|------|---------|-----|---------|
-| Lista de paradas | ✅ | 1 semana | CoreData/SQLite |
-| Info de líneas | ✅ | 1 semana | CoreData/SQLite |
-| Últimas búsquedas | ✅ | Indefinido | UserDefaults |
-| Favoritos | ✅ | Indefinido | UserDefaults |
-| Departures | ❌ | - | Siempre fetch |
-| Route planner | ❌ | - | Siempre fetch |
-
----
-
-## 8. Tareas de Implementación
-
-### Backend (API)
-
-| # | Tarea | Prioridad | Esfuerzo | Dependencias |
-|---|-------|-----------|----------|--------------|
-| 1 | Crear estructuras de datos RAPTOR | Alta | Medio | - |
-| 2 | Implementar carga de datos (trips, stop_times, transfers) | Alta | Medio | 1 |
-| 3 | Implementar algoritmo de rondas | Alta | Alto | 2 |
-| 4 | Implementar filtro Pareto | Alta | Medio | 3 |
-| 5 | Integrar con endpoint route-planner | Alta | Medio | 4 |
-| 6 | Añadir parámetro `departure_time` | Alta | Bajo | 5 |
-| 7 | Añadir `alerts` al response | Media | Bajo | 5 |
-| 8 | Añadir `suggested_heading` a segments | Baja | Bajo | 5 |
-| 9 | Implementar `?compact=true` en departures | Media | Bajo | - |
-| 10 | Optimizar queries con índices | Media | Medio | 5 |
-| 11 | Tests unitarios RAPTOR | Alta | Medio | 4 |
-| 12 | Tests integración endpoint | Alta | Medio | 5 |
-
-### Frontend (App iOS)
-
-| # | Tarea | Prioridad | Dependencias |
-|---|-------|-----------|--------------|
-| 1 | Actualizar modelos Swift para nuevo schema | Alta | Backend #5 |
-| 2 | Adaptar UI para mostrar alternativas | Alta | 1 |
-| 3 | Implementar selector de alternativas | Alta | 2 |
-| 4 | Usar `suggested_heading` en animación 3D | Baja | 1 |
-| 5 | Implementar widget con `?compact=true` | Media | Backend #9 |
-| 6 | Implementar Siri shortcut | Media | Backend #9 |
-| 7 | Implementar cache de paradas/líneas | Media | - |
-| 8 | Mostrar alertas en journey | Media | Backend #7 |
-
----
-
-## 9. Plan de Despliegue
-
-### Fase 1: Desarrollo
-1. Backend implementa RAPTOR
-2. App prepara nuevos modelos Swift
-3. Testing en local/staging
-
-### Fase 2: Deploy coordinado
-1. Deploy backend a producción (mantiene compatibilidad temporal)
-2. App envía update a App Store
-3. Período de transición (ambos schemas funcionan)
-
-### Fase 3: Limpieza
-1. Remover schema antiguo del backend
-2. Remover código legacy de la app
-
----
-
-## 10. Métricas de Éxito
-
-| Métrica | Actual | Objetivo |
-|---------|--------|----------|
-| Tiempo de respuesta route-planner | ~800ms | <500ms |
-| Alternativas devueltas | 1 | 3 |
-| Precisión de tiempos | Estimados | Reales (±1min) |
-| Soporte hora de salida | No | Sí |
-
----
-
-## 11. Riesgos y Mitigaciones
-
-| Riesgo | Probabilidad | Impacto | Mitigación |
-|--------|--------------|---------|------------|
-| RAPTOR más lento que Dijkstra | Baja | Alto | Pre-calcular datos, índices BD |
-| Breaking change rompe apps antiguas | Media | Alto | Período de transición |
-| Complejidad de implementación | Media | Medio | Seguir referencia planarnetwork |
-| Datos stop_times incompletos | Baja | Alto | Fallback a tiempos estimados |
-
----
-
-## 12. Referencias
-
-- Documentación RAPTOR: `docs/ROUTING_ALGORITHMS.md` (secciones 2, 17)
-- Implementación referencia: https://github.com/planarnetwork/raptor
 - Paper original: "Round-Based Public Transit Routing" (Delling et al., 2012)
-- Schema actual: `docs/ROUTE_PLANNER.md`
-- Instrucciones migración app: `docs/APP_MIGRATION_INSTRUCTIONS.md`
+- Implementación referencia: https://github.com/planarnetwork/raptor (TypeScript)
+- Nuestra implementación: `src/gtfs_bc/routing/raptor.py`
 
 ---
 
-## 13. Notas de Implementación
+## Endpoints API
 
-### Bug: Direcciones de viaje
+### Route Planner (RAPTOR)
+
+```
+GET /api/v1/gtfs/route-planner
+```
+
+| Parámetro | Tipo | Default | Descripción |
+|-----------|------|---------|-------------|
+| `from` | string | requerido | ID parada origen |
+| `to` | string | requerido | ID parada destino |
+| `departure_time` | string | hora actual | Formato HH:MM |
+| `max_transfers` | int | 3 | Máximo transbordos (0-5) |
+| `max_alternatives` | int | 3 | Máximo alternativas (1-5) |
+
+**Response:**
+```json
+{
+  "success": true,
+  "journeys": [
+    {
+      "departure": "2026-01-28T08:32:00",
+      "arrival": "2026-01-28T09:07:00",
+      "duration_minutes": 35,
+      "transfers": 2,
+      "walking_minutes": 5,
+      "segments": [...]
+    }
+  ],
+  "alerts": [...]
+}
+```
+
+### Shapes Normalizados
+
+```
+GET /api/v1/gtfs/routes/{route_id}/shape?max_gap=50
+```
+
+### Plataformas
+
+```
+GET /api/v1/gtfs/stops/{stop_id}/platforms
+```
+
+### Correspondencias
+
+```
+GET /api/v1/gtfs/stops/{stop_id}/correspondences
+```
+
+### Testing
+
+```bash
+# Route planner básico
+curl "https://juanmacias.com/api/v1/gtfs/route-planner?from=METRO_SEV_L1_E21&to=RENFE_43004"
+
+# Con hora de salida
+curl "https://juanmacias.com/api/v1/gtfs/route-planner?from=METRO_SEV_L1_E21&to=RENFE_43004&departure_time=08:30"
+
+# Con alternativas
+curl "https://juanmacias.com/api/v1/gtfs/route-planner?from=METRO_SEV_L1_E21&to=RENFE_43004&max_alternatives=3"
+
+# Shape normalizado
+curl "https://juanmacias.com/api/v1/gtfs/routes/METRO_SEV_L1_CE_OQ/shape?max_gap=50"
+```
+
+---
+
+## Archivos Clave
+
+### Routing (RAPTOR)
+
+| Archivo | Descripción |
+|---------|-------------|
+| `src/gtfs_bc/routing/raptor.py` | Algoritmo RAPTOR core (~30KB) |
+| `src/gtfs_bc/routing/raptor_service.py` | Servicio HTTP para RAPTOR (~14KB) |
+| `src/gtfs_bc/routing/routing_service.py` | **LEGACY** Dijkstra (~16KB) - ELIMINAR |
+| `adapters/http/api/gtfs/schemas/routing_schemas.py` | Schemas Pydantic |
+| `adapters/http/api/gtfs/routers/query_router.py` | Endpoint `/route-planner` |
+
+### Scripts de Importación
+
+| Script | Descripción |
+|--------|-------------|
+| `scripts/import_gtfs_static.py` | Importador multi-network Renfe |
+| `scripts/import_metro_sevilla_gtfs.py` | Metro Sevilla stop_times |
+| `scripts/import_metro_granada_gtfs.py` | Metro Granada stop_times |
+| `scripts/import_stop_platforms.py` | Plataformas desde OSM |
+| `scripts/import_osm_correspondences.py` | Correspondencias desde OSM |
+
+### Documentación
+
+| Archivo | Descripción |
+|---------|-------------|
+| `docs/RAPTOR_IMPLEMENTATION_PLAN.md` | Este archivo |
+| `docs/archive/APP_MIGRATION_INSTRUCTIONS.md` | Instrucciones para app iOS |
+| `docs/PLATFORMS_AND_CORRESPONDENCES.md` | Sistema de plataformas |
+| `docs/GTFS_OPERATORS_STATUS.md` | Estado de operadores |
+| `docs/archive/ROUTING_ALGORITHMS.md` | Investigación de algoritmos |
+
+---
+
+## Historial de Bugs y Fixes
+
+### Bug: Direcciones de viaje (RESUELTO)
 
 **Problema:** El algoritmo encontraba viajes en dirección contraria (llegada antes que salida).
 
-**Causa:** La tabla `stop_route_sequence` almacena paradas en orden geométrico (posición en el shape), no en orden de viaje. Los trenes pueden ir en ambas direcciones en la misma línea.
+**Causa:** La tabla `stop_route_sequence` almacena paradas en orden geométrico (posición en el shape), no en orden de viaje.
 
 **Solución:**
-1. Construir patrones de ruta desde `stop_times` (orden real de viaje) en lugar de `stop_route_sequence`
-2. Crear patrones separados para cada dirección: `RENFE_C10_42_dir_0`, `RENFE_C10_42_dir_1`
-3. Verificar que el destino viene DESPUÉS del origen en el `stop_sequence` del trip
+1. Construir patrones de ruta desde `stop_times` (orden real de viaje)
+2. Crear patrones separados por dirección: `RENFE_C10_42_dir_0`, `RENFE_C10_42_dir_1`
+3. Verificar que destino viene DESPUÉS del origen en `stop_sequence`
 
-**Código:**
-```python
-def _get_arrival_time_with_boarding(self, trip, stop_id, boarding_stop_id):
-    # Only return if destination comes AFTER boarding in the trip
-    if boarding_seq is not None and stop_seq is not None and stop_seq > boarding_seq:
-        return arrival_time
-```
-
-### Fix: Paradas faltantes en stop_times
+### Bug: Paradas faltantes (RESUELTO)
 
 **Problema:** Algunos trips de RENFE no tenían stop_times importados.
 
-**Causa:** El script `import_gtfs_static.py` saltaba stop_times cuando el `stop_id` no existía en nuestra base de datos. Si el archivo GTFS referenciaba paradas nuevas que no habíamos importado, esos stop_times se perdían.
+**Causa:** El script `import_gtfs_static.py` saltaba stop_times cuando el `stop_id` no existía en la BD.
 
-**Solución:** Se añadió la función `import_missing_stops()` que:
-1. Lee `stop_times.txt` para encontrar todas las paradas referenciadas por los trips a importar
-2. Compara con las paradas existentes en la BD
-3. Importa las paradas faltantes desde `stops.txt` antes de importar stop_times
+**Solución:** Función `import_missing_stops()` que:
+1. Lee `stop_times.txt` para encontrar paradas referenciadas
+2. Compara con paradas existentes en BD
+3. Importa las faltantes desde `stops.txt`
 
-### Fix: Soporte para calendar_dates
+**Resultado:** 243 paradas importadas, 1.84M stop_times recuperados.
+
+### Bug: calendar_dates (RESUELTO)
 
 **Problema:** El algoritmo no soportaba excepciones de calendario (días festivos, servicios especiales).
 
 **Solución:**
-1. Se añadió la función `import_calendar_dates()` al script de importación
-2. RAPTOR ahora consulta `calendar_dates` para añadir/quitar servicios según `exception_type` (1=añadido, 2=eliminado)
+1. Función `import_calendar_dates()` en script de importación
+2. RAPTOR consulta `calendar_dates` para añadir/quitar servicios según `exception_type`
 
-### Fix: Migración de nucleo_id a network_id (Migración 024)
+### Bug: nucleo_id obsoleto (RESUELTO)
 
-**Contexto:** La tabla `gtfs_nucleos` fue eliminada y reemplazada por el sistema de `network_provinces` en la migración 024.
+**Problema:** Scripts de importación usaban `nucleo_id` que fue eliminado en migración 024.
 
-**Cambios en el schema:**
-- Eliminada columna `nucleo_id` de `gtfs_routes` y `gtfs_stops`
-- Añadida columna `network_id` a `gtfs_routes` (referencia a `gtfs_networks.code`)
-- Creada tabla `network_provinces` para relación N:M entre networks y provincias
+**Solución:**
+1. Diccionario `GTFS_NUCLEO_TO_NETWORK` con mapeo
+2. Función `network_id_to_gtfs_nucleo()` para conversión
+3. Actualizar `build_route_mapping()` para usar `network_id`
 
-**Mapeo GTFS nucleo → network_id:**
-El archivo GTFS de Renfe usa IDs de núcleo que difieren de nuestros network_ids en algunos casos:
+---
 
-| GTFS Nucleo | Nombre | Network ID |
-|-------------|--------|------------|
-| 10 | Madrid | 10T |
-| 20 | Asturias | 20T |
-| 30 | Sevilla | 30T |
-| 31 | Cádiz | **33T** |
-| 32 | Málaga | **34T** |
-| 40 | Valencia | 40T |
-| 41 | Murcia/Alicante | 41T |
-| 51 | Barcelona (Rodalies) | 51T |
-| 60 | Bilbao | 60T |
-| 61 | San Sebastián | 61T |
-| 62 | Santander | 62T |
-| 70 | Zaragoza | 70T |
-| 90 | C-9 Cotos | 10T |
+## Próximos Pasos
 
-**Actualización del script de importación:**
-- Añadida función `network_id_to_gtfs_nucleo()` para convertir network_id → GTFS nucleo
-- Añadido diccionario `GTFS_NUCLEO_TO_NETWORK` con el mapeo inverso
-- Actualizada `build_route_mapping()` para usar `network_id` en lugar de `nucleo_id`
-- Actualizada `clear_nucleo_data()` para usar el mapeo correcto
+### Inmediatos (Fase 3.5-3.6)
 
-**Documentación:** Ver `docs/ARCHITECTURE_NETWORK_PROVINCES.md` para detalles completos del sistema de networks y provincias.
+1. [ ] Eliminar `routing_service.py`
+2. [ ] Limpiar Makefile
+3. [ ] Crear estructura `tests/`
+4. [ ] Tests unitarios RAPTOR
+5. [ ] Implementar `?compact=true`
 
-### Limitaciones conocidas
+### Corto plazo (Fase 4)
 
-1. **Metro Sevilla sin stop_times:** ⏳ Script `scripts/import_metro_sevilla_gtfs.py` listo. Mapea plataformas GTFS (`L1-1`) a nuestras estaciones (`METRO_SEV_L1_E1`). Pendiente ejecutar en servidor.
+1. [ ] App: Migrar shapes
+2. [ ] App: Migrar route planner
+3. [ ] App: UI alternativas
 
-2. **Metro Granada sin stop_times:** ⏳ Script `scripts/import_metro_granada_gtfs.py` listo. Mapea stop_ids (`1`) a nuestras estaciones (`METRO_GRANADA_1`). Pendiente ejecutar en servidor.
+### Medio plazo (Fase 5)
 
-3. **Transfers solo por stop_correspondence:** El algoritmo solo considera transfers definidos en la tabla `stop_correspondence`. No calcula transfers automáticos por proximidad.
+1. [ ] Mapear intercambiadores grandes
+2. [ ] Investigar APIs pendientes
 
-**Nota:** Metro Sevilla y Granada también publican frequencies.txt. Los scripts de importación permiten cargar stop_times para que RAPTOR calcule rutas con horarios exactos.
+---
+
+**Última actualización:** 2026-01-27 por Claude
