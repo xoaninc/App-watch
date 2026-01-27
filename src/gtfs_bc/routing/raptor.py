@@ -29,7 +29,7 @@ from src.gtfs_bc.stop.infrastructure.models import StopModel
 from src.gtfs_bc.route.infrastructure.models import RouteModel
 from src.gtfs_bc.trip.infrastructure.models import TripModel
 from src.gtfs_bc.stop_time.infrastructure.models import StopTimeModel
-from src.gtfs_bc.calendar.infrastructure.models import CalendarModel
+from src.gtfs_bc.calendar.infrastructure.models import CalendarModel, CalendarDateModel
 from src.gtfs_bc.stop_route_sequence.infrastructure.models import StopRouteSequenceModel
 from src.gtfs_bc.stop.infrastructure.models.stop_correspondence_model import StopCorrespondenceModel
 
@@ -257,8 +257,7 @@ class RaptorAlgorithm:
         day_columns = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
         day_column = day_columns[day_of_week]
 
-        # Get active service_ids for this date
-        # This is simplified - a full implementation would also check calendar_dates
+        # Step 1: Get services active by regular calendar
         calendars = (
             self.db.query(CalendarModel)
             .filter(CalendarModel.start_date <= travel_date)
@@ -270,6 +269,23 @@ class RaptorAlgorithm:
         for cal in calendars:
             if getattr(cal, day_column, False):
                 active_service_ids.add(cal.service_id)
+
+        # Step 2: Apply calendar_dates exceptions
+        # exception_type=1: service ADDED for this date
+        # exception_type=2: service REMOVED for this date
+        calendar_dates = (
+            self.db.query(CalendarDateModel)
+            .filter(CalendarDateModel.date == travel_date)
+            .all()
+        )
+
+        for cd in calendar_dates:
+            if cd.exception_type == 1:
+                # Service added - include even if not in regular calendar
+                active_service_ids.add(cd.service_id)
+            elif cd.exception_type == 2:
+                # Service removed - exclude even if in regular calendar
+                active_service_ids.discard(cd.service_id)
 
         if not active_service_ids:
             return
