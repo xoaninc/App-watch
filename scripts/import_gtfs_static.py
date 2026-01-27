@@ -254,9 +254,6 @@ def import_missing_stops(db, zf: zipfile.ZipFile, route_mapping: dict) -> int:
             'lat': lat,
             'lon': lon,
             'location_type': 1,  # Station
-            'parent_station': None,
-            'platform_code': None,
-            'wheelchair_boarding': 0,
         })
 
     if rows:
@@ -265,8 +262,8 @@ def import_missing_stops(db, zf: zipfile.ZipFile, route_mapping: dict) -> int:
             db.execute(
                 text("""
                     INSERT INTO gtfs_stops
-                    (id, name, lat, lon, location_type, parent_station, platform_code, wheelchair_boarding)
-                    VALUES (:id, :name, :lat, :lon, :location_type, :parent_station, :platform_code, :wheelchair_boarding)
+                    (id, name, lat, lon, location_type)
+                    VALUES (:id, :name, :lat, :lon, :location_type)
                     ON CONFLICT (id) DO UPDATE SET
                         name = EXCLUDED.name,
                         lat = EXCLUDED.lat,
