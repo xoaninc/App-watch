@@ -334,15 +334,14 @@ Extraídos desde OpenStreetMap usando Overpass API con shapes bidireccionales:
 
 **Asignación de shapes:** Cada trip se asigna al shape de IDA o VUELTA basándose en la comparación de los números de estación de origen y destino.
 
-### Resumen Base de Datos (2026-01-27)
+### Resumen Base de Datos (2026-01-27 20:00)
 
 | Datos | Total |
 |-------|-------|
+| Trips RAPTOR-ready | 260,038 (100%) |
 | Platforms | 2,989 |
 | Correspondencias | 218 |
-| Trips con headsign | 237,054 |
 | Trips con shape | 239,225 |
-| Trips sin shape | 1,218 |
 | Shape points | 650,332 |
 | Shapes | 949 |
 
@@ -365,16 +364,20 @@ Extraídos desde OpenStreetMap usando Overpass API con shapes bidireccionales:
 
 ---
 
-## ✅ Route Planner - Estado Actual (2026-01-27 19:00)
+## ✅ Route Planner - Estado Actual (2026-01-27 20:00)
 
 ### ✅ TODAS LAS REDES FUNCIONANDO
 
-**Total: 264,919 trips con calendar (100%)**
+**Total: 260,038 trips RAPTOR-ready (100%)**
+
+**Limpieza realizada (2026-01-27):**
+- Eliminados 1,512 trips METRO_R sin stop_times (paradas no mapeadas correctamente)
+- Eliminados 3,369 trips RENFE huérfanos sin stop_times (datos basura del GTFS original)
 
 | Red | Trips | Estado | Test |
 |-----|-------|--------|------|
-| **Cercanías (RENFE)** | 133,985 | ✅ | Sants → Bellvitge |
-| **Metro Madrid** | 21,170 | ✅ | Pinar Chamartín → Sol |
+| **Cercanías (RENFE)** | 130,616 | ✅ | Sants → Bellvitge |
+| **Metro Madrid** | 19,658 | ✅ | Pinar Chamartín → Sol |
 | **Metro Sevilla** | 3,340 | ✅ | Ciudad Expo → Olivar Quintos |
 | **Metro Granada** | 5,693 | ✅ | Albolote → Armilla |
 | **Metro Bilbao** | 10,620 | ✅ | Ariz → San Mamés |
@@ -688,5 +691,5 @@ curl "https://juanmacias.com/api/v1/gtfs/routes/METRO_10/shape"  # L10 Tres Oliv
 curl "https://juanmacias.com/api/v1/gtfs/routes/METRO_10B/shape" # L10B Hospital Infanta Sofía - Tres Olivos
 curl "https://juanmacias.com/api/v1/gtfs/routes/METRO_11/shape"  # L11 Plaza Elíptica - La Fortuna
 curl "https://juanmacias.com/api/v1/gtfs/routes/METRO_12/shape"  # L12 MetroSur (Circular)
-curl "https://juanmacias.com/api/v1/gtfs/routes/METRO_R/shape"   # R Ópera - Príncipe Pío
+curl "https://juanmacias.com/api/v1/gtfs/routes/METRO_R/shape"   # R Ópera - Príncipe Pío (solo shape, trips eliminados por datos incompletos)
 ```
