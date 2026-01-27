@@ -174,27 +174,71 @@ def import_calendar(db, zf: zipfile.ZipFile) -> int:
 
 
 def import_calendar_dates(db, zf: zipfile.ZipFile) -> int:
-    """Import calendar_dates.txt data (service exceptions)."""
+    """Import calendar_dates.txt data (service exceptions).
+
+    Note: calendar_dates.txt may contain service_ids not in calendar.txt.
+    For exception_type=1 (added), the service only operates on specific dates.
+    We create dummy calendar entries for these service_ids first.
+    """
     logger.info("Importing calendar_dates data...")
 
     if 'calendar_dates.txt' not in zf.namelist():
         logger.info("No calendar_dates.txt found - skipping")
         return 0
 
+    # First, get all existing service_ids in calendar
+    existing_services = set(row[0] for row in db.execute(text(
+        "SELECT service_id FROM gtfs_calendar WHERE service_id LIKE 'METRO_GRANADA_%'"
+    )).fetchall())
+    logger.info(f"Found {len(existing_services)} existing calendar service_ids")
+
     with zf.open('calendar_dates.txt') as f:
         reader = csv.DictReader(TextIOWrapper(f, encoding='utf-8'))
         reader.fieldnames = [name.strip() for name in reader.fieldnames]
         rows = []
+        missing_services = set()
 
         for row in reader:
             service_id = row['service_id'].strip()
             our_service_id = f"{METRO_GRANADA_PREFIX}{service_id}"
+
+            # Track service_ids that don't exist in calendar
+            if our_service_id not in existing_services:
+                missing_services.add(our_service_id)
 
             rows.append({
                 'service_id': our_service_id,
                 'date': parse_date(row['date']),
                 'exception_type': int(row['exception_type'].strip()),
             })
+
+        # Create dummy calendar entries for missing service_ids
+        # These are services that only operate on specific dates (holidays, etc.)
+        if missing_services:
+            logger.info(f"Creating {len(missing_services)} dummy calendar entries for exception-only services")
+            dummy_rows = [{
+                'service_id': sid,
+                'monday': False,
+                'tuesday': False,
+                'wednesday': False,
+                'thursday': False,
+                'friday': False,
+                'saturday': False,
+                'sunday': False,
+                'start_date': '2025-01-01',
+                'end_date': '2026-12-31',
+            } for sid in missing_services]
+
+            db.execute(
+                text("""
+                    INSERT INTO gtfs_calendar
+                    (service_id, monday, tuesday, wednesday, thursday, friday, saturday, sunday, start_date, end_date)
+                    VALUES (:service_id, :monday, :tuesday, :wednesday, :thursday, :friday, :saturday, :sunday, :start_date, :end_date)
+                    ON CONFLICT (service_id) DO NOTHING
+                """),
+                dummy_rows
+            )
+            db.commit()
 
         if rows:
             for i in range(0, len(rows), BATCH_SIZE):

@@ -122,41 +122,25 @@ El archivo GTFS de Renfe usa IDs de núcleo (primeros 2 dígitos del route_id) q
 - `docs/RAPTOR_IMPLEMENTATION_PLAN.md` - Documentación actualizada
 - `docs/GTFS_IMPORT_VERIFICATION_20260127.md` - Este documento
 
-## Metros Andalucía - PENDIENTE IMPORTAR
+## Metros Andalucía - IMPORTADOS ✅
 
-### Metro Sevilla ⚠️ DATOS EXPIRADOS
+### Metro Sevilla ✅ FUNCIONANDO
 
 | Dato | Valor |
 |------|-------|
 | Rutas en BD | ✅ 1 (METRO_SEV_L1_CE_OQ) |
 | Paradas en BD | ✅ 21 (METRO_SEV_L1_E1 a METRO_SEV_L1_E21) |
-| Trips | ✅ 104 importados |
-| Stop Times | ✅ 2,088 importados |
+| Trips | ✅ 104 |
+| Stop Times | ✅ 2,088 |
+| Calendar válido | ✅ 2025-01-01 a **2026-12-31** |
 | GTFS disponible | ✅ https://metro-sevilla.es/google-transit/google_transit.zip |
 | Script de importación | ✅ `scripts/import_metro_sevilla_gtfs.py` |
 
-**Importado 2026-01-27 03:35:**
+**Importado 2026-01-27:**
 - Calendar: 40 entries
 - Calendar dates: 98 exceptions
 - Trips: 104
 - Stop times: 2,088
-
-**⚠️ PROBLEMA: GTFS expirado**
-```
-Calendar date ranges:
-  start_date: 2025-01-01
-  end_date:   2025-12-31
-```
-El archivo GTFS de Metro Sevilla NO tiene datos para 2026. Todos los servicios expiraron el 31/12/2025.
-
-**Resultado:**
-- `/departures` devuelve `[]` (no hay servicios válidos para hoy)
-- `/route-planner` devuelve "No route found"
-
-**🔄 VERIFICAR DE NUEVO:**
-- Esperar a que Metro Sevilla actualice su GTFS con datos 2026
-- URL: https://metro-sevilla.es/google-transit/google_transit.zip
-- Cuando actualicen, re-ejecutar: `python scripts/import_metro_sevilla_gtfs.py /tmp/metro_sevilla.zip`
 
 **Estructura GTFS de Metro Sevilla:**
 - **Estaciones** (location_type=1): `L1-E1`, `L1-E2`, ..., `L1-E21`
@@ -173,30 +157,36 @@ def map_metro_sev_stop_id(gtfs_stop_id):
         return f"METRO_SEV_L1_E{num}"
 ```
 
-**Para importar (desde el servidor):**
-```bash
-# 1. Descargar GTFS
-wget -O /tmp/metro_sevilla.zip https://metro-sevilla.es/google-transit/google_transit.zip
-
-# 2. Ejecutar importación
-cd /var/www/renfeserver
-PYTHONPATH=/var/www/renfeserver python scripts/import_metro_sevilla_gtfs.py /tmp/metro_sevilla.zip
-```
-
-### Metro Granada ⏳ PENDIENTE
+### Metro Granada ✅ FUNCIONANDO
 
 | Dato | Valor |
 |------|-------|
 | Rutas en BD | ✅ 1 (METRO_GRANADA_L1) |
 | Paradas en BD | ✅ 26 (METRO_GRANADA_1 a METRO_GRANADA_26) |
-| Trips | ❌ 0 - FALTA IMPORTAR |
-| Stop Times | ❌ 0 - FALTA IMPORTAR |
+| Trips | ✅ 5,693 |
+| Stop Times | ✅ 143,098 |
+| Calendar entries | ✅ 4 + 17 (excepciones) |
+| Calendar dates | ✅ 34 |
 | GTFS disponible | ✅ NAP ID 1370 |
 | Script de importación | ✅ `scripts/import_metro_granada_gtfs.py` |
 
-**Verificado 2026-01-27:**
-- `/departures` devuelve `[]`
-- `/route-planner` devuelve "No route found"
+**Importado 2026-01-27 03:49:**
+- Calendar: 4 entries + 17 dummy entries para servicios de excepciones
+- Calendar dates: 34 exceptions
+- Trips: 5,693
+- Stop times: 143,098
+- Elapsed time: ~58 segundos
+
+**Verificación API:**
+```bash
+# Departures - FUNCIONA
+curl "https://juanmacias.com/api/v1/gtfs/stops/METRO_GRANADA_1/departures"
+# → 06:31:30 -> Armilla, 06:38:30 -> Armilla, ...
+
+# Route planner - FUNCIONA
+curl "https://juanmacias.com/api/v1/gtfs/route-planner?from=METRO_GRANADA_1&to=METRO_GRANADA_26"
+# → Success: true, 1 journey, 0 transbordos
+```
 
 **Estructura GTFS de Metro Granada:**
 - **stop_ids**: Números simples: 1, 2, 3, ... 26
@@ -212,15 +202,8 @@ def map_metro_granada_stop_id(gtfs_stop_id):
     return f"METRO_GRANADA_{gtfs_stop_id}"
 ```
 
-**Para importar (desde el servidor):**
-```bash
-# 1. Descargar GTFS desde NAP (requiere login web)
-# https://nap.transportes.gob.es/Files/Detail/1370
-
-# 2. Subir archivo al servidor y ejecutar
-cd /var/www/renfeserver
-PYTHONPATH=/var/www/renfeserver python scripts/import_metro_granada_gtfs.py /tmp/nap_metro_granada.zip
-```
+**Fix aplicado en script:**
+El script ahora crea entradas dummy en `gtfs_calendar` para service_ids que solo existen en `calendar_dates.txt` (servicios de días festivos específicos como "AnnoNuevo311", "DomingoFestivo25299", etc.).
 
 ## Referencias
 
