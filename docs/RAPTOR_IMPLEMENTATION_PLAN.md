@@ -493,8 +493,6 @@ def _get_arrival_time_with_boarding(self, trip, stop_id, boarding_stop_id):
 
 ### Limitaciones conocidas
 
-1. **Redes sin stop_times:** Metro Sevilla, Metro Granada, etc. no tienen datos de `stop_times` en GTFS, por lo que RAPTOR no puede calcular rutas para ellos (devuelve "No route found").
+1. **Redes sin stop_times importados:** Metro Sevilla tiene el archivo GTFS pero los `stop_id` no coinciden con la base de datos (archivo usa `L1-1`, BD usa `METRO_SEV_L1_E1`). Necesita re-importación con mapeo de IDs.
 
 2. **Transfers solo por stop_correspondence:** El algoritmo solo considera transfers definidos en la tabla `stop_correspondence`. No calcula transfers automáticos por proximidad.
-
-3. **Sin soporte para calendar_dates:** El filtro de servicios activos solo usa `gtfs_calendar`, no `gtfs_calendar_dates` (excepciones/adiciones de días).
