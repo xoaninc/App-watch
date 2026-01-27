@@ -3,6 +3,15 @@
 **Fecha:** 2026-01-27
 **Estado:** EN DESARROLLO
 
+### Progreso:
+- [x] Implementar estructuras de datos RAPTOR (`raptor.py`)
+- [x] Implementar algoritmo de rondas con filtro Pareto
+- [x] Crear RaptorService para integración API (`raptor_service.py`)
+- [x] Actualizar schemas (`routing_schemas.py`)
+- [x] Integrar con endpoint route-planner (`query_router.py`)
+- [ ] **Tests** ← PENDIENTE
+- [ ] **Deploy** ← PENDIENTE
+
 ---
 
 ## 0. Decisión de Implementación

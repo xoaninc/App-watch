@@ -58,6 +58,16 @@ from .routing_schemas import (
     RoutePlannerResponse,
 )
 
+# Re-export JourneyAlertResponse for direct import
+__all_routing__ = [
+    "JourneyStopResponse",
+    "JourneyCoordinate",
+    "JourneySegmentResponse",
+    "JourneyResponse",
+    "JourneyAlertResponse",
+    "RoutePlannerResponse",
+]
+
 # Required schemas that must exist for the API to function
 REQUIRED_SCHEMAS = [
     # Route schemas
