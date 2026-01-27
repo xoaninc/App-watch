@@ -354,58 +354,95 @@ Extraídos desde OpenStreetMap usando Overpass API con shapes bidireccionales:
 
 | Tarea | Prioridad | Estado |
 |-------|-----------|--------|
-| Route planner - 17 redes | Alta | ✅ Completado 2026-01-27 |
-| Route planner Euskotren | Media | ⏳ Pendiente (shapes no coinciden) |
-| `?compact=true` en departures | Media | ⏳ Pendiente |
-| Optimizar queries con índices BD | Media | ⏳ Pendiente |
+| Route planner Cercanías | Alta | ✅ Funciona |
+| Route planner Metro Granada | Alta | ✅ Funciona |
+| Route planner Euskotren | Alta | ✅ Funciona |
+| `?compact=true` en departures | Media | ✅ Completado |
+| **Fix calendarios FGC/TMB** | Alta | 🔴 PENDIENTE |
+| **Generar stop_times Metro Madrid** | Alta | 🔴 PENDIENTE |
+| **Generar stop_times Metro Sevilla** | Alta | 🔴 PENDIENTE |
+| Optimizar queries con índices BD | Baja | ⏳ Opcional |
 
-### Route Planner RAPTOR - Estado Completo (2026-01-27 06:00)
+---
 
-**17 redes listas para RAPTOR ✅**
+## 🔴 Route Planner - Estado Actual (2026-01-27 16:50)
 
-| Red | Routes | Trips | Stop_times | Estado |
-|-----|--------|-------|------------|--------|
-| Metro Madrid | 138 | 6,885 | 171,906 | ✅ OK |
-| Metro Sevilla | 1 | 104 | 2,088 | ✅ OK |
-| Metro Granada | 1 | 5,693 | 143,098 | ✅ OK |
-| Metrovalencia | 114 | 912 | 23,392 | ✅ OK |
-| Metro Bilbao | 2 | 16 | 408 | ✅ OK |
-| Metro Málaga | 2 | 16 | 168 | ✅ OK |
-| Metro Tenerife | 2 | 16 | 288 | ✅ OK |
-| Metro Ligero MAD | 4 | 32 | 456 | ✅ OK |
-| TMB Metro BCN | 11 | 88 | 1,320 | ✅ OK |
-| FGC | 21 | 160 | 2,864 | ✅ OK |
-| TRAM Alicante | 49 | 392 | 9,640 | ✅ OK |
-| TRAM Barcelona | 6 | 48 | 3,584 | ✅ OK |
-| Tranvía Sevilla | 1 | 8 | 56 | ✅ OK |
-| Tranvía Murcia | 2 | 16 | 232 | ✅ OK |
-| Tranvía Zaragoza | 1 | 8 | 200 | ✅ OK |
-| SFM Mallorca | 4 | 32 | 384 | ✅ OK |
-| **TOTAL** | **359** | **14,426** | **360,084** | |
+### ✅ Redes Funcionando
 
-**Renfe Cercanías:** ✅ Ya funciona (134,023 trips, 1.8M stop_times)
+| Red | Trips | Verificado |
+|-----|-------|------------|
+| **Cercanías (RENFE)** | 133,985 | ✅ `from=RENFE_18101&to=RENFE_70103` → 60 min |
+| **Metro Granada** | 5,693 | ✅ `from=METRO_GRANADA_1&to=METRO_GRANADA_26` → 55 min |
+| **Euskotren** | 11,088 | ✅ GTFS-RT con stop_times |
 
-**Euskotren:** ⚠️ Datos creados (56 trips, 2,456 stop_times) pero route planner no funciona
-- Los IDs de Euskotren tienen caracteres especiales (`:`) que pueden causar problemas
-- Investigar si es problema del algoritmo RAPTOR con estos IDs
+### ⚠️ Redes con Problema de Calendario
 
-**Scripts utilizados:**
-- `scripts/generate_network_trips.py PREFIX` - Genera trips y stop_times para cualquier red
-- `scripts/generate_stop_sequences_simple.py` - Genera stop_route_sequence desde shapes
+**Problema:** Los trips tienen service_ids (ej: `FGC_6c4bdae202747640fd55c10d40`) que NO existen en la tabla `gtfs_calendar`. RAPTOR no encuentra servicios activos.
 
-#### IMPORTANTE: NO DESCARGAR GTFS de nuevo
+| Red | Trips | Tipo | Solución |
+|-----|-------|------|----------|
+| **FGC** | 15,495 | GTFS-RT | Reimportar GTFS o crear calendar entries |
+| **TMB Metro** | 15,630 | GTFS-RT | Reimportar GTFS o crear calendar entries |
+| **Metro Bilbao** | 10,620 | GTFS-RT | Verificar y arreglar calendar |
+| **Metrovalencia** | 11,230 | GTFS | Verificar y arreglar calendar |
+| **TRAM** | 5,408 | GTFS | Verificar y arreglar calendar |
 
-Todos los datos base ya están en la BD. Solo hay que generar trips/stop_times con los scripts existentes.
+**Solución rápida (SQL):**
+```sql
+-- Crear calendar entries para service_ids existentes de FGC
+INSERT INTO gtfs_calendar (service_id, monday, tuesday, wednesday, thursday, friday, saturday, sunday, start_date, end_date)
+SELECT DISTINCT t.service_id, true, true, true, true, true, true, true, '2025-01-01', '2026-12-31'
+FROM gtfs_trips t
+WHERE t.route_id LIKE 'FGC%'
+AND NOT EXISTS (SELECT 1 FROM gtfs_calendar c WHERE c.service_id = t.service_id)
+ON CONFLICT (service_id) DO NOTHING;
+
+-- Repetir para TMB, Metro Bilbao, etc.
+```
+
+### ❌ Redes Sin Stop Times
+
+**Problema:** Estas redes usan `frequencies.txt` en su GTFS, no `stop_times.txt` completos. RAPTOR necesita stop_times individuales para cada trip.
+
+| Red | Problema | Solución |
+|-----|----------|----------|
+| **Metro Madrid** | 0 trips, solo frecuencias | Generar stop_times desde frequencies |
+| **Metro Sevilla** | 104 trips (solo 6:30-7:30) | Generar más trips desde frequencies |
+| **Metro Ligero MAD** | Pocos trips | Generar stop_times desde frequencies |
+
+**Pasos para generar stop_times:**
+
+1. Verificar datos de frecuencias:
+   ```sql
+   SELECT route_id, day_type, start_time, end_time, headway_secs
+   FROM gtfs_route_frequencies
+   WHERE route_id LIKE 'METRO_%';
+   ```
+
+2. Usar script de generación (CUIDADO: no generar demasiados):
+   ```bash
+   python scripts/generate_metro_madrid_full_trips.py --line METRO_1 --day-type weekday
+   ```
+
+3. **IMPORTANTE:** Cada tipo de día tiene frecuencias DIFERENTES. No copiar de domingo a laborable.
+
+**Ver documentación completa:** `docs/RAPTOR_IMPLEMENTATION_PLAN.md` sección "Tareas Pendientes Route Planner"
 
 ### App iOS (para el compañero)
 
-| Tarea | Descripción |
-|-------|-------------|
-| Migrar route planner a API RAPTOR | Usar `/gtfs/route-planner` en vez de cálculo local |
-| Implementar selector de alternativas | Mostrar múltiples journeys de RAPTOR |
-| Widget/Siri con compact departures | Espera `?compact=true` en API |
-| Mostrar alertas en journey | Usar `alerts` del response de route-planner |
-| Migrar normalización de shapes | Usar `?max_gap=50` del endpoint shapes |
+| Tarea | Descripción | API Ready |
+|-------|-------------|-----------|
+| Migrar route planner a API RAPTOR | Usar `/gtfs/route-planner` en vez de cálculo local | ✅ |
+| Implementar selector de alternativas | Mostrar múltiples journeys de RAPTOR | ✅ |
+| Widget/Siri con compact departures | Usar `?compact=true` en departures | ✅ |
+| Mostrar alertas en journey | Usar `alerts` del response de route-planner | ✅ |
+| Migrar normalización de shapes | Usar `?max_gap=50` del endpoint shapes | ✅ |
+
+**Compact departures example:**
+```bash
+curl "https://redcercanias.com/api/v1/gtfs/stops/RENFE_17000/departures?compact=true&limit=5"
+# Returns: [{"line":"C10","color":"#BCCF00","dest":"Pinar de las Rozas","mins":2,"plat":"8","delay":false}]
+```
 
 ### Mejoras opcionales (baja prioridad)
 
