@@ -383,9 +383,11 @@ Extraídos desde OpenStreetMap usando Overpass API con shapes bidireccionales:
 | SFM Mallorca | 4 | 32 | 384 | ✅ OK |
 | **TOTAL** | **359** | **14,426** | **360,084** | |
 
-**Pendientes:**
-- ⏳ **Euskotren** - 13 rutas, shapes ETX_ no coinciden con rutas (necesita mapeo manual)
-- ⏳ **Renfe Cercanías** - 134,023 trips pero 0 stop_times (usa frequencies en GTFS)
+**Renfe Cercanías:** ✅ Ya funciona (134,023 trips, 1.8M stop_times)
+
+**Euskotren:** ⚠️ Datos creados (56 trips, 2,456 stop_times) pero route planner no funciona
+- Los IDs de Euskotren tienen caracteres especiales (`:`) que pueden causar problemas
+- Investigar si es problema del algoritmo RAPTOR con estos IDs
 
 **Scripts utilizados:**
 - `scripts/generate_network_trips.py PREFIX` - Genera trips y stop_times para cualquier red
