@@ -116,31 +116,47 @@ El archivo GTFS de Renfe usa IDs de núcleo (primeros 2 dígitos del route_id) q
 
 ## Archivos Modificados
 
-- `scripts/import_gtfs_static.py` - Script de importación actualizado
+- `scripts/import_gtfs_static.py` - Script de importación RENFE actualizado
+- `scripts/import_metro_sevilla_gtfs.py` - Script de importación Metro Sevilla (nuevo)
 - `docs/RAPTOR_IMPLEMENTATION_PLAN.md` - Documentación actualizada
 - `docs/GTFS_IMPORT_VERIFICATION_20260127.md` - Este documento
 
 ## Redes Pendientes de Importar Stop Times
 
-### Metro Sevilla ❌
+### Metro Sevilla ⏳
 
 | Dato | Valor |
 |------|-------|
 | Rutas en BD | 1 (L1) |
 | Paradas en BD | 21 |
-| Trips | 0 |
-| Stop Times | 0 |
+| Trips | 0 (pendiente importar) |
+| Stop Times | 0 (pendiente importar) |
 | GTFS disponible | ✅ https://metro-sevilla.es/google-transit/google_transit.zip |
+| Script de importación | ✅ `scripts/import_metro_sevilla_gtfs.py` |
 
-**Problema:** Los stop_ids del archivo GTFS no coinciden con nuestra BD:
-- GTFS usa: `L1-E1`, `L1-E2`, etc.
-- BD espera: `METRO_SEV_L1_E1`, `METRO_SEV_L1_E2`, etc.
+**Estructura GTFS de Metro Sevilla:**
+- **Estaciones** (location_type=1): `L1-E1`, `L1-E2`, ..., `L1-E21`
+- **Plataformas** (location_type=0): `L1-1`, `L1-2`, ..., `L1-21`
+- **stop_times.txt** referencia **plataformas** (`L1-1`, `L1-2`, etc.), no estaciones
 
-**Solución necesaria:** Crear script de importación con mapeo:
+**Mapeo implementado en el script:**
 ```python
-def map_metro_sev_stop_id(gtfs_id):
-    # L1-E1 -> METRO_SEV_L1_E1
-    return f"METRO_SEV_{gtfs_id.replace('-', '_')}"
+def map_metro_sev_stop_id(gtfs_stop_id):
+    # Plataforma L1-N -> Nuestra estación METRO_SEV_L1_EN
+    # Ejemplo: L1-1 -> METRO_SEV_L1_E1
+    if gtfs_stop_id.startswith('L1-') and not gtfs_stop_id.startswith('L1-E'):
+        num = int(gtfs_stop_id.split('-')[1])
+        return f"METRO_SEV_L1_E{num}"
+```
+
+**Para importar (desde el servidor):**
+```bash
+# 1. Descargar GTFS
+wget -O /tmp/metro_sevilla.zip https://metro-sevilla.es/google-transit/google_transit.zip
+
+# 2. Ejecutar importación
+cd /var/www/renfeserver
+PYTHONPATH=/var/www/renfeserver python scripts/import_metro_sevilla_gtfs.py /tmp/metro_sevilla.zip
 ```
 
 ### Metro Granada ❌
