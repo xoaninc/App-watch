@@ -11,8 +11,11 @@
 - [x] Integrar con endpoint route-planner (`query_router.py`)
 - [x] Fix: manejo de direcciones (trips bidireccionales)
 - [x] Deploy inicial a producción
+- [x] Fix: importar paradas faltantes (`import_missing_stops`)
+- [x] Fix: soporte para calendar_dates (excepciones de servicio)
 - [ ] **Tests unitarios** ← PENDIENTE
 - [ ] **Optimizaciones de rendimiento** ← PENDIENTE
+- [ ] **Re-importar GTFS para aplicar fixes** ← PENDIENTE
 
 ---
 
@@ -490,6 +493,25 @@ def _get_arrival_time_with_boarding(self, trip, stop_id, boarding_stop_id):
     if boarding_seq is not None and stop_seq is not None and stop_seq > boarding_seq:
         return arrival_time
 ```
+
+### Fix: Paradas faltantes en stop_times
+
+**Problema:** Algunos trips de RENFE no tenían stop_times importados.
+
+**Causa:** El script `import_gtfs_static.py` saltaba stop_times cuando el `stop_id` no existía en nuestra base de datos. Si el archivo GTFS referenciaba paradas nuevas que no habíamos importado, esos stop_times se perdían.
+
+**Solución:** Se añadió la función `import_missing_stops()` que:
+1. Lee `stop_times.txt` para encontrar todas las paradas referenciadas por los trips a importar
+2. Compara con las paradas existentes en la BD
+3. Importa las paradas faltantes desde `stops.txt` antes de importar stop_times
+
+### Fix: Soporte para calendar_dates
+
+**Problema:** El algoritmo no soportaba excepciones de calendario (días festivos, servicios especiales).
+
+**Solución:**
+1. Se añadió la función `import_calendar_dates()` al script de importación
+2. RAPTOR ahora consulta `calendar_dates` para añadir/quitar servicios según `exception_type` (1=añadido, 2=eliminado)
 
 ### Limitaciones conocidas
 

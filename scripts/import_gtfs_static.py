@@ -150,6 +150,113 @@ def print_nucleos(nucleos: dict):
     print("\nUse --nucleo <ID> or --nucleo <name> to import a specific núcleo")
 
 
+def import_missing_stops(db, zf: zipfile.ZipFile, route_mapping: dict) -> int:
+    """Import stops from GTFS that don't exist in our database.
+
+    This ensures all stops referenced in stop_times.txt are available.
+    Only imports stops that are referenced by trips we're importing.
+
+    Args:
+        db: Database session
+        zf: Opened GTFS zip file
+        route_mapping: Mapping from GTFS route_id to our route_id
+    """
+    logger.info("Checking for missing stops...")
+
+    # Get existing RENFE stops
+    existing_stops = set()
+    our_stops = db.execute(text("SELECT id FROM gtfs_stops WHERE id LIKE 'RENFE_%'")).fetchall()
+    for stop in our_stops:
+        # Extract the numeric part: RENFE_65000 -> 65000
+        gtfs_id = stop[0].replace('RENFE_', '')
+        existing_stops.add(gtfs_id)
+    logger.info(f"Found {len(existing_stops)} existing RENFE stops")
+
+    # Get trips we're importing (based on route_mapping)
+    importing_trips = set()
+    with zf.open('trips.txt') as f:
+        reader = csv.DictReader(TextIOWrapper(f, encoding='utf-8'))
+        reader.fieldnames = [name.strip() for name in reader.fieldnames]
+        for row in reader:
+            gtfs_route_id = row['route_id'].strip()
+            if gtfs_route_id in route_mapping:
+                importing_trips.add(row['trip_id'].strip())
+    logger.info(f"Found {len(importing_trips)} trips to import")
+
+    # Find stops referenced in stop_times for trips we're importing
+    referenced_stops = set()
+    with zf.open('stop_times.txt') as f:
+        reader = csv.DictReader(TextIOWrapper(f, encoding='utf-8'))
+        reader.fieldnames = [name.strip() for name in reader.fieldnames]
+        for row in reader:
+            trip_id = row['trip_id'].strip()
+            if trip_id in importing_trips:
+                referenced_stops.add(row['stop_id'].strip())
+    logger.info(f"Found {len(referenced_stops)} stops referenced in stop_times")
+
+    # Find missing stops
+    missing_stop_ids = referenced_stops - existing_stops
+    if not missing_stop_ids:
+        logger.info("No missing stops found")
+        return 0
+
+    logger.info(f"Found {len(missing_stop_ids)} missing stops, importing...")
+
+    # Read stop details from stops.txt
+    stops_data = {}
+    with zf.open('stops.txt') as f:
+        reader = csv.DictReader(TextIOWrapper(f, encoding='utf-8'))
+        reader.fieldnames = [name.strip() for name in reader.fieldnames]
+        for row in reader:
+            stop_id = row['stop_id'].strip()
+            if stop_id in missing_stop_ids:
+                stops_data[stop_id] = row
+
+    # Import missing stops
+    rows = []
+    for gtfs_stop_id in missing_stop_ids:
+        if gtfs_stop_id not in stops_data:
+            logger.warning(f"Stop {gtfs_stop_id} referenced but not in stops.txt")
+            continue
+
+        stop = stops_data[gtfs_stop_id]
+        our_stop_id = f"RENFE_{gtfs_stop_id}"
+
+        lat = float(stop.get('stop_lat', '0').strip() or '0')
+        lon = float(stop.get('stop_lon', '0').strip() or '0')
+
+        rows.append({
+            'id': our_stop_id,
+            'name': stop.get('stop_name', '').strip(),
+            'lat': lat,
+            'lon': lon,
+            'location_type': 1,  # Station
+            'parent_station': None,
+            'platform_code': None,
+            'wheelchair_boarding': 0,
+        })
+
+    if rows:
+        for i in range(0, len(rows), BATCH_SIZE):
+            batch = rows[i:i+BATCH_SIZE]
+            db.execute(
+                text("""
+                    INSERT INTO gtfs_stops
+                    (id, name, lat, lon, location_type, parent_station, platform_code, wheelchair_boarding)
+                    VALUES (:id, :name, :lat, :lon, :location_type, :parent_station, :platform_code, :wheelchair_boarding)
+                    ON CONFLICT (id) DO UPDATE SET
+                        name = EXCLUDED.name,
+                        lat = EXCLUDED.lat,
+                        lon = EXCLUDED.lon
+                """),
+                batch
+            )
+        db.commit()
+        logger.info(f"Imported {len(rows)} missing stops")
+
+    return len(rows)
+
+
 def import_calendar(db, zf: zipfile.ZipFile) -> int:
     """Import calendar.txt data."""
     logger.info("Importing calendar data...")
@@ -192,6 +299,50 @@ def import_calendar(db, zf: zipfile.ZipFile) -> int:
                             sunday = EXCLUDED.sunday,
                             start_date = EXCLUDED.start_date,
                             end_date = EXCLUDED.end_date
+                    """),
+                    batch
+                )
+            db.commit()
+
+    return len(rows)
+
+
+def import_calendar_dates(db, zf: zipfile.ZipFile) -> int:
+    """Import calendar_dates.txt data (service exceptions).
+
+    calendar_dates contains exceptions to the regular schedule:
+    - exception_type=1: Service added on this date
+    - exception_type=2: Service removed on this date
+    """
+    logger.info("Importing calendar_dates data...")
+
+    # Check if calendar_dates.txt exists in the zip
+    if 'calendar_dates.txt' not in zf.namelist():
+        logger.info("No calendar_dates.txt found in GTFS - skipping")
+        return 0
+
+    with zf.open('calendar_dates.txt') as f:
+        reader = csv.DictReader(TextIOWrapper(f, encoding='utf-8'))
+        reader.fieldnames = [name.strip() for name in reader.fieldnames]
+        rows = []
+
+        for row in reader:
+            rows.append({
+                'service_id': row['service_id'].strip(),
+                'date': parse_date(row['date']),
+                'exception_type': int(row['exception_type'].strip()),
+            })
+
+        if rows:
+            for i in range(0, len(rows), BATCH_SIZE):
+                batch = rows[i:i+BATCH_SIZE]
+                db.execute(
+                    text("""
+                        INSERT INTO gtfs_calendar_dates
+                        (service_id, date, exception_type)
+                        VALUES (:service_id, :date, :exception_type)
+                        ON CONFLICT (service_id, date) DO UPDATE SET
+                            exception_type = EXCLUDED.exception_type
                     """),
                     batch
                 )
@@ -467,7 +618,7 @@ def clear_nucleo_data(db, nucleo_id: int):
 
 
 def clear_all_data(db):
-    """Clear all trips, stop_times, and calendar data."""
+    """Clear all trips, stop_times, calendar, and calendar_dates data."""
     logger.info("Clearing all existing schedule data...")
     db.execute(text("DELETE FROM gtfs_stop_times"))
     db.commit()
@@ -475,6 +626,10 @@ def clear_all_data(db):
     db.execute(text("DELETE FROM gtfs_trips"))
     db.commit()
     logger.info("  Cleared trips")
+    # Clear calendar_dates before calendar (foreign key constraint)
+    db.execute(text("DELETE FROM gtfs_calendar_dates"))
+    db.commit()
+    logger.info("  Cleared calendar_dates")
     db.execute(text("DELETE FROM gtfs_calendar"))
     db.commit()
     logger.info("  Cleared calendar")
@@ -538,16 +693,25 @@ def main():
                 # Clear all data
                 clear_all_data(db)
 
-            # Import calendar (only for full import, not per-nucleo)
+            # Import calendar and calendar_dates (only for full import, not per-nucleo)
             calendar_count = 0
+            calendar_dates_count = 0
             if not nucleo_filter:
                 calendar_count = import_calendar(db, zf)
                 logger.info(f"Imported {calendar_count} calendar entries")
+                calendar_dates_count = import_calendar_dates(db, zf)
+                if calendar_dates_count > 0:
+                    logger.info(f"Imported {calendar_dates_count} calendar_dates (exceptions)")
             else:
                 logger.info("Skipping calendar import (nucleo-specific import)")
 
             trips_count = import_trips(db, zf, route_mapping)
             logger.info(f"Imported {trips_count:,} trips")
+
+            # Import missing stops before stop_times
+            missing_stops_count = import_missing_stops(db, zf, route_mapping)
+            if missing_stops_count > 0:
+                logger.info(f"Imported {missing_stops_count:,} missing stops")
 
             stop_times_count = import_stop_times(db, zf)
             logger.info(f"Imported {stop_times_count:,} stop_times")
@@ -562,7 +726,11 @@ def main():
             else:
                 logger.info("Scope: All núcleos")
                 logger.info(f"Calendar entries: {calendar_count:,}")
+                if calendar_dates_count > 0:
+                    logger.info(f"Calendar dates (exceptions): {calendar_dates_count:,}")
             logger.info(f"Trips: {trips_count:,}")
+            if missing_stops_count > 0:
+                logger.info(f"Missing stops imported: {missing_stops_count:,}")
             logger.info(f"Stop times: {stop_times_count:,}")
             logger.info(f"Elapsed time: {elapsed}")
             logger.info("="*60)
