@@ -552,10 +552,10 @@ El archivo GTFS de Renfe usa IDs de núcleo que difieren de nuestros network_ids
 
 ### Limitaciones conocidas
 
-1. **Metro Sevilla sin stop_times:** ⏳ Script de importación creado (`scripts/import_metro_sevilla_gtfs.py`). GTFS usa plataformas (`L1-1`) en stop_times, script mapea a nuestras estaciones (`METRO_SEV_L1_E1`). Pendiente ejecutar importación en producción.
+1. **Metro Sevilla sin stop_times:** ⏳ Script `scripts/import_metro_sevilla_gtfs.py` listo. Mapea plataformas GTFS (`L1-1`) a nuestras estaciones (`METRO_SEV_L1_E1`). Pendiente ejecutar en servidor.
 
-2. **Metro Granada sin stop_times:** Similar a Sevilla, pendiente verificar formato de stop_ids en el archivo GTFS (NAP ID 1370).
+2. **Metro Granada sin stop_times:** ⏳ Script `scripts/import_metro_granada_gtfs.py` listo. Mapea stop_ids (`1`) a nuestras estaciones (`METRO_GRANADA_1`). Pendiente ejecutar en servidor.
 
 3. **Transfers solo por stop_correspondence:** El algoritmo solo considera transfers definidos en la tabla `stop_correspondence`. No calcula transfers automáticos por proximidad.
 
-**Nota:** Metro Sevilla y Granada también publican frequencies.txt para intervalos de paso. RAPTOR usa stop_times para calcular rutas con horarios exactos. Ver `docs/GTFS_IMPORT_VERIFICATION_20260127.md` para detalles.
+**Nota:** Metro Sevilla y Granada también publican frequencies.txt. Los scripts de importación permiten cargar stop_times para que RAPTOR calcule rutas con horarios exactos.
