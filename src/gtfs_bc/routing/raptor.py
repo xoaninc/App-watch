@@ -154,11 +154,13 @@ class RaptorAlgorithm:
         self._transfers: Dict[str, List[Transfer]] = defaultdict(list)  # from_stop_id -> [Transfer]
         self._trips_by_route: Dict[str, List[Trip]] = defaultdict(list)  # route_id -> [Trip] sorted by departure
 
-    def _load_data(self, travel_date: date) -> None:
+    def _load_data(self, travel_date: date, origin_stop_id: str = None, destination_stop_id: str = None) -> None:
         """Load all required data from the database.
 
         Args:
             travel_date: The date of travel (for calendar filtering)
+            origin_stop_id: Origin stop for network filtering
+            destination_stop_id: Destination stop for network filtering
         """
         if self._data_loaded:
             return
@@ -171,8 +173,11 @@ class RaptorAlgorithm:
         routes = self.db.query(RouteModel).all()
         self._routes = {r.id: r for r in routes}
 
-        # Load trips and stop_times for the given date
-        self._load_trips(travel_date)
+        # Get relevant networks based on origin and destination
+        relevant_networks = self._get_relevant_networks(origin_stop_id, destination_stop_id)
+
+        # Load trips and stop_times for the given date (filtered by networks)
+        self._load_trips(travel_date, relevant_networks)
 
         # Build route patterns from loaded trips (ensures correct travel direction)
         self._build_route_patterns_from_trips()
@@ -181,6 +186,77 @@ class RaptorAlgorithm:
         self._load_transfers()
 
         self._data_loaded = True
+
+    def _get_relevant_networks(self, origin_stop_id: str, destination_stop_id: str) -> Set[str]:
+        """Get networks that could be relevant for a journey.
+
+        Returns network prefixes (e.g., 'RENFE', 'METRO_SEV', 'TMB_METRO') that
+        serve the origin or destination, plus connected networks via correspondences.
+        """
+        relevant = set()
+
+        # Extract network prefix from stop IDs
+        def get_network(stop_id: str) -> str:
+            if stop_id.startswith('RENFE_'):
+                return 'RENFE'
+            elif stop_id.startswith('METRO_SEV'):
+                return 'METRO_SEV'
+            elif stop_id.startswith('METRO_MAL'):
+                return 'METRO_MAL'
+            elif stop_id.startswith('METRO_GR'):
+                return 'METRO_GR'
+            elif stop_id.startswith('METRO_BIL'):
+                return 'METRO_BIL'
+            elif stop_id.startswith('METRO_VAL'):
+                return 'METRO_VAL'
+            elif stop_id.startswith('METRO_TEN'):
+                return 'METRO_TEN'
+            elif stop_id.startswith('METRO_LIGERO'):
+                return 'METRO_LIGERO'
+            elif stop_id.startswith('METRO_'):
+                return 'METRO'  # Metro Madrid
+            elif stop_id.startswith('ML_'):
+                return 'ML'  # Metro Ligero
+            elif stop_id.startswith('TMB_METRO'):
+                return 'TMB_METRO'
+            elif stop_id.startswith('FGC_'):
+                return 'FGC'
+            elif stop_id.startswith('TRAM_'):
+                return 'TRAM'
+            elif stop_id.startswith('TRANVIA_'):
+                return 'TRANVIA'
+            elif stop_id.startswith('EUSKOTREN'):
+                return 'EUSKOTREN'
+            elif stop_id.startswith('SFM_'):
+                return 'SFM'
+            else:
+                return stop_id.split('_')[0] if '_' in stop_id else stop_id
+
+        if origin_stop_id:
+            relevant.add(get_network(origin_stop_id))
+        if destination_stop_id:
+            relevant.add(get_network(destination_stop_id))
+
+        # Add connected networks via correspondences
+        connected = set()
+        for stop_id in [origin_stop_id, destination_stop_id]:
+            if not stop_id:
+                continue
+            for transfer in self._transfers.get(stop_id, []):
+                connected.add(get_network(transfer.to_stop_id))
+
+        # Also check correspondences from DB (transfers not loaded yet on first call)
+        from sqlalchemy import text
+        result = self.db.execute(text('''
+            SELECT DISTINCT to_stop_id FROM stop_correspondence
+            WHERE from_stop_id IN (:origin, :dest)
+        '''), {'origin': origin_stop_id or '', 'dest': destination_stop_id or ''})
+        for row in result:
+            connected.add(get_network(row[0]))
+
+        relevant.update(connected)
+
+        return relevant
 
     def _load_route_patterns(self) -> None:
         """Load route patterns from stop_times data.
@@ -246,11 +322,12 @@ class RaptorAlgorithm:
                 # Keep only the trips in sub-patterns
                 self._trips_by_route[route_id] = []
 
-    def _load_trips(self, travel_date: date) -> None:
+    def _load_trips(self, travel_date: date, relevant_networks: Set[str] = None) -> None:
         """Load trips and their stop times for a specific date.
 
         Args:
             travel_date: The date to get active services for
+            relevant_networks: Set of network prefixes to load (None = all)
         """
         # Get day of week
         day_of_week = travel_date.weekday()  # 0=Monday, 6=Sunday
@@ -290,12 +367,19 @@ class RaptorAlgorithm:
         if not active_service_ids:
             return
 
-        # Load trips for active services
-        trips = (
-            self.db.query(TripModel)
-            .filter(TripModel.service_id.in_(active_service_ids))
-            .all()
-        )
+        # Load trips for active services (filtered by network if specified)
+        query = self.db.query(TripModel).filter(TripModel.service_id.in_(active_service_ids))
+
+        # Filter by relevant networks to reduce memory usage
+        if relevant_networks:
+            from sqlalchemy import or_
+            network_filters = []
+            for network in relevant_networks:
+                network_filters.append(TripModel.route_id.like(f'{network}%'))
+            if network_filters:
+                query = query.filter(or_(*network_filters))
+
+        trips = query.all()
 
         trip_ids = [t.id for t in trips]
         trips_dict = {t.id: t for t in trips}
@@ -374,8 +458,8 @@ class RaptorAlgorithm:
         Returns:
             List of Pareto-optimal journeys
         """
-        # Load data if not already loaded
-        self._load_data(travel_date)
+        # Load data if not already loaded (filtered by relevant networks)
+        self._load_data(travel_date, origin_stop_id, destination_stop_id)
 
         # Validate stops
         if origin_stop_id not in self._stops:
