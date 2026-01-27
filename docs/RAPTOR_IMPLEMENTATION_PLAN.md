@@ -14,9 +14,9 @@
 - [x] Fix: importar paradas faltantes (`import_missing_stops`)
 - [x] Fix: soporte para calendar_dates (excepciones de servicio)
 - [x] Fix: migración de nucleo_id a network_id (schema actualizado)
+- [x] Re-importar GTFS con fixes (243 paradas faltantes, 1.84M stop_times)
 - [ ] **Tests unitarios** ← PENDIENTE
 - [ ] **Optimizaciones de rendimiento** ← PENDIENTE
-- [ ] **Re-importar GTFS para aplicar fixes** ← PENDIENTE
 
 ---
 
