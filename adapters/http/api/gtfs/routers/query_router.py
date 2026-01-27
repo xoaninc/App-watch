@@ -1073,7 +1073,9 @@ def get_stop_departures(
     departures = []
     for stop_time, trip, route in results:
         # Filter out static GTFS routes outside operating hours
-        if is_static_gtfs_route(route.id) and not is_route_operating(db, route.id, current_seconds, day_type):
+        # Check if the DEPARTURE time is within operating hours (not current time)
+        # This allows showing upcoming departures even if service hasn't started yet
+        if is_static_gtfs_route(route.id) and not is_route_operating(db, route.id, stop_time.departure_seconds, day_type):
             continue
 
         minutes_until = (stop_time.departure_seconds - current_seconds) // 60
