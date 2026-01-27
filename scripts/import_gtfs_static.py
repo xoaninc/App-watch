@@ -32,27 +32,50 @@ from core.database import SessionLocal, engine
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# Núcleo ID to name mapping
+# GTFS Núcleo ID to name mapping
+# These are the nucleo IDs used in the GTFS file (fomento_transit.zip)
+# The first 2 digits of route_id (e.g., "10T0001C1" -> nucleo 10)
+# See docs/ARCHITECTURE_NETWORK_PROVINCES.md for full documentation
 NUCLEO_NAMES = {
     10: 'Madrid',
     20: 'Asturias',
-    30: 'Santander',
-    31: 'Bilbao',
-    32: 'San Sebastián',
-    40: 'Zaragoza',
-    50: 'Barcelona (Rodalies)',
-    60: 'Valencia',
-    61: 'Murcia/Alicante',
-    62: 'Castellón',
-    70: 'Sevilla',
-    71: 'Cádiz',
-    72: 'Málaga',
+    30: 'Sevilla',
+    31: 'Cádiz',
+    32: 'Málaga',
+    40: 'Valencia',
+    41: 'Murcia/Alicante',
+    51: 'Barcelona (Rodalies)',
+    60: 'Bilbao',
+    61: 'San Sebastián',
+    62: 'Santander',
+    70: 'Zaragoza',
+    90: 'C-9 Cotos (Madrid)',
 }
 
-# Nucleo ID mapping: GTFS -> our database
+# GTFS nucleo ID to our network_id mapping
+# Most are {nucleo}T but some differ for historical reasons
+# See alembic/versions/024_replace_nucleos_with_network_provinces.py
+GTFS_NUCLEO_TO_NETWORK = {
+    10: '10T',
+    20: '20T',
+    30: '30T',
+    31: '33T',   # Cádiz - our ID differs from GTFS
+    32: '34T',   # Málaga - our ID differs from GTFS
+    40: '40T',
+    41: '41T',
+    51: '51T',
+    60: '60T',
+    61: '61T',
+    62: '62T',
+    70: '70T',
+    90: '10T',   # C-9 Cotos is part of Madrid network
+}
+
+# Nucleo ID mapping: GTFS -> GTFS (for filtering purposes)
+# Some routes use variant nucleo IDs in GTFS
 NUCLEO_MAPPING = {
-    51: 50,  # Rodalies de Catalunya
-    90: 10,  # Madrid C9 special trains
+    51: 51,  # Keep as-is (was 50)
+    90: 10,  # C-9 Cotos maps to Madrid for filtering (optional)
 }
 
 BATCH_SIZE = 10000
@@ -351,13 +374,43 @@ def import_calendar_dates(db, zf: zipfile.ZipFile) -> int:
     return len(rows)
 
 
+def network_id_to_gtfs_nucleo(network_id: str) -> Optional[int]:
+    """Convert our network_id to GTFS nucleo_id.
+
+    Our network_ids and GTFS nucleo prefixes are mostly the same (e.g., '10T' -> 10),
+    but some differ because of historical reasons:
+    - Our '33T' (Cádiz) corresponds to GTFS nucleo 31
+    - Our '34T' (Málaga) corresponds to GTFS nucleo 32
+
+    See alembic/versions/024_replace_nucleos_with_network_provinces.py for mapping.
+    See docs/ARCHITECTURE_NETWORK_PROVINCES.md for full documentation.
+    """
+    # Special cases where our network_id doesn't match GTFS nucleo prefix
+    NETWORK_TO_GTFS_NUCLEO = {
+        '33T': 31,   # Cádiz - GTFS uses 31, we use 33T
+        '34T': 32,   # Málaga - GTFS uses 32, we use 34T
+        '90T': 90,   # C-9 Cotos (Madrid) - maps to 10T in DB but GTFS uses 90
+    }
+
+    if network_id in NETWORK_TO_GTFS_NUCLEO:
+        return NETWORK_TO_GTFS_NUCLEO[network_id]
+
+    # Standard case: network_id like '10T', '51T', '70T' -> nucleo_id 10, 51, 70
+    if network_id and network_id.endswith('T') and len(network_id) >= 2:
+        try:
+            return int(network_id[:-1])
+        except ValueError:
+            return None
+    return None
+
+
 def build_route_mapping(db, zf: zipfile.ZipFile, nucleo_filter: Optional[int] = None) -> dict:
     """Build mapping from GTFS route_id to our route_id.
 
     GTFS route_id format: {nucleo_id}T{seq}{short_name} (e.g., 10T0001C1)
     Our route_id format: RENFE_{short_name}_{renfe_idlinea} (e.g., RENFE_C1_34)
 
-    Maps via nucleo_id + short_name.
+    Maps via network_id (converted to nucleo_id) + short_name.
 
     Note: GTFS uses different nucleo codes in some cases:
     - 51 in GTFS = 50 in our DB (Rodalies de Catalunya)
@@ -373,16 +426,22 @@ def build_route_mapping(db, zf: zipfile.ZipFile, nucleo_filter: Optional[int] = 
     else:
         logger.info("Building route mapping for all núcleos...")
 
-    # Get our routes with nucleo_id and short_name
+    # Get our RENFE routes with network_id and short_name
     our_routes = db.execute(text(
-        "SELECT id, nucleo_id, short_name FROM gtfs_routes WHERE nucleo_id IS NOT NULL"
+        "SELECT id, network_id, short_name FROM gtfs_routes WHERE network_id IS NOT NULL AND id LIKE 'RENFE_%'"
     )).fetchall()
 
     # Build lookup: (nucleo_id, short_name_lower) -> our_route_id
     route_lookup = {}
     for route in our_routes:
-        key = (route[1], route[2].strip().lower())  # nucleo_id, short_name (lowercase)
-        route_lookup[key] = route[0]
+        our_route_id = route[0]
+        network_id = route[1]
+        short_name = route[2].strip().lower() if route[2] else ''
+
+        gtfs_nucleo_id = network_id_to_gtfs_nucleo(network_id)
+        if gtfs_nucleo_id is not None:
+            key = (gtfs_nucleo_id, short_name)
+            route_lookup[key] = our_route_id
 
     logger.info(f"Built lookup with {len(route_lookup)} route mappings")
 
@@ -583,14 +642,24 @@ def import_stop_times(db, zf: zipfile.ZipFile) -> int:
 
 
 def clear_nucleo_data(db, nucleo_id: int):
-    """Clear trips and stop_times for a specific núcleo."""
-    nucleo_name = NUCLEO_NAMES.get(nucleo_id, 'Unknown')
-    logger.info(f"Clearing existing data for núcleo {nucleo_id} ({nucleo_name})...")
+    """Clear trips and stop_times for a specific núcleo.
 
-    # Get route IDs for this nucleo
+    Args:
+        nucleo_id: The GTFS nucleo ID (e.g., 10 for Madrid, 31 for Cádiz)
+    """
+    nucleo_name = NUCLEO_NAMES.get(nucleo_id, 'Unknown')
+    network_id = GTFS_NUCLEO_TO_NETWORK.get(nucleo_id)
+
+    if not network_id:
+        logger.error(f"Unknown nucleo_id {nucleo_id} - no network_id mapping found")
+        return
+
+    logger.info(f"Clearing existing data for núcleo {nucleo_id} ({nucleo_name}), network_id={network_id}...")
+
+    # Get route IDs for this nucleo (using network_id)
     result = db.execute(text(
-        "SELECT id FROM gtfs_routes WHERE nucleo_id = :nid"
-    ), {'nid': nucleo_id}).fetchall()
+        "SELECT id FROM gtfs_routes WHERE network_id = :nid"
+    ), {'nid': network_id}).fetchall()
     route_ids = [r[0] for r in result]
 
     if not route_ids:
