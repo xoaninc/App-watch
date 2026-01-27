@@ -359,8 +359,8 @@ Extraídos desde OpenStreetMap usando Overpass API con shapes bidireccionales:
 | Route planner Euskotren | Alta | ✅ Funciona |
 | `?compact=true` en departures | Media | ✅ Completado |
 | **Fix calendarios FGC/TMB** | Alta | 🔴 PENDIENTE |
-| **Generar stop_times Metro Madrid** | Alta | 🔴 PENDIENTE |
-| **Generar stop_times Metro Sevilla** | Alta | 🔴 PENDIENTE |
+| **Generar stop_times Metro Madrid** | Alta | ✅ Script creado |
+| **Generar stop_times Metro Sevilla** | Alta | ✅ Script creado |
 | Optimizar queries con índices BD | Baja | ⏳ Opcional |
 
 ---
@@ -400,33 +400,58 @@ ON CONFLICT (service_id) DO NOTHING;
 -- Repetir para TMB, Metro Bilbao, etc.
 ```
 
-### ❌ Redes Sin Stop Times
+### ✅ Redes con Scripts de Generación de Stop Times
 
-**Problema:** Estas redes usan `frequencies.txt` en su GTFS, no `stop_times.txt` completos. RAPTOR necesita stop_times individuales para cada trip.
+**Problema resuelto:** Estas redes usan `frequencies.txt` en su GTFS, no `stop_times.txt` completos. RAPTOR necesita stop_times individuales para cada trip.
 
-| Red | Problema | Solución |
-|-----|----------|----------|
-| **Metro Madrid** | 0 trips, solo frecuencias | Generar stop_times desde frequencies |
-| **Metro Sevilla** | 104 trips (solo 6:30-7:30) | Generar más trips desde frequencies |
-| **Metro Ligero MAD** | Pocos trips | Generar stop_times desde frequencies |
+**Solución:** Se han creado scripts que descargan el GTFS oficial, leen los trip templates y frequencies, y generan trips individuales para todo el día.
 
-**Pasos para generar stop_times:**
+| Red | Script | Trips Estimados | Estado |
+|-----|--------|-----------------|--------|
+| **Metro Sevilla** | `scripts/generate_metro_sevilla_trips.py` | ~3,340 | ✅ Script listo |
+| **Metro Madrid** | `scripts/generate_metro_madrid_from_gtfs.py` | ~21,574 | ✅ Script listo |
+| **Metro Ligero MAD** | Pendiente | - | ⏳ Por crear |
 
-1. Verificar datos de frecuencias:
-   ```sql
-   SELECT route_id, day_type, start_time, end_time, headway_secs
-   FROM gtfs_route_frequencies
-   WHERE route_id LIKE 'METRO_%';
-   ```
+#### Metro Sevilla - Uso del Script
 
-2. Usar script de generación (CUIDADO: no generar demasiados):
-   ```bash
-   python scripts/generate_metro_madrid_full_trips.py --line METRO_1 --day-type weekday
-   ```
+```bash
+# Analizar el GTFS (sin cambios en BD)
+python scripts/generate_metro_sevilla_trips.py --analyze
 
-3. **IMPORTANTE:** Cada tipo de día tiene frecuencias DIFERENTES. No copiar de domingo a laborable.
+# Dry run (muestra qué se generaría)
+python scripts/generate_metro_sevilla_trips.py --dry-run
 
-**Ver documentación completa:** `docs/RAPTOR_IMPLEMENTATION_PLAN.md` sección "Tareas Pendientes Route Planner"
+# Generar trips (EJECUTAR EN SERVIDOR)
+python scripts/generate_metro_sevilla_trips.py
+```
+
+**Datos a generar:**
+- 2 direcciones (Ciudad Expo ↔ Olivar de Quintos)
+- 21 paradas, 38 min de viaje
+- ~952 trips weekday + ~1008 friday + ~748 saturday + ~632 sunday
+- Total: ~3,340 trips, ~70,140 stop_times
+
+#### Metro Madrid - Uso del Script
+
+```bash
+# Analizar el GTFS (sin cambios en BD)
+python scripts/generate_metro_madrid_from_gtfs.py --analyze
+
+# Dry run
+python scripts/generate_metro_madrid_from_gtfs.py --dry-run
+
+# Generar trips (EJECUTAR EN SERVIDOR)
+python scripts/generate_metro_madrid_from_gtfs.py
+```
+
+**Datos a generar:**
+- 12 líneas (1,2,4,5,6,7,8,9,10,11,12,R) - L3 no está en GTFS oficial
+- ~5,906 trips weekday + ~5,984 friday + ~4,924 saturday + ~4,760 sunday
+- Total: ~21,574 trips, ~539,350 stop_times
+
+**IMPORTANTE:** Los scripts requieren que las paradas existan en la BD con los IDs correctos:
+- Metro Sevilla: `METRO_SEV_L1_E1`, `METRO_SEV_L1_E2`, ..., `METRO_SEV_L1_E21`
+- Metro Madrid: `METRO_1`, `METRO_2`, ..., `METRO_295`
 
 ### App iOS (para el compañero)
 
