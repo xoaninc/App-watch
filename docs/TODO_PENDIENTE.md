@@ -1,6 +1,6 @@
 # TODO - Tareas Pendientes
 
-**Última actualización:** 2026-01-27 04:50
+**Última actualización:** 2026-01-27 05:30
 
 ---
 
@@ -44,6 +44,54 @@
 ---
 
 ## Tareas Completadas (2026-01-27)
+
+### ✅ Fix Bug Departures - Metro Sevilla/Granada (05:30)
+
+**Bug:** El endpoint `/stops/{stop_id}/departures` devolvía `[]` para Metro Sevilla y Granada.
+
+**Causa raíz:** El filtro `is_route_operating()` comprobaba si `current_seconds` estaba dentro del horario de servicio. Si consultabas a las 5:20 AM y el servicio empezaba a las 6:30 AM, se filtraban TODAS las salidas aunque fueran válidas para más tarde.
+
+**Fix:** Cambiar de `is_route_operating(db, route.id, current_seconds, day_type)` a `is_route_operating(db, route.id, stop_time.departure_seconds, day_type)` - ahora comprueba si la hora de SALIDA está dentro del horario, no la hora actual.
+
+**Archivo:** `adapters/http/api/gtfs/routers/query_router.py` línea 1076
+
+**Commit:** `5b6713d`
+
+**Resultado:**
+```bash
+# Antes del fix
+curl ".../stops/METRO_SEV_L1_E1/departures"  # → []
+
+# Después del fix
+curl ".../stops/METRO_SEV_L1_E1/departures"  # → 6:30 Olivar de Quintos, 6:50 Pablo de Olavide...
+curl ".../stops/METRO_GRANADA_1/departures"  # → 6:31:30 Armilla, 6:38:30 Armilla...
+```
+
+### ✅ Tests Unitarios RAPTOR (04:50)
+
+Creada estructura de tests con pytest:
+
+```
+tests/
+├── __init__.py
+├── conftest.py
+├── unit/
+│   └── routing/
+│       └── test_raptor.py  # 19 tests para data structures
+└── integration/
+    └── gtfs/
+        └── test_route_planner.py  # 14 tests (skip sin DB)
+```
+
+**Tests unitarios:** 19 pasando (StopTime, Trip, Transfer, RoutePattern, Label, Journey, JourneyLeg, Constants)
+
+**Tests integración:** 14 tests (se saltan automáticamente sin BD, activar con `SKIP_INTEGRATION_TESTS=0`)
+
+### ✅ Cleanup Código Legacy (04:30)
+
+- Eliminado `src/gtfs_bc/routing/routing_service.py` (Dijkstra legacy ~16KB)
+- Limpiado `Makefile` (quitadas referencias frontend)
+- Actualizado `__init__.py` y `query_router.py` para quitar imports de RoutingService
 
 ### ✅ Metro Madrid - Importación Completa
 
@@ -302,14 +350,44 @@ Extraídos desde OpenStreetMap usando Overpass API con shapes bidireccionales:
 
 ## Tareas Pendientes
 
-### Todo completado ✅
+### Backend API
 
-No hay tareas pendientes de shapes o correspondencias.
+| Tarea | Prioridad | Estado |
+|-------|-----------|--------|
+| Route planner Metro Madrid | Alta | ⏳ Falta importar datos a RAPTOR |
+| `?compact=true` en departures | Media | ⏳ Pendiente |
+| Optimizar queries con índices BD | Media | ⏳ Pendiente |
+
+### Route Planner RAPTOR
+
+El route planner funciona para:
+- ✅ Metro Sevilla (stop_times importados)
+- ✅ Metro Granada (stop_times importados)
+
+Falta importar a RAPTOR:
+- ⏳ Metro Madrid
+- ⏳ Metro Ligero Madrid
+- ⏳ Metro Bilbao
+- ⏳ Metro Barcelona (TMB)
+- ⏳ FGC
+- ⏳ Euskotren
+- ⏳ Cercanías Renfe
+
+### App iOS (para el compañero)
+
+| Tarea | Descripción |
+|-------|-------------|
+| Migrar route planner a API RAPTOR | Usar `/gtfs/route-planner` en vez de cálculo local |
+| Implementar selector de alternativas | Mostrar múltiples journeys de RAPTOR |
+| Widget/Siri con compact departures | Espera `?compact=true` en API |
+| Mostrar alertas en journey | Usar `alerts` del response de route-planner |
+| Migrar normalización de shapes | Usar `?max_gap=50` del endpoint shapes |
 
 ### Mejoras opcionales (baja prioridad)
 
 - [ ] Investigar API Valencia tiempo real (devuelve vacío)
-- [ ] Investigar servicio CIVIS Madrid - es un servicio semi-directo que podría tener su propia ruta/identificación en la app (actualmente headsign muestra destino real)
+- [ ] Investigar servicio CIVIS Madrid
+- [ ] Matching manual intercambiadores grandes
 - [x] ~~Mapear shapes OSM a route_ids existentes~~ ✅ Completado 2026-01-26
 
 ### ✅ Shapes OSM mapeados a rutas (2026-01-26)
