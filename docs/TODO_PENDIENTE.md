@@ -377,19 +377,60 @@ Extraídos desde OpenStreetMap usando Overpass API con shapes bidireccionales:
 
 ### ⚠️ Redes con Problema de Calendario
 
-**Problema:** Los trips tienen service_ids (ej: `FGC_6c4bdae202747640fd55c10d40`) que NO existen en la tabla `gtfs_calendar`. RAPTOR no encuentra servicios activos.
+**Problema:** Los trips tienen service_ids que NO existen en la tabla `gtfs_calendar`. RAPTOR no puede determinar si el servicio está activo para la fecha consultada.
 
-| Red | Trips | Tipo | Solución |
-|-----|-------|------|----------|
-| **FGC** | 15,495 | GTFS-RT | Reimportar GTFS o crear calendar entries |
-| **TMB Metro** | 15,630 | GTFS-RT | Reimportar GTFS o crear calendar entries |
-| **Metro Bilbao** | 10,620 | GTFS-RT | Verificar y arreglar calendar |
-| **Metrovalencia** | 11,230 | GTFS | Verificar y arreglar calendar |
-| **TRAM** | 5,408 | GTFS | Verificar y arreglar calendar |
+| Red | Trips | Service IDs | Patrón | Solución |
+|-----|-------|-------------|--------|----------|
+| **FGC** | 15,495 | 49 | Hash (ej: `FGC_6c4bdae2...`) | Crear calendar L-D |
+| **TMB Metro** | 15,630 | 43 | Hash (ej: `TMB_METRO_1.5.H4015`) | Crear calendar L-D |
+| **Metro Bilbao** | 10,620 | 20 | Descriptivo (ej: `invl_25`, `invv_25`) | Mapear por patrón |
+| **Metrovalencia** | 11,230 | 7 | Numérico (ej: `3093`, `3127`) | Crear calendar L-D |
+| **TRAM Barcelona** | 5,408 | 13 | Numérico (ej: `1766`, `2537`) | Crear calendar L-D |
 
-**Solución rápida (SQL):**
+#### Análisis Detallado por Red
+
+**FGC (Ferrocarrils de la Generalitat de Catalunya):**
+- Service IDs son hashes sin información de día
+- Horarios: 4h-27h (servicio completo)
+- No hay `calendar_dates` asociados
+- **Solución:** Crear calendarios activos todos los días (L-D)
+
+**TMB Metro Barcelona:**
+- Service IDs tienen formato `TMB_METRO_X.Y.HNNNN`
+- Horarios: 5h-26h (servicio completo)
+- No hay `calendar_dates` asociados
+- **Solución:** Crear calendarios activos todos los días (L-D)
+
+**Metro Bilbao:**
+- Service IDs tienen patrones descriptivos que indican el tipo de día:
+  - `invl` / `verl` = Laborable (L-J)
+  - `invv` / `verv` = Viernes (V)
+  - `invs` / `vers` = Sábado (S)
+  - `invd` / `verd` = Domingo (D)
+  - `noc` = Nocturno (V-S noche)
+- **Solución:** Mapear cada patrón al tipo de día correcto
+
+**Metrovalencia:**
+- Service IDs son numéricos sin patrón claro
+- No hay `calendar_dates` asociados
+- **Solución:** Crear calendarios activos todos los días (L-D)
+
+**TRAM Barcelona:**
+- Service IDs numéricos (ej: `TRAM_BARCELONA_BESOS_1766`)
+- No hay `calendar_dates` asociados
+- **Solución:** Crear calendarios activos todos los días (L-D)
+
+#### Script de Solución
+
+```bash
+# Ejecutar script de fix de calendarios
+python scripts/fix_calendar_entries.py --analyze   # Ver qué se va a crear
+python scripts/fix_calendar_entries.py             # Crear calendarios
+```
+
+**SQL Manual (alternativa):**
 ```sql
--- Crear calendar entries para service_ids existentes de FGC
+-- FGC: Crear calendarios activos L-D
 INSERT INTO gtfs_calendar (service_id, monday, tuesday, wednesday, thursday, friday, saturday, sunday, start_date, end_date)
 SELECT DISTINCT t.service_id, true, true, true, true, true, true, true, '2025-01-01', '2026-12-31'
 FROM gtfs_trips t
@@ -397,8 +438,69 @@ WHERE t.route_id LIKE 'FGC%'
 AND NOT EXISTS (SELECT 1 FROM gtfs_calendar c WHERE c.service_id = t.service_id)
 ON CONFLICT (service_id) DO NOTHING;
 
--- Repetir para TMB, Metro Bilbao, etc.
+-- TMB Metro: Crear calendarios activos L-D
+INSERT INTO gtfs_calendar (service_id, monday, tuesday, wednesday, thursday, friday, saturday, sunday, start_date, end_date)
+SELECT DISTINCT t.service_id, true, true, true, true, true, true, true, '2025-01-01', '2026-12-31'
+FROM gtfs_trips t
+WHERE t.route_id LIKE 'TMB_METRO%'
+AND NOT EXISTS (SELECT 1 FROM gtfs_calendar c WHERE c.service_id = t.service_id)
+ON CONFLICT (service_id) DO NOTHING;
+
+-- Metro Bilbao: Mapear por patrón de nombre
+-- Laborables (L-J): invl, verl
+INSERT INTO gtfs_calendar (service_id, monday, tuesday, wednesday, thursday, friday, saturday, sunday, start_date, end_date)
+SELECT DISTINCT t.service_id, true, true, true, true, false, false, false, '2025-01-01', '2026-12-31'
+FROM gtfs_trips t
+WHERE t.route_id LIKE 'METRO_BIL%'
+AND (t.service_id ILIKE '%invl%' OR t.service_id ILIKE '%verl%')
+AND NOT EXISTS (SELECT 1 FROM gtfs_calendar c WHERE c.service_id = t.service_id)
+ON CONFLICT (service_id) DO NOTHING;
+
+-- Viernes: invv, verv
+INSERT INTO gtfs_calendar (service_id, monday, tuesday, wednesday, thursday, friday, saturday, sunday, start_date, end_date)
+SELECT DISTINCT t.service_id, false, false, false, false, true, false, false, '2025-01-01', '2026-12-31'
+FROM gtfs_trips t
+WHERE t.route_id LIKE 'METRO_BIL%'
+AND (t.service_id ILIKE '%invv%' OR t.service_id ILIKE '%verv%')
+AND NOT EXISTS (SELECT 1 FROM gtfs_calendar c WHERE c.service_id = t.service_id)
+ON CONFLICT (service_id) DO NOTHING;
+
+-- Sábados: invs, vers
+INSERT INTO gtfs_calendar (service_id, monday, tuesday, wednesday, thursday, friday, saturday, sunday, start_date, end_date)
+SELECT DISTINCT t.service_id, false, false, false, false, false, true, false, '2025-01-01', '2026-12-31'
+FROM gtfs_trips t
+WHERE t.route_id LIKE 'METRO_BIL%'
+AND (t.service_id ILIKE '%invs%' OR t.service_id ILIKE '%vers%')
+AND NOT EXISTS (SELECT 1 FROM gtfs_calendar c WHERE c.service_id = t.service_id)
+ON CONFLICT (service_id) DO NOTHING;
+
+-- Domingos: invd, verd
+INSERT INTO gtfs_calendar (service_id, monday, tuesday, wednesday, thursday, friday, saturday, sunday, start_date, end_date)
+SELECT DISTINCT t.service_id, false, false, false, false, false, false, true, '2025-01-01', '2026-12-31'
+FROM gtfs_trips t
+WHERE t.route_id LIKE 'METRO_BIL%'
+AND (t.service_id ILIKE '%invd%' OR t.service_id ILIKE '%verd%')
+AND NOT EXISTS (SELECT 1 FROM gtfs_calendar c WHERE c.service_id = t.service_id)
+ON CONFLICT (service_id) DO NOTHING;
+
+-- Metrovalencia: Crear calendarios activos L-D
+INSERT INTO gtfs_calendar (service_id, monday, tuesday, wednesday, thursday, friday, saturday, sunday, start_date, end_date)
+SELECT DISTINCT t.service_id, true, true, true, true, true, true, true, '2025-01-01', '2026-12-31'
+FROM gtfs_trips t
+WHERE t.route_id LIKE 'METRO_VAL%'
+AND NOT EXISTS (SELECT 1 FROM gtfs_calendar c WHERE c.service_id = t.service_id)
+ON CONFLICT (service_id) DO NOTHING;
+
+-- TRAM Barcelona: Crear calendarios activos L-D
+INSERT INTO gtfs_calendar (service_id, monday, tuesday, wednesday, thursday, friday, saturday, sunday, start_date, end_date)
+SELECT DISTINCT t.service_id, true, true, true, true, true, true, true, '2025-01-01', '2026-12-31'
+FROM gtfs_trips t
+WHERE t.route_id LIKE 'TRAM_BARCELONA%'
+AND NOT EXISTS (SELECT 1 FROM gtfs_calendar c WHERE c.service_id = t.service_id)
+ON CONFLICT (service_id) DO NOTHING;
 ```
+
+**NOTA:** La solución L-D para FGC/TMB/Metrovalencia/TRAM no es 100% precisa (algunos servicios pueden ser solo laborables o fines de semana), pero permite que RAPTOR funcione. Para mayor precisión, habría que reimportar los GTFS completos con sus calendarios originales.
 
 ### ✅ Redes con Scripts de Generación de Stop Times
 
