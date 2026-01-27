@@ -113,9 +113,9 @@ print('Estructura OK')
 ```
 
 ### Criterio de exito
-- [ ] `trips_by_pattern` existe y es Dict[str, List]
-- [ ] `stops_by_pattern` existe y es Dict[str, List]
-- [ ] `patterns_by_stop` mapea stop_id a set de pattern_ids
+- [x] `trips_by_pattern` existe y es Dict[str, List] ✓ commit 596d267
+- [x] `stops_by_pattern` existe y es Dict[str, List] ✓ commit 596d267
+- [x] `patterns_by_stop` mapea stop_id a set de pattern_ids ✓ commit 596d267
 
 ---
 
@@ -158,8 +158,8 @@ print('Import OK')
 ```
 
 ### Criterio de exito
-- [ ] RaptorAlgorithm se puede instanciar sin db
-- [ ] No hay queries SQL en el archivo (excepto comentarios)
+- [x] RaptorAlgorithm se puede instanciar sin db ✓ commit f6f2cf3
+- [x] No hay queries SQL en el archivo (excepto comentarios) ✓ commit f6f2cf3
 
 ---
 
@@ -233,9 +233,11 @@ def _find_earliest_trip(self, trips_list, min_time, active_services):
 Para ahorrar tiempo, inicialmente asumimos FIFO. Si hay tiempo en Hora 5, implementar verificacion de hora exacta en cada parada.
 
 ### Criterio de exito
-- [ ] `_scan_pattern` usa `store.stops_by_pattern`
-- [ ] `_find_earliest_trip` trabaja con tuplas
-- [ ] Verifica `active_services` con lazy check
+- [x] `_scan_pattern` usa `store.stops_by_pattern` ✓ commit 670a501
+- [x] `_find_earliest_trip` trabaja con tuplas ✓ commit 670a501
+- [x] Verifica `active_services` con lazy check ✓ commit 670a501
+
+**PENDIENTE REVISIÓN DEL USUARIO**
 
 ---
 
@@ -379,9 +381,9 @@ ssh root@juanmacias.com "systemctl restart renfeserver"
 
 ## Checklist Final
 
-- [ ] Hora 1: GTFSStore con patterns - commit
-- [ ] Hora 2: raptor.py sin SQL - commit
-- [ ] Hora 3: _scan_pattern ajustado - commit
+- [x] Hora 1: GTFSStore con patterns - commit 596d267
+- [x] Hora 2: raptor.py sin SQL - commit f6f2cf3
+- [ ] Hora 3: _scan_pattern ajustado - commit 670a501 (pendiente revisión)
 - [ ] Hora 4: Integracion OK - commit
 - [ ] Hora 5: Tests OK
 - [ ] Hora 6: Deploy exitoso
