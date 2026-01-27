@@ -150,11 +150,34 @@ class GTFSRTScheduler:
 gtfs_rt_scheduler = GTFSRTScheduler()
 
 
+def _load_gtfs_store():
+    """Load GTFS data into memory store (synchronous)."""
+    from src.gtfs_bc.routing.gtfs_store import GTFSStore
+
+    db = SessionLocal()
+    try:
+        store = GTFSStore.get_instance()
+        store.load_data(db)
+    finally:
+        db.close()
+
+
 @asynccontextmanager
 async def lifespan_with_scheduler(app):
-    """FastAPI lifespan context manager that starts/stops the scheduler."""
-    # Startup
+    """FastAPI lifespan context manager that starts/stops the scheduler.
+
+    Also loads GTFS data into memory for fast RAPTOR routing.
+    """
+    # Startup: Load GTFS data into memory first
+    logger.info("Loading GTFS data into memory for RAPTOR...")
+    loop = asyncio.get_event_loop()
+    await loop.run_in_executor(None, _load_gtfs_store)
+    logger.info("GTFS data loaded successfully")
+
+    # Start GTFS-RT scheduler
     await gtfs_rt_scheduler.start()
+
     yield
+
     # Shutdown
     await gtfs_rt_scheduler.stop()

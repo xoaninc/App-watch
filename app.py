@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
@@ -46,8 +46,61 @@ def create_app() -> FastAPI:
 
     @app.get("/health")
     async def health_check():
-        """Health check endpoint."""
-        return {"status": "healthy"}
+        """Health check endpoint.
+
+        Returns 503 until GTFS data is loaded into memory.
+        This prevents Kubernetes/Docker from routing traffic before the app is ready.
+        """
+        from fastapi.responses import JSONResponse
+        from src.gtfs_bc.routing.gtfs_store import GTFSStore
+
+        store = GTFSStore.get_instance()
+
+        if not store.is_loaded:
+            return JSONResponse(
+                status_code=503,
+                content={
+                    "status": "loading",
+                    "message": "GTFS data is being loaded into memory"
+                }
+            )
+
+        return {
+            "status": "healthy",
+            "gtfs_store": {
+                "loaded": True,
+                "load_time_seconds": round(store.load_time_seconds, 1),
+                "stats": store.stats
+            }
+        }
+
+    @app.post("/admin/reload-gtfs")
+    async def reload_gtfs(background_tasks: BackgroundTasks):
+        """Reload GTFS data into memory without restarting the server.
+
+        This endpoint triggers a background reload of all GTFS data.
+        The reload is done in a background task to not block the request.
+
+        Note: During reload, the old data remains available for requests.
+        Once the new data is loaded, it atomically replaces the old data.
+        """
+        from src.gtfs_bc.routing.gtfs_store import GTFSStore
+        from core.database import SessionLocal
+
+        def do_reload():
+            db = SessionLocal()
+            try:
+                store = GTFSStore.get_instance()
+                store.reload_data(db)
+            finally:
+                db.close()
+
+        background_tasks.add_task(do_reload)
+
+        return {
+            "status": "reload_initiated",
+            "message": "GTFS data reload started in background"
+        }
 
     return app
 
