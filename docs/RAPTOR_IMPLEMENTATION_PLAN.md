@@ -9,8 +9,10 @@
 - [x] Crear RaptorService para integración API (`raptor_service.py`)
 - [x] Actualizar schemas (`routing_schemas.py`)
 - [x] Integrar con endpoint route-planner (`query_router.py`)
-- [ ] **Tests** ← PENDIENTE
-- [ ] **Deploy** ← PENDIENTE
+- [x] Fix: manejo de direcciones (trips bidireccionales)
+- [x] Deploy inicial a producción
+- [ ] **Tests unitarios** ← PENDIENTE
+- [ ] **Optimizaciones de rendimiento** ← PENDIENTE
 
 ---
 
@@ -465,3 +467,34 @@ Se calcula desde el primer punto hasta el último punto del segmento para dar la
 - Paper original: "Round-Based Public Transit Routing" (Delling et al., 2012)
 - Schema actual: `docs/ROUTE_PLANNER.md`
 - Instrucciones migración app: `docs/APP_MIGRATION_INSTRUCTIONS.md`
+
+---
+
+## 13. Notas de Implementación
+
+### Bug: Direcciones de viaje
+
+**Problema:** El algoritmo encontraba viajes en dirección contraria (llegada antes que salida).
+
+**Causa:** La tabla `stop_route_sequence` almacena paradas en orden geométrico (posición en el shape), no en orden de viaje. Los trenes pueden ir en ambas direcciones en la misma línea.
+
+**Solución:**
+1. Construir patrones de ruta desde `stop_times` (orden real de viaje) en lugar de `stop_route_sequence`
+2. Crear patrones separados para cada dirección: `RENFE_C10_42_dir_0`, `RENFE_C10_42_dir_1`
+3. Verificar que el destino viene DESPUÉS del origen en el `stop_sequence` del trip
+
+**Código:**
+```python
+def _get_arrival_time_with_boarding(self, trip, stop_id, boarding_stop_id):
+    # Only return if destination comes AFTER boarding in the trip
+    if boarding_seq is not None and stop_seq is not None and stop_seq > boarding_seq:
+        return arrival_time
+```
+
+### Limitaciones conocidas
+
+1. **Redes sin stop_times:** Metro Sevilla, Metro Granada, etc. no tienen datos de `stop_times` en GTFS, por lo que RAPTOR no puede calcular rutas para ellos (devuelve "No route found").
+
+2. **Transfers solo por stop_correspondence:** El algoritmo solo considera transfers definidos en la tabla `stop_correspondence`. No calcula transfers automáticos por proximidad.
+
+3. **Sin soporte para calendar_dates:** El filtro de servicios activos solo usa `gtfs_calendar`, no `gtfs_calendar_dates` (excepciones/adiciones de días).
