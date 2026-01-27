@@ -1,6 +1,6 @@
 # TODO - Tareas Pendientes
 
-**Última actualización:** 2026-01-27 01:15
+**Última actualización:** 2026-01-27 04:50
 
 ---
 
@@ -74,6 +74,33 @@ Extraído desde OSM (tracks `railway=tram`):
 - 2 shapes (ida/vuelta)
 - 552 puntos
 - Shape IDs: `TRAM_SEV_T1_OSM`, `TRAM_SEV_T1_OSM_REV`
+
+### ✅ Metro Granada - Importación Completa de Horarios
+
+Importados trips y stop_times desde GTFS del NAP:
+
+| Dato | Valor |
+|------|-------|
+| Trips | 5,693 |
+| Stop times | 143,098 |
+| Calendar entries | 4 + 17 (excepciones) |
+| Calendar dates | 34 |
+| Fuente | NAP ID 1370 |
+
+**Script:** `scripts/import_metro_granada_gtfs.py`
+
+**Fix aplicado:** El script ahora crea entradas dummy en `gtfs_calendar` para service_ids que solo existen en `calendar_dates.txt` (servicios de días festivos específicos).
+
+**Endpoints funcionando:**
+```bash
+# Salidas
+curl "https://juanmacias.com/api/v1/gtfs/stops/METRO_GRANADA_1/departures"
+# → 06:31:30 -> Armilla, 06:38:30 -> Armilla, ...
+
+# Route planner
+curl "https://juanmacias.com/api/v1/gtfs/route-planner?from=METRO_GRANADA_1&to=METRO_GRANADA_26"
+# → Success: true, 1 journey
+```
 
 ---
 
