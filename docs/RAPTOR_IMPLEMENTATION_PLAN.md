@@ -13,6 +13,7 @@
 - [x] Deploy inicial a producción
 - [x] Fix: importar paradas faltantes (`import_missing_stops`)
 - [x] Fix: soporte para calendar_dates (excepciones de servicio)
+- [x] Fix: migración de nucleo_id a network_id (schema actualizado)
 - [ ] **Tests unitarios** ← PENDIENTE
 - [ ] **Optimizaciones de rendimiento** ← PENDIENTE
 - [ ] **Re-importar GTFS para aplicar fixes** ← PENDIENTE
@@ -512,6 +513,42 @@ def _get_arrival_time_with_boarding(self, trip, stop_id, boarding_stop_id):
 **Solución:**
 1. Se añadió la función `import_calendar_dates()` al script de importación
 2. RAPTOR ahora consulta `calendar_dates` para añadir/quitar servicios según `exception_type` (1=añadido, 2=eliminado)
+
+### Fix: Migración de nucleo_id a network_id (Migración 024)
+
+**Contexto:** La tabla `gtfs_nucleos` fue eliminada y reemplazada por el sistema de `network_provinces` en la migración 024.
+
+**Cambios en el schema:**
+- Eliminada columna `nucleo_id` de `gtfs_routes` y `gtfs_stops`
+- Añadida columna `network_id` a `gtfs_routes` (referencia a `gtfs_networks.code`)
+- Creada tabla `network_provinces` para relación N:M entre networks y provincias
+
+**Mapeo GTFS nucleo → network_id:**
+El archivo GTFS de Renfe usa IDs de núcleo que difieren de nuestros network_ids en algunos casos:
+
+| GTFS Nucleo | Nombre | Network ID |
+|-------------|--------|------------|
+| 10 | Madrid | 10T |
+| 20 | Asturias | 20T |
+| 30 | Sevilla | 30T |
+| 31 | Cádiz | **33T** |
+| 32 | Málaga | **34T** |
+| 40 | Valencia | 40T |
+| 41 | Murcia/Alicante | 41T |
+| 51 | Barcelona (Rodalies) | 51T |
+| 60 | Bilbao | 60T |
+| 61 | San Sebastián | 61T |
+| 62 | Santander | 62T |
+| 70 | Zaragoza | 70T |
+| 90 | C-9 Cotos | 10T |
+
+**Actualización del script de importación:**
+- Añadida función `network_id_to_gtfs_nucleo()` para convertir network_id → GTFS nucleo
+- Añadido diccionario `GTFS_NUCLEO_TO_NETWORK` con el mapeo inverso
+- Actualizada `build_route_mapping()` para usar `network_id` en lugar de `nucleo_id`
+- Actualizada `clear_nucleo_data()` para usar el mapeo correcto
+
+**Documentación:** Ver `docs/ARCHITECTURE_NETWORK_PROVINCES.md` para detalles completos del sistema de networks y provincias.
 
 ### Limitaciones conocidas
 
