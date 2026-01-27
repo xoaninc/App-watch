@@ -200,80 +200,87 @@ class RaptorAlgorithm:
 
             new_marked_stops: Set[str] = set()
 
-            # Step 1: Scan routes that serve marked stops
-            routes_to_scan = set()
+            # Step 1: Scan PATTERNS that serve marked stops (using GTFSStore)
+            patterns_to_scan: Set[str] = set()
             for stop_id in marked_stops:
-                routes_to_scan.update(self._stop_routes.get(stop_id, set()))
+                patterns_to_scan.update(self.store.get_patterns_at_stop(stop_id))
 
-            for route_id in routes_to_scan:
-                pattern = self._route_patterns.get(route_id)
-                if not pattern:
+            for pattern_id in patterns_to_scan:
+                # Get stops sequence from store
+                pattern_stops = self.store.get_pattern_stops(pattern_id)
+                if not pattern_stops:
                     continue
 
-                trips = self._trips_by_route.get(route_id, [])
-                if not trips:
+                # Check if any marked stop is in this pattern
+                if not any(s in marked_stops for s in pattern_stops):
                     continue
 
-                # Scan this route
-                improved = self._scan_route(
-                    pattern, trips, labels[k - 1], labels[k],
-                    best_arrival, marked_stops, k
+                # Get trips for this pattern
+                trips_list = self.store.trips_by_pattern.get(pattern_id, [])
+                if not trips_list:
+                    continue
+
+                # Scan this pattern
+                improved = self._scan_pattern(
+                    pattern_id, pattern_stops, trips_list,
+                    labels[k - 1], labels[k], best_arrival, marked_stops
                 )
                 new_marked_stops.update(improved)
 
-            # Step 2: Process transfers (walking)
+            # Step 2: Process transfers (walking) - using GTFSStore tuples
             for stop_id in list(new_marked_stops) + list(marked_stops):
                 if stop_id not in labels[k]:
                     continue
 
                 arrival_at_stop = labels[k][stop_id].arrival_time
 
-                for transfer in self._transfers.get(stop_id, []):
-                    arrival_after_walk = arrival_at_stop + transfer.walk_seconds + TRANSFER_PENALTY_SECONDS
+                # transfers is List[Tuple[to_stop_id, walk_seconds]]
+                for to_stop_id, walk_seconds in self.store.get_transfers(stop_id):
+                    arrival_after_walk = arrival_at_stop + walk_seconds + TRANSFER_PENALTY_SECONDS
 
-                    if arrival_after_walk < best_arrival[transfer.to_stop_id]:
-                        if transfer.to_stop_id not in labels[k] or arrival_after_walk < labels[k][transfer.to_stop_id].arrival_time:
-                            labels[k][transfer.to_stop_id] = Label(
+                    if arrival_after_walk < best_arrival[to_stop_id]:
+                        if to_stop_id not in labels[k] or arrival_after_walk < labels[k][to_stop_id].arrival_time:
+                            labels[k][to_stop_id] = Label(
                                 arrival_time=arrival_after_walk,
                                 is_transfer=True,
                                 from_stop_id=stop_id
                             )
-                            best_arrival[transfer.to_stop_id] = arrival_after_walk
-                            new_marked_stops.add(transfer.to_stop_id)
+                            best_arrival[to_stop_id] = arrival_after_walk
+                            new_marked_stops.add(to_stop_id)
 
             marked_stops = new_marked_stops
 
         return labels
 
-    def _scan_route(
+    def _scan_pattern(
         self,
-        pattern: RoutePattern,
-        trips: List[Trip],
+        pattern_id: str,
+        pattern_stops: List[str],
+        trips_list: List[tuple],
         prev_labels: Dict[str, Label],
         curr_labels: Dict[str, Label],
         best_arrival: Dict[str, int],
-        marked_stops: Set[str],
-        round_num: int
+        marked_stops: Set[str]
     ) -> Set[str]:
-        """Scan a single route for improvements.
+        """Scan a single pattern for improvements.
 
         Args:
-            pattern: The route pattern (stop sequence)
-            trips: Available trips on this route
+            pattern_id: The pattern ID (e.g., "METRO_1_0")
+            pattern_stops: List of stop_ids in order
+            trips_list: List of (departure_seconds, trip_id) tuples sorted by departure
             prev_labels: Labels from previous round
             curr_labels: Labels for current round (to update)
             best_arrival: Best arrival times across all rounds
             marked_stops: Stops that were improved in previous round
-            round_num: Current round number
 
         Returns:
             Set of stop_ids that were improved
         """
         improved_stops: Set[str] = set()
 
-        # Find first marked stop in this route's pattern
+        # Find first marked stop in this pattern
         board_stop_idx = None
-        for idx, stop_id in enumerate(pattern.stops):
+        for idx, stop_id in enumerate(pattern_stops):
             if stop_id in marked_stops and stop_id in prev_labels:
                 board_stop_idx = idx
                 break
@@ -282,141 +289,147 @@ class RaptorAlgorithm:
             return improved_stops
 
         # Try to board at each marked stop and ride
-        current_trip: Optional[Trip] = None
+        current_trip_id: Optional[str] = None
         boarding_time: Optional[int] = None
         boarding_stop_id: Optional[str] = None
         boarding_stop_idx: Optional[int] = None
 
-        for idx in range(board_stop_idx, len(pattern.stops)):
-            stop_id = pattern.stops[idx]
+        for idx in range(board_stop_idx, len(pattern_stops)):
+            stop_id = pattern_stops[idx]
 
             # Can we board here?
             if stop_id in prev_labels:
                 arrival_at_stop = prev_labels[stop_id].arrival_time
 
-                # Find earliest trip we can board
-                new_trip = self._find_earliest_trip(trips, stop_id, idx, arrival_at_stop)
-
-                if new_trip:
-                    if current_trip is None:
-                        # First boarding
-                        current_trip = new_trip
-                        boarding_stop_id = stop_id
-                        boarding_stop_idx = idx
-                        boarding_time = arrival_at_stop
-                    elif self._trip_arrives_earlier(new_trip, current_trip, idx, pattern.stops):
-                        # Switch to earlier trip
-                        current_trip = new_trip
-                        boarding_stop_id = stop_id
-                        boarding_stop_idx = idx
-                        boarding_time = arrival_at_stop
-
-            # If we're on a trip, check if we improve arrival at this stop
-            if current_trip and boarding_stop_id:
-                arrival_time = self._get_arrival_time_with_boarding(
-                    current_trip, stop_id, boarding_stop_id
+                # Find earliest trip we can board at this stop
+                new_trip_id = self._find_earliest_trip_at_stop(
+                    trips_list, stop_id, idx, arrival_at_stop
                 )
 
+                if new_trip_id:
+                    if current_trip_id is None:
+                        # First boarding
+                        current_trip_id = new_trip_id
+                        boarding_stop_id = stop_id
+                        boarding_stop_idx = idx
+                        boarding_time = arrival_at_stop
+                    else:
+                        # Check if new trip arrives earlier at next stop
+                        if self._trip_arrives_earlier_at_idx(
+                            new_trip_id, current_trip_id, idx + 1, pattern_stops
+                        ):
+                            current_trip_id = new_trip_id
+                            boarding_stop_id = stop_id
+                            boarding_stop_idx = idx
+                            boarding_time = arrival_at_stop
+
+            # If we're on a trip, check if we improve arrival at this stop
+            if current_trip_id and boarding_stop_idx is not None and idx > boarding_stop_idx:
+                arrival_time = self._get_trip_arrival(current_trip_id, stop_id)
+
                 if arrival_time is not None and arrival_time < best_arrival[stop_id]:
-                    # Found improvement
+                    # Found improvement - get route_id from trip_info
+                    trip_info = self.store.get_trip_info(current_trip_id)
+                    route_id = trip_info[0] if trip_info else None
+
                     if stop_id not in curr_labels or arrival_time < curr_labels[stop_id].arrival_time:
                         curr_labels[stop_id] = Label(
                             arrival_time=arrival_time,
-                            trip_id=current_trip.trip_id,
+                            trip_id=current_trip_id,
                             boarding_stop_id=boarding_stop_id,
                             boarding_time=boarding_time,
-                            route_id=pattern.route_id
+                            route_id=route_id
                         )
                         best_arrival[stop_id] = arrival_time
                         improved_stops.add(stop_id)
 
         return improved_stops
 
-    def _find_earliest_trip(
+    def _find_earliest_trip_at_stop(
         self,
-        trips: List[Trip],
+        trips_list: List[tuple],
         stop_id: str,
         stop_idx: int,
         min_departure: int
-    ) -> Optional[Trip]:
+    ) -> Optional[str]:
         """Find the earliest trip departing from a stop after a given time.
 
         Args:
-            trips: List of trips sorted by departure time
+            trips_list: List of (departure_seconds, trip_id) tuples sorted by departure
             stop_id: The stop to board at
-            stop_idx: Index of the stop in the route pattern
+            stop_idx: Index of the stop in the pattern
             min_departure: Minimum departure time (seconds since midnight)
 
         Returns:
-            The earliest valid trip, or None
+            The earliest valid trip_id, or None
         """
-        for trip in trips:
-            # Find this stop in the trip's stop_times
-            for st in trip.stop_times:
-                if st.stop_id == stop_id:
-                    if st.departure_seconds >= min_departure:
-                        return trip
-                    break
+        for first_departure, trip_id in trips_list:
+            # Check if service is active
+            trip_info = self.store.get_trip_info(trip_id)
+            if not trip_info or trip_info[2] not in self._active_services:
+                continue
+
+            # Get stop times for this trip: [(stop_id, arrival_sec, departure_sec), ...]
+            stop_times = self.store.get_stop_times(trip_id)
+            if stop_idx >= len(stop_times):
+                continue
+
+            # Check departure at this specific stop
+            st_stop_id, _, departure_sec = stop_times[stop_idx]
+            if st_stop_id == stop_id and departure_sec >= min_departure:
+                return trip_id
+
         return None
 
-    def _trip_arrives_earlier(
+    def _trip_arrives_earlier_at_idx(
         self,
-        trip1: Trip,
-        trip2: Trip,
-        stop_idx: int,
-        route_stops: List[str]
+        trip1_id: str,
+        trip2_id: str,
+        next_stop_idx: int,
+        pattern_stops: List[str]
     ) -> bool:
-        """Check if trip1 arrives earlier than trip2 at subsequent stops."""
-        # Compare arrival at the next stop
-        if stop_idx + 1 < len(route_stops):
-            next_stop = route_stops[stop_idx + 1]
-            arr1 = self._get_arrival_time(trip1, next_stop, stop_idx + 1)
-            arr2 = self._get_arrival_time(trip2, next_stop, stop_idx + 1)
-            if arr1 is not None and arr2 is not None:
-                return arr1 < arr2
+        """Check if trip1 arrives earlier than trip2 at the next stop."""
+        if next_stop_idx >= len(pattern_stops):
+            return False
+
+        next_stop = pattern_stops[next_stop_idx]
+        arr1 = self._get_trip_arrival(trip1_id, next_stop)
+        arr2 = self._get_trip_arrival(trip2_id, next_stop)
+
+        if arr1 is not None and arr2 is not None:
+            return arr1 < arr2
         return False
 
-    def _get_arrival_time_with_boarding(
-        self,
-        trip: Trip,
-        stop_id: str,
-        boarding_stop_id: Optional[str]
-    ) -> Optional[int]:
-        """Get arrival time at a stop for a trip, ensuring correct direction.
+    def _get_trip_arrival(self, trip_id: str, stop_id: str) -> Optional[int]:
+        """Get arrival time at a stop for a trip.
 
         Args:
-            trip: The trip to check
+            trip_id: The trip ID
             stop_id: The stop to get arrival time for
-            boarding_stop_id: The stop where we boarded (must come before stop_id in trip)
 
         Returns:
-            Arrival time in seconds, or None if stop not found or wrong direction
+            Arrival time in seconds, or None if stop not found
         """
-        boarding_seq = None
-        stop_seq = None
-        arrival_time = None
-
-        for st in trip.stop_times:
-            if st.stop_id == boarding_stop_id:
-                boarding_seq = st.stop_sequence
-            if st.stop_id == stop_id:
-                stop_seq = st.stop_sequence
-                arrival_time = st.arrival_seconds
-
-        # Only return if destination comes AFTER boarding in the trip
-        if boarding_seq is not None and stop_seq is not None and stop_seq > boarding_seq:
-            return arrival_time
-        elif boarding_stop_id is None:
-            # No boarding yet, just return the arrival time if found
-            return arrival_time if stop_seq is not None else None
-
+        stop_times = self.store.get_stop_times(trip_id)
+        for st_stop_id, arrival_sec, _ in stop_times:
+            if st_stop_id == stop_id:
+                return arrival_sec
         return None
 
-    def _get_arrival_time(self, trip: Trip, stop_id: str, expected_idx: int) -> Optional[int]:
-        """Get arrival time at a stop for a trip (legacy, use _get_arrival_time_with_boarding)."""
-        for st in trip.stop_times:
-            if st.stop_id == stop_id:
-                return st.arrival_seconds
+    def _get_trip_departure(self, trip_id: str, stop_id: str) -> Optional[int]:
+        """Get departure time at a stop for a trip.
+
+        Args:
+            trip_id: The trip ID
+            stop_id: The stop to get departure time for
+
+        Returns:
+            Departure time in seconds, or None if stop not found
+        """
+        stop_times = self.store.get_stop_times(trip_id)
+        for st_stop_id, _, departure_sec in stop_times:
+            if st_stop_id == stop_id:
+                return departure_sec
         return None
 
     def _extract_journeys(
@@ -496,18 +509,20 @@ class RaptorAlgorithm:
                     ))
                     current_stop = from_stop
             elif label.boarding_stop_id:
-                # Transit leg
-                # Look up actual departure time from trip's stop_times
+                # Transit leg - use GTFSStore to get departure time
                 actual_departure = label.boarding_time or 0
-                if label.trip_id and label.route_id:
-                    trips = self._trips_by_route.get(label.route_id, [])
-                    for trip in trips:
-                        if trip.trip_id == label.trip_id:
-                            for st in trip.stop_times:
-                                if st.stop_id == label.boarding_stop_id:
-                                    actual_departure = st.departure_seconds
-                                    break
-                            break
+                headsign = None
+
+                if label.trip_id:
+                    # Get actual departure time from stop_times
+                    dep_time = self._get_trip_departure(label.trip_id, label.boarding_stop_id)
+                    if dep_time is not None:
+                        actual_departure = dep_time
+
+                    # Get headsign from trip_info
+                    trip_info = self.store.get_trip_info(label.trip_id)
+                    if trip_info:
+                        headsign = trip_info[1]  # index 1 is headsign
 
                 legs.append(JourneyLeg(
                     type="transit",
@@ -516,7 +531,8 @@ class RaptorAlgorithm:
                     departure_time=actual_departure,
                     arrival_time=label.arrival_time,
                     route_id=label.route_id,
-                    trip_id=label.trip_id
+                    trip_id=label.trip_id,
+                    headsign=headsign
                 ))
                 current_stop = label.boarding_stop_id
                 current_round -= 1
