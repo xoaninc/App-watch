@@ -41,21 +41,25 @@ class GTFSStore:
     _lock = threading.Lock()
 
     def __init__(self):
-        # ===== ESTRUCTURAS PARA RAPTOR =====
+        # ===== ESTRUCTURAS PARA RAPTOR (PATTERNS) =====
 
-        # 1. Trips ordenados por ruta y hora de salida
-        # {route_id: [(departure_seconds, trip_id), ...]} ordenado por departure
-        self.trips_by_route: Dict[str, List[Tuple[int, str]]] = {}
+        # 1. Trips agrupados por PATTERN (secuencia unica de paradas)
+        # {pattern_id: [(departure_seconds, trip_id), ...]} ordenado por departure
+        self.trips_by_pattern: Dict[str, List[Tuple[int, str]]] = {}
 
-        # 2. Stop times por trip (secuencia de paradas)
+        # 2. Secuencia de paradas de cada pattern
+        # {pattern_id: [stop_id, stop_id, ...]}
+        self.stops_by_pattern: Dict[str, List[str]] = {}
+
+        # 3. Indice inverso: que patterns pasan por cada parada
+        # {stop_id: {pattern_id, pattern_id, ...}}
+        self.patterns_by_stop: Dict[str, Set[str]] = defaultdict(set)
+
+        # 4. Stop times por trip (necesario para buscar horarios exactos)
         # {trip_id: [(stop_id, arrival_sec, departure_sec), ...]} ordenado por sequence
         self.stop_times_by_trip: Dict[str, List[Tuple[str, int, int]]] = {}
 
-        # 3. Índice inverso: qué rutas pasan por cada parada
-        # {stop_id: {route_id, route_id, ...}}
-        self.routes_by_stop: Dict[str, Set[str]] = defaultdict(set)
-
-        # 4. Transbordos (footpaths)
+        # 5. Transbordos (footpaths)
         # {from_stop_id: [(to_stop_id, walk_seconds), ...]}
         self.transfers: Dict[str, List[Tuple[str, int]]] = defaultdict(list)
 
@@ -139,9 +143,10 @@ class GTFSStore:
 
     def _clear_data(self) -> None:
         """Limpiar todas las estructuras de datos."""
-        self.trips_by_route.clear()
+        self.trips_by_pattern.clear()
+        self.stops_by_pattern.clear()
+        self.patterns_by_stop.clear()
         self.stop_times_by_trip.clear()
-        self.routes_by_stop.clear()
         self.transfers.clear()
         self.trips_info.clear()
         self.stops_info.clear()
@@ -282,11 +287,6 @@ class GTFSStore:
 
             temp_stop_times[trip_id].append((stop_id, arr_sec, dep_sec))
 
-            # Índice inverso: routes_by_stop
-            if trip_id in trip_to_route:
-                route_id = trip_to_route[trip_id]
-                self.routes_by_stop[stop_id].add(route_id)
-
             count += 1
             if count % 500000 == 0:
                 print(f"      Procesados {count:,} stop_times...")
@@ -295,24 +295,60 @@ class GTFSStore:
         self.stats['stop_times'] = count
         print(f"    ✓ {count:,} stop_times")
 
-        # 7. Construir trips_by_route ordenados por hora
-        print("  🔄 Construyendo índice trips_by_route...")
-        temp_trips_by_route: Dict[str, List[Tuple[int, str]]] = defaultdict(list)
+        # 7. Construir PATTERNS (Rutas unicas por secuencia de paradas)
+        print("  🔄 Construyendo Patterns (Rutas unicas)...")
 
-        for trip_id, stops in self.stop_times_by_trip.items():
-            if not stops or trip_id not in trip_to_route:
+        # Diccionario temporal para agrupar:
+        # Clave: (route_id, tupla_de_paradas)
+        # Valor: lista de trip_ids
+        temp_patterns: Dict[Tuple[str, Tuple[str, ...]], List[str]] = defaultdict(list)
+
+        # Iterar todos los trips para sacar su firma (secuencia de paradas)
+        for trip_id, stops_data in self.stop_times_by_trip.items():
+            if not stops_data:
                 continue
 
-            route_id = trip_to_route[trip_id]
-            first_departure = stops[0][2]  # índice 2 = departure_seconds
-            temp_trips_by_route[route_id].append((first_departure, trip_id))
+            # stops_data es lista de (stop_id, arr, dep). Extraemos solo stop_id.
+            stop_sequence = tuple(s[0] for s in stops_data)
 
-        # Ordenar cada lista por hora de salida
-        for route_id, trip_list in temp_trips_by_route.items():
+            # Obtener route_id de trips_info (index 0 es route_id)
+            trip_info = self.trips_info.get(trip_id)
+            if not trip_info:
+                continue
+            route_id = trip_info[0]
+
+            # Agrupar
+            temp_patterns[(route_id, stop_sequence)].append(trip_id)
+
+        # Procesar los grupos para crear los patterns finales
+        for i, ((route_id, stop_seq), trips) in enumerate(temp_patterns.items()):
+            # Crear ID unico para el pattern (ej: METRO_1_0, METRO_1_1)
+            # Usamos sys.intern para ahorrar memoria en keys repetidas
+            pattern_id = sys.intern(f"{route_id}_{i}")
+
+            # 1. Guardar la secuencia de paradas
+            self.stops_by_pattern[pattern_id] = list(stop_seq)
+
+            # 2. Indexar paradas -> patterns
+            for stop_id in stop_seq:
+                self.patterns_by_stop[stop_id].add(pattern_id)
+
+            # 3. Guardar trips del pattern ordenados por hora
+            trip_list = []
+            for t_id in trips:
+                # Obtener hora de salida de la PRIMERA parada
+                first_departure = self.stop_times_by_trip[t_id][0][2]  # index 2 = departure
+                trip_list.append((first_departure, t_id))
+
+            # Ordenar por tiempo (CRITICO para RAPTOR)
             trip_list.sort(key=lambda x: x[0])
-            self.trips_by_route[route_id] = trip_list
+            self.trips_by_pattern[pattern_id] = trip_list
 
-        print(f"    ✓ {len(self.trips_by_route):,} rutas indexadas")
+        self.stats['patterns'] = len(self.trips_by_pattern)
+        print(f"    ✓ {len(self.trips_by_pattern):,} patterns creados a partir de {len(self.trips_info):,} trips")
+
+        # Limpiar memoria temporal
+        del temp_patterns
 
         # 8. Cargar transbordos
         print("  🚶 Cargando transbordos...")
@@ -339,10 +375,9 @@ class GTFSStore:
         # Limpiar memoria temporal
         del trip_to_route
         del temp_stop_times
-        del temp_trips_by_route
 
-        # Convertir routes_by_stop de defaultdict a dict normal
-        self.routes_by_stop = dict(self.routes_by_stop)
+        # Convertir defaultdicts a dicts normales
+        self.patterns_by_stop = dict(self.patterns_by_stop)
         self.transfers = dict(self.transfers)
 
         # Finalizar
@@ -386,36 +421,36 @@ class GTFSStore:
 
     def get_earliest_trip(
         self,
-        route_id: str,
+        pattern_id: str,
         min_departure: int,
         active_services: Set[str]
     ) -> Optional[str]:
-        """Encontrar el trip más temprano que sale después de min_departure.
+        """Encontrar el trip mas temprano en un PATTERN especifico.
 
-        Esta es la operación más frecuente en RAPTOR.
-        Complejidad: O(n) donde n = trips en la ruta.
+        Esta es la operacion mas frecuente en RAPTOR.
+        Complejidad: O(n) donde n = trips en el pattern.
 
         Args:
-            route_id: ID de la ruta
-            min_departure: Tiempo mínimo de salida (segundos desde medianoche)
+            pattern_id: ID del pattern (ej: METRO_1_0)
+            min_departure: Tiempo minimo de salida (segundos desde medianoche)
             active_services: Set de service_ids activos hoy
 
         Returns:
-            trip_id del primer trip válido, o None
+            trip_id del primer trip valido, o None
         """
-        trips = self.trips_by_route.get(route_id, [])
+        trips = self.trips_by_pattern.get(pattern_id, [])
 
         for departure_sec, trip_id in trips:
             if departure_sec >= min_departure:
-                # Verificar que el servicio está activo
+                # Verificar que el servicio esta activo
                 trip_info = self.trips_info.get(trip_id)
-                if trip_info and trip_info[2] in active_services:  # índice 2 = service_id
+                if trip_info and trip_info[2] in active_services:  # indice 2 = service_id
                     return trip_id
 
         return None
 
-    def get_routes_at_stop(self, stop_id: str) -> Set[str]:
-        """Obtener rutas que pasan por una parada.
+    def get_patterns_at_stop(self, stop_id: str) -> Set[str]:
+        """Obtener patterns que pasan por una parada.
 
         Complejidad: O(1)
 
@@ -423,9 +458,22 @@ class GTFSStore:
             stop_id: ID de la parada
 
         Returns:
-            Set de route_ids (vacío si no hay rutas)
+            Set de pattern_ids (vacio si no hay patterns)
         """
-        return self.routes_by_stop.get(stop_id, set())
+        return self.patterns_by_stop.get(stop_id, set())
+
+    def get_pattern_stops(self, pattern_id: str) -> List[str]:
+        """Obtener secuencia de paradas de un pattern.
+
+        Complejidad: O(1)
+
+        Args:
+            pattern_id: ID del pattern
+
+        Returns:
+            Lista ordenada de stop_ids
+        """
+        return self.stops_by_pattern.get(pattern_id, [])
 
     def get_stop_times(self, trip_id: str) -> List[Tuple[str, int, int]]:
         """Obtener secuencia de paradas de un trip.
