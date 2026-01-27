@@ -1,152 +1,211 @@
 # Plan de Accion: RAPTOR In-Memory Optimization
 
-**Estado:** Pendiente de aprobacion
+**Estado:** APROBADO - Revision de experto
 **Fecha:** 2026-01-28
 **Objetivo:** Reducir tiempo de respuesta de ~7s a <500ms
+**Tiempo estimado:** 6 horas
 
 ---
 
-## Resumen de Fases
+## RIESGO CRITICO IDENTIFICADO
 
-| Fase | Descripcion | Test | Archivos |
-|------|-------------|------|----------|
-| 1 | Actualizar GTFSStore con estructura patterns | Unit tests | `gtfs_store.py` |
-| 2 | Implementar carga de patterns en startup | Health check | `gtfs_store.py` |
-| 3 | Modificar RAPTOR para usar GTFSStore | Integration test | `raptor.py` |
-| 4 | Eliminar filtrado por network | Route planner API | `raptor.py` |
-| 5 | Tests de rendimiento | Benchmark | - |
-| 6 | Deploy a produccion | Servidor | - |
+El `gtfs_store.py` actual agrupa trips por `route_id`. **RAPTOR no funciona con rutas, funciona con PATTERNS** (secuencias unicas de paradas).
+
+**Ejemplo del problema:**
+- La linea METRO_1 tiene Direccion A y Direccion B
+- Si las metes todas en `trips_by_route`, el algoritmo intentara subirse a un tren que va en direccion contraria
+
+**Solucion:** Agrupar trips por su secuencia exacta de paradas (pattern).
 
 ---
 
-## Fase 1: Actualizar GTFSStore con estructura patterns
+## Resumen de Horas
+
+| Hora | Descripcion | Archivos | Test |
+|------|-------------|----------|------|
+| 1 | Corregir GTFSStore con patterns | `gtfs_store.py` | Estructura OK |
+| 2 | Limpiar raptor.py (quitar SQL) | `raptor.py` | Import OK |
+| 3 | Ajustar _scan_pattern y get_earliest_trip | `raptor.py` | Logica OK |
+| 4 | Integracion y reconstruccion | `raptor.py`, `app.py` | Health OK |
+| 5 | Testing rapido | - | curl tests |
+| 6 | Deploy a produccion | - | Server OK |
+
+---
+
+## Hora 1: Corregir GTFSStore (Implementar Patterns)
 
 ### Objetivo
-Cambiar la estructura de datos de `trips_by_route` a `patterns` con matrices paralelas.
+Modificar `gtfs_store.py` para agrupar trips por pattern (secuencia exacta de paradas).
 
-### Cambios en `gtfs_store.py`
+### Cambios en `__init__`
 
-**Estructura ACTUAL (incorrecta):**
+**ANTES (incorrecto):**
 ```python
-trips_by_route: Dict[str, List[Tuple[int, str]]]  # {route_id: [(dep_sec, trip_id)]}
-stop_times_by_trip: Dict[str, List[Tuple[str, int, int]]]  # {trip_id: [(stop_id, arr, dep)]}
-routes_by_stop: Dict[str, Set[str]]  # {stop_id: {route_ids}}
+self.trips_by_route: Dict[str, List[Tuple[int, str]]] = {}
+self.routes_by_stop: Dict[str, Set[str]] = defaultdict(set)
 ```
 
-**Estructura NUEVA (correcta):**
+**DESPUES (correcto):**
 ```python
-# Estructura principal para RAPTOR
-patterns: List[dict]  # Indexado por pattern_id (entero)
-# Cada pattern:
-# {
-#     'id': int,
-#     'route_id': str,
-#     'stops': tuple,  # (stop_id, stop_id, ...)
-#     'departures': List[List[int]],  # [trip_idx][stop_idx] = dep_seconds
-#     'arrivals': List[List[int]],    # [trip_idx][stop_idx] = arr_seconds
-#     'trips_meta': List[Tuple[str, str]]  # [(trip_id, service_id), ...]
-# }
+# Clave: pattern_id (str), Valor: Lista de tuplas (departure_time, trip_id)
+self.trips_by_pattern: Dict[str, List[Tuple[int, str]]] = {}
 
-patterns_by_stop: Dict[str, List[int]]  # {stop_id: [pattern_ids]}
-transfers: Dict[str, List[Tuple[str, int]]]  # {from_stop: [(to_stop, secs)]}
+# Clave: pattern_id, Valor: Lista ordenada de stop_ids
+self.stops_by_pattern: Dict[str, List[str]] = {}
+
+# Clave: stop_id, Valor: Set de pattern_ids (NO route_ids)
+self.patterns_by_stop: Dict[str, Set[str]] = defaultdict(set)
+```
+
+### Logica de construccion de patterns (en `_do_load`)
+
+```python
+print("  Construyendo Patterns (Rutas unicas)...")
+
+# 1. Agrupar trips por su secuencia exacta de paradas
+# { (route_id, tuple_stops): [trip_ids...] }
+temp_patterns = defaultdict(list)
+
+for trip_id, stops_data in self.stop_times_by_trip.items():
+    if not stops_data:
+        continue
+
+    # Extraer solo IDs para la firma
+    stop_sequence = tuple(s[0] for s in stops_data)
+    route_id = self.trips_info[trip_id][0]  # route_id esta en index 0
+
+    temp_patterns[(route_id, stop_sequence)].append(trip_id)
+
+# 2. Crear estructuras finales
+for i, ((route_id, stop_seq), trips) in enumerate(temp_patterns.items()):
+    # Crear un ID unico para el pattern
+    pattern_id = sys.intern(f"{route_id}_{i}")
+
+    self.stops_by_pattern[pattern_id] = list(stop_seq)
+
+    # Indexar que patterns pasan por cada parada
+    for stop_id in stop_seq:
+        self.patterns_by_stop[stop_id].add(pattern_id)
+
+    # Guardar trips de este pattern ordenados por hora
+    trip_list = []
+    for t_id in trips:
+        # Obtener hora de salida de la PRIMERA parada del pattern
+        first_departure = self.stop_times_by_trip[t_id][0][2]  # index 2 = departure
+        trip_list.append((first_departure, t_id))
+
+    trip_list.sort(key=lambda x: x[0])
+    self.trips_by_pattern[pattern_id] = trip_list
+
+print(f"    {len(self.trips_by_pattern):,} patterns creados")
 ```
 
 ### Test
 ```bash
-# Unit test: verificar que patterns se construyen correctamente
 python -c "
 from src.gtfs_bc.routing.gtfs_store import GTFSStore
 store = GTFSStore.get_instance()
-# Verificar estructura
-assert hasattr(store, 'patterns')
+assert hasattr(store, 'trips_by_pattern')
+assert hasattr(store, 'stops_by_pattern')
 assert hasattr(store, 'patterns_by_stop')
 print('Estructura OK')
 "
 ```
 
 ### Criterio de exito
-- [ ] `patterns` es List[dict]
-- [ ] `patterns_by_stop` mapea stop_id a lista de pattern_ids (enteros)
-- [ ] Cada pattern tiene 'stops', 'departures', 'arrivals', 'trips_meta'
+- [ ] `trips_by_pattern` existe y es Dict[str, List]
+- [ ] `stops_by_pattern` existe y es Dict[str, List]
+- [ ] `patterns_by_stop` mapea stop_id a set de pattern_ids
 
 ---
 
-## Fase 2: Implementar carga de patterns en startup
+## Hora 2: Limpiar raptor.py (Quitar SQL)
 
 ### Objetivo
-Cargar patterns desde PostgreSQL al iniciar el servidor (una vez).
-
-### Algoritmo de carga
-
-```python
-def _load_patterns(self, db_session):
-    """
-    1. Cargar todos los trips con sus stop_times
-    2. Agrupar trips por secuencia exacta de paradas -> pattern
-    3. Para cada pattern:
-       - Crear matriz departures[trip_idx][stop_idx]
-       - Crear matriz arrivals[trip_idx][stop_idx]
-       - Si arrivals == departures (Metro), apuntar a misma lista
-    4. Construir patterns_by_stop inverso
-    """
-```
-
-### Query SQL optimizada
-```sql
-SELECT t.id, t.route_id, t.service_id,
-       st.stop_id, st.arrival_seconds, st.departure_seconds, st.stop_sequence
-FROM gtfs_trips t
-JOIN gtfs_stop_times st ON t.id = st.trip_id
-ORDER BY t.id, st.stop_sequence
-```
-
-### Test
-```bash
-# Verificar carga via health endpoint
-curl http://localhost:8080/health
-# Debe retornar: {"status": "healthy", "gtfs_store": {"loaded": true, ...}}
-```
-
-### Criterio de exito
-- [ ] Health check retorna `loaded: true`
-- [ ] `stats` muestra numero de patterns
-- [ ] Tiempo de carga ~30-60 segundos
-
----
-
-## Fase 3: Modificar RAPTOR para usar GTFSStore
-
-### Objetivo
-Eliminar queries SQL de `raptor.py`, usar GTFSStore en su lugar.
+Eliminar todas las queries SQL de `raptor.py`. Usar `gtfs_store` singleton.
 
 ### Cambios principales
 
-**ANTES (SQL por request):**
+**1. Imports - AÑADIR:**
 ```python
-class RaptorAlgorithm:
-    def __init__(self, db: Session):
-        self.db = db
-
-    def _load_data(self, travel_date, origin, dest):
-        # Queries SQL...
-        stops = self.db.query(StopModel).all()
-        trips = self.db.query(TripModel).filter(...).all()
+from src.gtfs_bc.routing.gtfs_store import gtfs_store
 ```
 
-**DESPUES (GTFSStore):**
+**2. `__init__` - SIMPLIFICAR:**
 ```python
-class RaptorAlgorithm:
-    def __init__(self, db: Session = None):  # db opcional para compatibilidad
-        self.store = GTFSStore.get_instance()
-
-    def plan(self, origin, dest, departure_time, travel_date):
-        active_services = self.store.get_active_services(travel_date)
-        # Usar self.store.patterns, self.store.patterns_by_stop, etc.
+def __init__(self, db: Session = None):
+    self.db = db  # Mantener para compatibilidad
+    self.store = gtfs_store
+    # ELIMINAR: self._stops, self._routes, self._route_patterns, etc.
 ```
 
-### Cambios en _scan_route()
+**3. `_load_data` - ELIMINAR O VACIAR:**
+```python
+def _load_data(self, travel_date, origin_stop_id=None, destination_stop_id=None):
+    pass  # Ya no necesita cargar nada
+```
 
-**ANTES:**
+**4. `_get_relevant_networks` - ELIMINAR:**
+El grafo hace el filtrado naturalmente por accesibilidad.
+
+### Test
+```bash
+python -c "
+from src.gtfs_bc.routing.raptor import RaptorAlgorithm
+r = RaptorAlgorithm()
+print('Import OK')
+"
+```
+
+### Criterio de exito
+- [ ] RaptorAlgorithm se puede instanciar sin db
+- [ ] No hay queries SQL en el archivo (excepto comentarios)
+
+---
+
+## Hora 3: Ajustar _scan_pattern y get_earliest_trip
+
+### Objetivo
+Modificar `_scan_route` a `_scan_pattern`. Trabajar con tuplas del store.
+
+### Cambios en `_run_raptor`
+
+```python
+def _run_raptor(self, origin, dest, dep_time, rounds):
+    # Obtener servicios activos HOY desde el Store
+    active_services = self.store.get_active_services(self.travel_date)
+
+    for k in range(1, rounds + 1):
+        # PASO 1: Escanear Patterns (antes Routes)
+        patterns_to_scan = set()
+        for stop_id in marked_stops:
+            # USAR STORE:
+            patterns_to_scan.update(self.store.patterns_by_stop.get(stop_id, set()))
+
+        for pattern_id in patterns_to_scan:
+            # Obtener stops del pattern del Store
+            stops = self.store.stops_by_pattern[pattern_id]
+
+            # Chequear si tocamos una marked stop
+            if not any(s in marked_stops for s in stops):
+                continue
+
+            # Obtener trips del Store
+            trips = self.store.trips_by_pattern[pattern_id]
+
+            # Llamar a scan_pattern
+            self._scan_pattern(pattern_id, stops, trips, active_services, ...)
+
+        # PASO 2: Transbordos
+        for stop_id in marked_stops:
+            transfers = self.store.get_transfers(stop_id)
+            for to_stop, walk_sec in transfers:
+                # ... logica normal ...
+```
+
+### Cambios en `_find_earliest_trip`
+
+**ANTES (objetos Trip):**
 ```python
 for trip in trips:
     for st in trip.stop_times:
@@ -155,101 +214,134 @@ for trip in trips:
                 return trip
 ```
 
-**DESPUES:**
+**DESPUES (tuplas del store):**
 ```python
-pattern = self.store.patterns[pattern_id]
-stop_idx = pattern['stops'].index(stop_id)
-for trip_idx, (trip_id, service_id) in enumerate(pattern['trips_meta']):
-    if service_id not in active_services:
-        continue
-    if pattern['departures'][trip_idx][stop_idx] >= min_departure:
-        return trip_idx
+def _find_earliest_trip(self, trips_list, min_time, active_services):
+    # trips_list viene de store.trips_by_pattern[pid]
+    # Es [(dep_time, trip_id), ...]
+
+    for dep_time, trip_id in trips_list:
+        if dep_time >= min_time:
+            # Validar servicio activo
+            trip_info = self.store.get_trip_info(trip_id)
+            if trip_info and trip_info[2] in active_services:  # index 2 es service_id
+                return trip_id
+    return None
 ```
 
-### Test
-```bash
-# Integration test: comparar resultados antes/despues
-curl "http://localhost:8080/api/v1/route-planner?origin=METRO_SEV_T1_1&dest=METRO_SEV_T1_22&time=08:00"
-# Debe retornar journeys validos
-```
+### Nota sobre FIFO
+Para ahorrar tiempo, inicialmente asumimos FIFO. Si hay tiempo en Hora 5, implementar verificacion de hora exacta en cada parada.
 
 ### Criterio de exito
-- [ ] API retorna mismos resultados que antes
-- [ ] Tiempo de respuesta < 1 segundo
-- [ ] Sin queries SQL en logs (excepto startup)
+- [ ] `_scan_pattern` usa `store.stops_by_pattern`
+- [ ] `_find_earliest_trip` trabaja con tuplas
+- [ ] Verifica `active_services` con lazy check
 
 ---
 
-## Fase 4: Eliminar filtrado por network
+## Hora 4: Integracion y Reconstruccion
 
 ### Objetivo
-Remover `_get_relevant_networks()` y filtrado geografico.
+Verificar startup y ajustar reconstruccion de journeys.
 
-### Razon
-RAPTOR ignora automaticamente las "islas" desconectadas. Si empiezas en Sevilla, nunca exploraras paradas de Madrid porque no hay conexion.
-
-### Cambios
+### Verificar startup en `app.py`
+Ya esta configurado en `gtfs_rt_scheduler.py`:
 ```python
-# ELIMINAR:
-def _get_relevant_networks(self, origin_stop_id, destination_stop_id):
+@asynccontextmanager
+async def lifespan_with_scheduler(app):
+    # Startup: Load GTFS data into memory first
+    loop = asyncio.get_event_loop()
+    await loop.run_in_executor(None, _load_gtfs_store)
     ...
+```
 
-# ELIMINAR parametros:
-def _load_data(self, travel_date, origin_stop_id=None, destination_stop_id=None):
-    relevant_networks = self._get_relevant_networks(...)  # ELIMINAR
+### Ajustar reconstruccion (`_extract_journeys`)
+
+Usar store para obtener info de trips y rutas:
+```python
+# Para obtener headsign:
+trip_info = self.store.get_trip_info(trip_id)
+headsign = trip_info[1] if trip_info else None
+
+# Para obtener short_name y color:
+route_info = self.store.get_route_info(route_id)
+short_name = route_info[0] if route_info else ""
+color = route_info[1] if route_info else None
 ```
 
 ### Test
 ```bash
-# Probar rutas multimodales (RENFE + Metro)
+curl http://localhost:8080/health
+# Debe retornar: {"status": "healthy", "gtfs_store": {"loaded": true, ...}}
+```
+
+### Criterio de exito
+- [ ] Health check retorna `loaded: true`
+- [ ] Journey legs tienen headsign y route info
+
+---
+
+## Hora 5: Testing Rapido
+
+### Tests con curl
+
+```bash
+# 1. Health check
+curl http://localhost:8080/health
+
+# 2. Ruta simple (Metro Sevilla)
+curl "http://localhost:8080/api/v1/route-planner?origin=METRO_SEV_T1_1&dest=METRO_SEV_T1_22&time=08:00"
+
+# 3. Ruta multimodal (RENFE + Metro)
 curl "http://localhost:8080/api/v1/route-planner?origin=RENFE_71801&dest=METRO_SEV_T1_22&time=08:00"
 ```
 
-### Criterio de exito
-- [ ] Rutas multimodales funcionan
-- [ ] Sin efecto frontera en rutas metropolitanas
+### Errores tipicos
 
----
-
-## Fase 5: Tests de rendimiento
+| Error | Causa | Solucion |
+|-------|-------|----------|
+| `KeyError` | ID no cargado | Verificar carga de patterns |
+| `AttributeError: .stop_times` | Usando objeto en vez de ID | Cambiar a tuplas |
+| `TypeError: unhashable` | Lista en vez de tupla | Usar `tuple()` |
 
 ### Benchmark
 ```bash
-# Medir tiempo de respuesta (10 requests)
 for i in {1..10}; do
     time curl -s "http://localhost:8080/api/v1/route-planner?origin=METRO_SEV_T1_1&dest=METRO_SEV_T1_22&time=08:00" > /dev/null
 done
 ```
 
-### Metricas objetivo
-| Metrica | Antes | Objetivo |
-|---------|-------|----------|
-| Tiempo respuesta | ~7s | <500ms |
-| Memoria servidor | ~200MB | <600MB |
-| CPU durante request | Alto | Bajo |
-
 ### Criterio de exito
-- [ ] Tiempo promedio < 500ms
-- [ ] Sin timeout en 10 requests consecutivos
+- [ ] Health retorna OK
+- [ ] Rutas simples funcionan
+- [ ] Rutas multimodales funcionan
+- [ ] Tiempo < 500ms
 
 ---
 
-## Fase 6: Deploy a produccion
+## Hora 6: Deploy a Produccion
 
-### Comandos de deploy
+### Pasos
 
 ```bash
-# 1. Sincronizar archivos
+# 1. Limpiar prints de debug (opcional)
+
+# 2. Commit
+git add -A
+git commit -m "feat: RAPTOR in-memory optimization with patterns"
+git push
+
+# 3. Sincronizar archivos
 rsync -avz --exclude='.git' --exclude='__pycache__' --exclude='*.pyc' \
   --exclude='.venv' --exclude='venv' --exclude='node_modules' \
   --exclude='.env' --exclude='*.db' --exclude='*.sqlite' \
   --exclude='alembic.bak' --exclude='.idea' --exclude='.vscode' \
   /Users/juanmaciasgomez/Projects/renfeserver/ root@juanmacias.com:/var/www/renfeserver/
 
-# 2. Reiniciar servicio
+# 4. Reiniciar servicio
 ssh root@juanmacias.com "systemctl restart renfeserver"
 
-# 3. Verificar logs
+# 5. Verificar logs (esperar ~30-60s para carga)
 ssh root@juanmacias.com "journalctl -u renfeserver -f"
 ```
 
@@ -269,29 +361,6 @@ curl "https://api.juanmacias.com/api/v1/route-planner?origin=METRO_SEV_T1_1&dest
 
 ---
 
-## Dependencias entre fases
-
-```
-Fase 1 (estructura)
-    |
-    v
-Fase 2 (carga)
-    |
-    v
-Fase 3 (RAPTOR)
-    |
-    v
-Fase 4 (network)  <-- Puede hacerse en paralelo con Fase 5
-    |
-    v
-Fase 5 (benchmark)
-    |
-    v
-Fase 6 (deploy)
-```
-
----
-
 ## Rollback Plan
 
 Si algo falla en produccion:
@@ -299,6 +368,7 @@ Si algo falla en produccion:
 ```bash
 # Revertir al commit anterior
 git revert HEAD
+git push
 
 # Re-deploy
 rsync ...
@@ -307,21 +377,12 @@ ssh root@juanmacias.com "systemctl restart renfeserver"
 
 ---
 
-## Notas importantes
+## Checklist Final
 
-1. **No asumir FIFO**: Verificar hora real de departure en cada parada
-2. **Lazy service check**: Verificar service_id durante busqueda, no pre-filtrar
-3. **Pattern IDs enteros**: Usar List en lugar de Dict para acceso O(1)
-4. **Matrices paralelas**: arrivals y departures separados (pueden compartir referencia para Metro)
-
----
-
-## Checklist final
-
-- [ ] Fase 1 completada y commiteada
-- [ ] Fase 2 completada y commiteada
-- [ ] Fase 3 completada y commiteada
-- [ ] Fase 4 completada y commiteada
-- [ ] Fase 5 benchmark OK
-- [ ] Fase 6 deploy exitoso
+- [ ] Hora 1: GTFSStore con patterns - commit
+- [ ] Hora 2: raptor.py sin SQL - commit
+- [ ] Hora 3: _scan_pattern ajustado - commit
+- [ ] Hora 4: Integracion OK - commit
+- [ ] Hora 5: Tests OK
+- [ ] Hora 6: Deploy exitoso
 - [ ] Documentacion actualizada
