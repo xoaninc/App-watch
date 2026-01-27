@@ -118,21 +118,26 @@ El archivo GTFS de Renfe usa IDs de núcleo (primeros 2 dígitos del route_id) q
 
 - `scripts/import_gtfs_static.py` - Script de importación RENFE actualizado
 - `scripts/import_metro_sevilla_gtfs.py` - Script de importación Metro Sevilla (nuevo)
+- `scripts/import_metro_granada_gtfs.py` - Script de importación Metro Granada (nuevo)
 - `docs/RAPTOR_IMPLEMENTATION_PLAN.md` - Documentación actualizada
 - `docs/GTFS_IMPORT_VERIFICATION_20260127.md` - Este documento
 
-## Redes Pendientes de Importar Stop Times
+## Metros Andalucía - PENDIENTE IMPORTAR
 
-### Metro Sevilla ⏳
+### Metro Sevilla ⏳ PENDIENTE
 
 | Dato | Valor |
 |------|-------|
-| Rutas en BD | 1 (L1) |
-| Paradas en BD | 21 |
-| Trips | 0 (pendiente importar) |
-| Stop Times | 0 (pendiente importar) |
+| Rutas en BD | ✅ 1 (METRO_SEV_L1) |
+| Paradas en BD | ✅ 21 (METRO_SEV_L1_E1 a METRO_SEV_L1_E21) |
+| Trips | ❌ 0 - FALTA IMPORTAR |
+| Stop Times | ❌ 0 - FALTA IMPORTAR |
 | GTFS disponible | ✅ https://metro-sevilla.es/google-transit/google_transit.zip |
 | Script de importación | ✅ `scripts/import_metro_sevilla_gtfs.py` |
+
+**Verificado 2026-01-27:**
+- `/departures` devuelve `[]`
+- `/route-planner` devuelve "No route found"
 
 **Estructura GTFS de Metro Sevilla:**
 - **Estaciones** (location_type=1): `L1-E1`, `L1-E2`, ..., `L1-E21`
@@ -159,19 +164,44 @@ cd /var/www/renfeserver
 PYTHONPATH=/var/www/renfeserver python scripts/import_metro_sevilla_gtfs.py /tmp/metro_sevilla.zip
 ```
 
-### Metro Granada ❌
+### Metro Granada ⏳ PENDIENTE
 
 | Dato | Valor |
 |------|-------|
-| Rutas en BD | 1 (L1) |
-| Paradas en BD | 26 |
-| Trips | 0 |
-| Stop Times | 0 |
+| Rutas en BD | ✅ 1 (METRO_GRANADA_L1) |
+| Paradas en BD | ✅ 26 (METRO_GRANADA_1 a METRO_GRANADA_26) |
+| Trips | ❌ 0 - FALTA IMPORTAR |
+| Stop Times | ❌ 0 - FALTA IMPORTAR |
 | GTFS disponible | ✅ NAP ID 1370 |
+| Script de importación | ✅ `scripts/import_metro_granada_gtfs.py` |
 
-**Problema:** Pendiente verificar formato de stop_ids en el archivo GTFS.
+**Verificado 2026-01-27:**
+- `/departures` devuelve `[]`
+- `/route-planner` devuelve "No route found"
 
-**Nota:** Ambos metros funcionan con frequencies en lugar de stop_times exactos, pero sería útil importar los stop_times para el route-planner RAPTOR.
+**Estructura GTFS de Metro Granada:**
+- **stop_ids**: Números simples: 1, 2, 3, ... 26
+- **trip_ids**: Formato `IDAL1AnnoNuevo311_1`, `VUELTAL1AnnoNuevo311_1`, etc.
+- **route_id**: `L1`
+- **stop_times.txt**: ~7MB, ~148K registros
+
+**Mapeo implementado en el script:**
+```python
+def map_metro_granada_stop_id(gtfs_stop_id):
+    # GTFS N -> METRO_GRANADA_N
+    # Ejemplo: 1 -> METRO_GRANADA_1
+    return f"METRO_GRANADA_{gtfs_stop_id}"
+```
+
+**Para importar (desde el servidor):**
+```bash
+# 1. Descargar GTFS desde NAP (requiere login web)
+# https://nap.transportes.gob.es/Files/Detail/1370
+
+# 2. Subir archivo al servidor y ejecutar
+cd /var/www/renfeserver
+PYTHONPATH=/var/www/renfeserver python scripts/import_metro_granada_gtfs.py /tmp/nap_metro_granada.zip
+```
 
 ## Referencias
 
