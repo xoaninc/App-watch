@@ -17,10 +17,7 @@ from typing import Dict, List, Optional, Tuple
 from sqlalchemy.orm import Session
 
 from src.gtfs_bc.routing.raptor import RaptorAlgorithm, Journey, JourneyLeg
-from src.gtfs_bc.stop.infrastructure.models import StopModel
-from src.gtfs_bc.route.infrastructure.models import RouteModel
-from src.gtfs_bc.trip.infrastructure.models import TripModel
-from src.gtfs_bc.shape.infrastructure.models.shape_model import ShapePointModel
+from src.gtfs_bc.routing.gtfs_store import gtfs_store
 from src.gtfs_bc.realtime.infrastructure.models.alert import AlertModel
 from adapters.http.api.gtfs.utils.shape_utils import normalize_shape
 
@@ -69,49 +66,34 @@ class RaptorService:
     """High-level service for RAPTOR journey planning."""
 
     def __init__(self, db: Session):
-        self.db = db
-        self._raptor = RaptorAlgorithm(db)
+        self.db = db  # Solo para alertas
+        self._raptor = RaptorAlgorithm()
+        self._store = gtfs_store
 
-        # Caches
-        self._stops_cache: Dict[str, StopModel] = {}
-        self._routes_cache: Dict[str, RouteModel] = {}
-        self._trips_cache: Dict[str, TripModel] = {}
+    def _get_stop_info(self, stop_id: str) -> Optional[Tuple[str, float, float]]:
+        """Get stop info from GTFSStore (name, lat, lon)."""
+        return self._store.get_stop_info(stop_id)
 
-    def _get_stop(self, stop_id: str) -> Optional[StopModel]:
-        """Get stop from cache or database."""
-        if stop_id not in self._stops_cache:
-            stop = self.db.query(StopModel).filter(StopModel.id == stop_id).first()
-            if stop:
-                self._stops_cache[stop_id] = stop
-        return self._stops_cache.get(stop_id)
+    def _get_route_info(self, route_id: str) -> Optional[Tuple[str, Optional[str], int]]:
+        """Get route info from GTFSStore (short_name, color, route_type)."""
+        return self._store.get_route_info(route_id)
 
-    def _get_route(self, route_id: str) -> Optional[RouteModel]:
-        """Get route from cache or database."""
-        if route_id not in self._routes_cache:
-            route = self.db.query(RouteModel).filter(RouteModel.id == route_id).first()
-            if route:
-                self._routes_cache[route_id] = route
-        return self._routes_cache.get(route_id)
-
-    def _get_trip(self, trip_id: str) -> Optional[TripModel]:
-        """Get trip from cache or database."""
-        if trip_id not in self._trips_cache:
-            trip = self.db.query(TripModel).filter(TripModel.id == trip_id).first()
-            if trip:
-                self._trips_cache[trip_id] = trip
-        return self._trips_cache.get(trip_id)
+    def _get_trip_info(self, trip_id: str) -> Optional[Tuple[str, Optional[str], str]]:
+        """Get trip info from GTFSStore (route_id, headsign, service_id)."""
+        return self._store.get_trip_info(trip_id)
 
     def _format_stop(self, stop_id: str) -> dict:
-        """Format stop for API response."""
-        stop = self._get_stop(stop_id)
-        if not stop:
+        """Format stop for API response using GTFSStore."""
+        stop_info = self._get_stop_info(stop_id)
+        if not stop_info:
             return {"id": stop_id, "name": stop_id, "lat": 0, "lon": 0}
 
+        name, lat, lon = stop_info
         return {
-            "id": stop.id,
-            "name": stop.name,
-            "lat": float(stop.lat) if stop.lat else 0,
-            "lon": float(stop.lon) if stop.lon else 0
+            "id": stop_id,
+            "name": name,
+            "lat": float(lat) if lat else 0,
+            "lon": float(lon) if lon else 0
         }
 
     def _get_route_type_name(self, route_type: int) -> str:
@@ -150,15 +132,15 @@ class RaptorService:
         """
         # For now, return straight line between stops
         # TODO: Implement actual shape segment extraction
-        from_stop = self._get_stop(from_stop_id)
-        to_stop = self._get_stop(to_stop_id)
+        from_info = self._get_stop_info(from_stop_id)
+        to_info = self._get_stop_info(to_stop_id)
 
-        if not from_stop or not to_stop:
+        if not from_info or not to_info:
             return []
 
         coords = [
-            {"lat": float(from_stop.lat), "lon": float(from_stop.lon)},
-            {"lat": float(to_stop.lat), "lon": float(to_stop.lon)}
+            {"lat": float(from_info[1]), "lon": float(from_info[2])},
+            {"lat": float(to_info[1]), "lon": float(to_info[2])}
         ]
 
         return coords
@@ -169,15 +151,15 @@ class RaptorService:
         to_stop_id: str
     ) -> List[dict]:
         """Get coordinates for walking segment (straight line)."""
-        from_stop = self._get_stop(from_stop_id)
-        to_stop = self._get_stop(to_stop_id)
+        from_info = self._get_stop_info(from_stop_id)
+        to_info = self._get_stop_info(to_stop_id)
 
-        if not from_stop or not to_stop:
+        if not from_info or not to_info:
             return []
 
         return [
-            {"lat": float(from_stop.lat), "lon": float(from_stop.lon)},
-            {"lat": float(to_stop.lat), "lon": float(to_stop.lon)}
+            {"lat": float(from_info[1]), "lon": float(from_info[2])},
+            {"lat": float(to_info[1]), "lon": float(to_info[2])}
         ]
 
     def _calculate_segment_heading(self, coordinates: List[dict]) -> float:
@@ -219,24 +201,25 @@ class RaptorService:
                 .all()
             )
 
-            return [
-                {
+            result = []
+            for alert in alerts:
+                route_info = self._get_route_info(alert.route_id)
+                result.append({
                     "id": str(alert.id),
                     "line_id": alert.route_id,
-                    "line_name": self._get_route(alert.route_id).short_name if self._get_route(alert.route_id) else "",
+                    "line_name": route_info[0] if route_info else "",
                     "message": alert.message,
                     "severity": alert.severity or "info",
                     "active_from": alert.active_from.isoformat() if alert.active_from else None,
                     "active_until": alert.active_until.isoformat() if alert.active_until else None
-                }
-                for alert in alerts
-            ]
+                })
+            return result
         except Exception:
             # If alerts table doesn't exist or has different schema, return empty
             return []
 
     def _format_leg(self, leg: JourneyLeg, travel_date: date) -> dict:
-        """Format a journey leg for API response."""
+        """Format a journey leg for API response using GTFSStore."""
         from_stop = self._format_stop(leg.from_stop_id)
         to_stop = self._format_stop(leg.to_stop_id)
 
@@ -250,14 +233,16 @@ class RaptorService:
         }
 
         if leg.type == "transit":
-            route = self._get_route(leg.route_id) if leg.route_id else None
-            trip = self._get_trip(leg.trip_id) if leg.trip_id else None
+            # route_info = (short_name, color, route_type)
+            route_info = self._get_route_info(leg.route_id) if leg.route_id else None
+            # trip_info = (route_id, headsign, service_id)
+            trip_info = self._get_trip_info(leg.trip_id) if leg.trip_id else None
 
-            result["mode"] = self._get_route_type_name(route.route_type) if route else "transit"
+            result["mode"] = self._get_route_type_name(route_info[2]) if route_info else "transit"
             result["line_id"] = leg.route_id
-            result["line_name"] = route.short_name if route else ""
-            result["line_color"] = route.color if route else "888888"
-            result["headsign"] = leg.headsign or (trip.headsign if trip else "")
+            result["line_name"] = route_info[0] if route_info else ""
+            result["line_color"] = route_info[1] if route_info and route_info[1] else "888888"
+            result["headsign"] = leg.headsign or (trip_info[1] if trip_info else "")
             result["intermediate_stops"] = [
                 self._format_stop(stop_id) for stop_id in leg.intermediate_stops
             ]
@@ -277,12 +262,12 @@ class RaptorService:
             result["headsign"] = None
             result["intermediate_stops"] = []
 
-            # Calculate distance
-            from_s = self._get_stop(leg.from_stop_id)
-            to_s = self._get_stop(leg.to_stop_id)
-            if from_s and to_s:
+            # Calculate distance using GTFSStore
+            from_info = self._get_stop_info(leg.from_stop_id)
+            to_info = self._get_stop_info(leg.to_stop_id)
+            if from_info and to_info:
                 from adapters.http.api.gtfs.utils.shape_utils import haversine_distance
-                dist = haversine_distance(from_s.lat, from_s.lon, to_s.lat, to_s.lon)
+                dist = haversine_distance(from_info[1], from_info[2], to_info[1], to_info[2])
                 result["distance_meters"] = int(dist)
             else:
                 result["distance_meters"] = 0

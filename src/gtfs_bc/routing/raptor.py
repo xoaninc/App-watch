@@ -227,7 +227,9 @@ class RaptorAlgorithm:
                 new_marked_stops.update(improved)
 
             # Step 2: Process transfers (walking) - using GTFSStore tuples
-            for stop_id in list(new_marked_stops) + list(marked_stops):
+            # Solo procesamos new_marked_stops (paradas mejoradas en ESTA ronda)
+            # Las marked_stops ya tuvieron su fase de transbordos en la ronda anterior
+            for stop_id in new_marked_stops:
                 if stop_id not in labels[k]:
                     continue
 
@@ -303,19 +305,14 @@ class RaptorAlgorithm:
                     pattern_id, idx, arrival_at_stop, self._active_services
                 )
 
-                if new_trip_id:
-                    if current_trip_id is None:
-                        # First boarding
-                        current_trip_id = new_trip_id
-                        boarding_stop_id = stop_id
-                        boarding_stop_idx = idx
-                        boarding_time = arrival_at_stop
-                    elif current_trip_id != new_trip_id:
-                        # Switch to new trip if different
-                        current_trip_id = new_trip_id
-                        boarding_stop_id = stop_id
-                        boarding_stop_idx = idx
-                        boarding_time = arrival_at_stop
+                # Solo montarnos si no estamos ya en un trip
+                # En sistemas FIFO (Metro/Cercanías), el trip actual siempre es mejor
+                # que cualquier otro que salga más tarde de la misma línea
+                if new_trip_id and current_trip_id is None:
+                    current_trip_id = new_trip_id
+                    boarding_stop_id = stop_id
+                    boarding_stop_idx = idx
+                    boarding_time = arrival_at_stop
 
             # If we're on a trip, check if we improve arrival at this stop
             if current_trip_id and boarding_stop_idx is not None and idx > boarding_stop_idx:
