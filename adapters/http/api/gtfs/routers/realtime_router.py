@@ -1,10 +1,11 @@
 from typing import List, Optional
 from datetime import datetime
 import uuid
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 
 from core.database import get_db
+from core.rate_limiter import limiter, RateLimits
 from src.gtfs_bc.realtime.infrastructure.services.gtfs_rt_fetcher import GTFSRealtimeFetcher
 from src.gtfs_bc.realtime.infrastructure.services.estimated_positions import (
     EstimatedPositionsService,
@@ -38,7 +39,8 @@ router = APIRouter(prefix="/gtfs/realtime", tags=["GTFS Realtime"])
 
 
 @router.post("/fetch", response_model=FetchResponse)
-def fetch_realtime_data(db: Session = Depends(get_db)):
+@limiter.limit(RateLimits.REALTIME_FETCH)
+def fetch_realtime_data(request: Request, db: Session = Depends(get_db)):
     """Fetch latest GTFS-RT data from Renfe API.
 
     This endpoint triggers a fetch of vehicle positions, trip updates, and alerts

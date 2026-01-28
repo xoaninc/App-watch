@@ -3,9 +3,11 @@ from datetime import datetime, time
 from zoneinfo import ZoneInfo
 import math
 import re as regex_module
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_, func
+
+from core.rate_limiter import limiter, RateLimits
 
 # Centralized imports
 from adapters.http.api.gtfs.utils.holiday_utils import get_effective_day_type, MADRID_TZ
@@ -361,7 +363,9 @@ def get_stops_by_network(
 
 
 @router.get("/stops/by-coordinates", response_model=List[StopResponse])
+@limiter.limit(RateLimits.COORDINATES)
 def get_stops_by_coordinates(
+    request: Request,
     lat: float = Query(..., ge=-90, le=90, description="Latitude (e.g., 40.42 for Madrid)"),
     lon: float = Query(..., ge=-180, le=180, description="Longitude (e.g., -3.72 for Madrid)"),
     radius_km: float = Query(50, ge=1, le=200, description="Search radius in kilometers"),
@@ -738,7 +742,9 @@ def _get_frequency_based_departures(
 
 
 @router.get("/stops/{stop_id}/departures")
+@limiter.limit(RateLimits.DEPARTURES)
 def get_stop_departures(
+    request: Request,
     stop_id: str,
     route_id: Optional[str] = Query(None, description="Filter by route ID"),
     limit: int = Query(20, ge=1, le=100, description="Maximum results"),
@@ -1767,7 +1773,9 @@ def get_stop_platforms(
 
 
 @router.get("/stops/{stop_id}/correspondences", response_model=StopCorrespondencesResponse)
+@limiter.limit(RateLimits.CORRESPONDENCES)
 def get_stop_correspondences(
+    request: Request,
     stop_id: str,
     include_shape: bool = Query(False, description="Include walking route shape (generates on-demand if not cached)"),
     db: Session = Depends(get_db),
@@ -1862,7 +1870,9 @@ def get_stop_correspondences(
 
 
 @router.get("/route-planner", response_model=RoutePlannerResponse)
+@limiter.limit(RateLimits.ROUTE_PLANNER)
 def plan_route(
+    request: Request,
     from_stop: str = Query(..., alias="from", description="Origin stop ID"),
     to_stop: str = Query(..., alias="to", description="Destination stop ID"),
     departure_time: Optional[str] = Query(
