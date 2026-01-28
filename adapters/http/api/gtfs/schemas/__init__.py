@@ -25,6 +25,7 @@ from .stop_schemas import (
 from .departure_schemas import (
     TrainPositionSchema,
     DepartureResponse,
+    CompactDepartureResponse,
     TripStopResponse,
     TripDetailResponse,
     AgencyResponse,
@@ -87,6 +88,7 @@ REQUIRED_SCHEMAS = [
     # Departure schemas
     "TrainPositionSchema",
     "DepartureResponse",
+    "CompactDepartureResponse",
     "TripStopResponse",
     "TripDetailResponse",
     "AgencyResponse",

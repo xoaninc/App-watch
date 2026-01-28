@@ -39,6 +39,16 @@ class DepartureResponse(BaseModel):
     headway_secs: Optional[int] = None
 
 
+class CompactDepartureResponse(BaseModel):
+    """Compact departure for widgets/Siri (<100 bytes per item)."""
+    line: str  # route_short_name
+    color: Optional[str]  # route_color
+    dest: Optional[str]  # headsign (truncated)
+    mins: int  # minutes_until (realtime if available)
+    plat: Optional[str] = None  # platform
+    delay: bool = False  # is_delayed
+
+
 class TripStopResponse(BaseModel):
     stop_id: str
     stop_name: str
