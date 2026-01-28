@@ -38,6 +38,8 @@ dependencies = [
     "gtfs-realtime-bindings>=2.0.0",
     # Rate limiting
     "slowapi>=0.1.9",
+    # Coordinate transformations
+    "pyproj>=3.6.0",
 ]
 
 [project.optional-dependencies]

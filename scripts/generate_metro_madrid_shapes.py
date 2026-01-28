@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 # BRouter configuration
 BROUTER_URL = "https://brouter.de/brouter"
-BROUTER_PROFILE = "trekking"
+BROUTER_PROFILE = "rail"
 REQUEST_TIMEOUT = 30.0
 RATE_LIMIT_DELAY = 0.5  # seconds between requests to avoid rate limiting
 
