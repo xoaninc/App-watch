@@ -4,11 +4,14 @@ import os
 from dotenv import load_dotenv
 load_dotenv()  # Load .env file for ADMIN_TOKEN and other env vars
 
-from fastapi import FastAPI, BackgroundTasks, Header, HTTPException
+from fastapi import FastAPI, BackgroundTasks, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 
 from core.config import settings
+from core.rate_limiter import limiter, rate_limit_exceeded_handler, RateLimits
 from src.gtfs_bc.realtime.infrastructure.services.gtfs_rt_scheduler import lifespan_with_scheduler
 
 
@@ -35,6 +38,10 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
+    # Rate limiting
+    app.state.limiter = limiter
+    app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
+
     # Register routers
     from adapters.http.api.gtfs.routers import import_router, realtime_router, query_router, eta_router, network_router
     app.include_router(import_router, prefix="/api/v1")
@@ -49,7 +56,8 @@ def create_app() -> FastAPI:
         app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 
     @app.get("/health")
-    async def health_check():
+    @limiter.limit(RateLimits.HEALTH)
+    async def health_check(request: Request):
         """Health check endpoint.
 
         Returns 503 until GTFS data is loaded into memory.
@@ -79,7 +87,9 @@ def create_app() -> FastAPI:
         }
 
     @app.post("/admin/reload-gtfs")
+    @limiter.limit(RateLimits.ADMIN_RELOAD)
     async def reload_gtfs(
+        request: Request,
         background_tasks: BackgroundTasks,
         x_admin_token: str = Header(None, alias="X-Admin-Token")
     ):

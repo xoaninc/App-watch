@@ -362,7 +362,57 @@ Extraídos desde OpenStreetMap usando Overpass API con shapes bidireccionales:
 | **Generar stop_times Metro Sevilla** | Alta | ✅ Ejecutado en producción |
 | **Vincular shapes Metro Madrid** | Media | ✅ 19,658 trips (2026-01-27) |
 | Optimizar queries con índices BD | Baja | ✅ **Migración 035** |
+| Rate limiting API | Media | ✅ **SlowAPI implementado** |
 | **Generar stop_times Metro Ligero MAD** | Baja | ⏳ Pendiente (ver sección abajo) |
+
+---
+
+## ✅ Rate Limiting API (2026-01-28)
+
+### Implementación con SlowAPI
+
+**Estado:** ✅ Implementado y desplegado
+
+**Librería:** `slowapi>=0.1.9`
+
+**Configuración:** `core/rate_limiter.py`
+
+**Límites por endpoint:**
+
+| Endpoint | Límite | Razón |
+|----------|--------|-------|
+| `POST /gtfs/realtime/fetch` | 5/min | Llama a APIs externas |
+| `POST /admin/reload-gtfs` | 2/min | Operación pesada |
+| `GET /route-planner` | 30/min | Algoritmo RAPTOR (CPU intensivo) |
+| `GET /stops/{id}/departures` | 120/min | Múltiples JOINs + RT |
+| `GET /stops/{id}/correspondences` | 60/min | Puede llamar a BRouter |
+| `GET /stops/by-coordinates` | 60/min | Queries geográficas |
+| `GET /health` | 1000/min | Health checks frecuentes |
+| Default | 200/min | Endpoints estándar |
+
+**Storage:** In-memory (single instance) o Redis (multi-instance)
+
+**Headers de respuesta cuando se excede el límite:**
+```
+HTTP/1.1 429 Too Many Requests
+Retry-After: 60
+X-RateLimit-Limit: 30/minute
+```
+
+**Respuesta JSON:**
+```json
+{
+  "error": "rate_limit_exceeded",
+  "message": "Rate limit exceeded: 30 per 1 minute",
+  "retry_after": 60
+}
+```
+
+**Para usar Redis en producción:**
+```bash
+# En .env
+REDIS_URL=redis://localhost:6379
+```
 
 ---
 
