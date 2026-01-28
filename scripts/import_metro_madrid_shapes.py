@@ -60,10 +60,18 @@ LINE_MAPPING = {
     '10b': '10B',
     '11': '11',
     '12': '12',
-    '12-1': '12',  # Circular line variants
-    '12-2': '12',
+    '12-1': '12',  # Circular line - use only one direction
+    # '12-2': '12',  # Don't merge both directions for circular lines
     'R': 'R',
     'r': 'R',
+}
+
+# Circular lines need special handling - only use one direction variant
+CIRCULAR_LINES = {
+    '6-1': '6',   # L6 Circular - sentido horario
+    '6-2': None,  # Ignore - would cause zigzag if merged
+    '12-1': '12', # L12 MetroSur Circular
+    '12-2': None, # Ignore
 }
 
 
@@ -117,11 +125,17 @@ def normalize_line(line_str: str) -> Optional[str]:
 
     Returns:
         Normalized line for shape_id (e.g., "7", "7B", "10B")
+        Returns None for lines that should be skipped (e.g., second direction of circular lines)
     """
     if not line_str:
         return None
 
     line_lower = line_str.strip().lower()
+
+    # Check circular lines first - these need special handling
+    # to avoid mixing clockwise and counterclockwise directions
+    if line_lower in CIRCULAR_LINES:
+        return CIRCULAR_LINES[line_lower]  # May return None to skip
 
     # Direct mapping
     if line_lower in LINE_MAPPING:
