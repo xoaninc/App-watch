@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, Tuple
 from datetime import datetime, time
 from zoneinfo import ZoneInfo
 import math
@@ -1193,6 +1193,7 @@ def get_stop_departures(
         # Detect CIVIS express service (Madrid Cercanías semi-direct trains)
         stop_count = trip_stop_counts.get(trip.id, 0)
         route_short = route.short_name.strip() if route.short_name else ""
+
         is_express, express_name, express_color = detect_civis(
             route_id=route.id,
             route_short_name=route_short,
@@ -1730,6 +1731,125 @@ def get_route_operating_hours(route_id: str, db: Session = Depends(get_db)):
     )
 
 
+def _get_combined_variant_shape(
+    db: Session,
+    route_short_name: str,
+    variant_shape_id: str,
+) -> List[Tuple[float, float, int]]:
+    """Get combined shape for route variants (e.g., C4a = C4 base + C4a branch).
+
+    Renfe GTFS exports variant routes (C4a, C4b, C8a, C8b) with shapes that only
+    cover the branch section, not the common trunk. This function combines:
+    - Base route shape (e.g., 10_C4 for the Parla-Cantoblanco trunk)
+    - Variant branch shape (e.g., 10_C4a for Cantoblanco-Alcobendas)
+
+    The shapes are joined at their common endpoint (bifurcation point).
+    """
+    from src.gtfs_bc.shape.infrastructure.models.shape_model import ShapePointModel
+    from adapters.http.api.gtfs.utils.shape_utils import haversine_distance
+
+    # Mapping of variants to their base routes
+    # Format: variant_suffix -> base_short_name
+    VARIANT_BASES = {
+        'C4a': 'C4',
+        'C4b': 'C4',
+        'C8a': 'C8',
+        'C8b': 'C8',
+    }
+
+    # Check if this is a variant route
+    if route_short_name not in VARIANT_BASES:
+        return []
+
+    base_short_name = VARIANT_BASES[route_short_name]
+
+    # Build base shape_id (convention: 10_<base_route>)
+    base_shape_id = f"10_{base_short_name}"
+
+    # Get base shape points
+    base_points = (
+        db.query(ShapePointModel)
+        .filter(ShapePointModel.shape_id == base_shape_id)
+        .order_by(ShapePointModel.sequence)
+        .all()
+    )
+
+    if not base_points:
+        return []
+
+    # Get variant shape points
+    variant_points = (
+        db.query(ShapePointModel)
+        .filter(ShapePointModel.shape_id == variant_shape_id)
+        .order_by(ShapePointModel.sequence)
+        .all()
+    )
+
+    if not variant_points:
+        # Return just base if no variant shape
+        return [(p.lat, p.lon, p.sequence) for p in base_points]
+
+    # Find how to connect the shapes
+    # Check distances between endpoints to determine connection order
+    base_first = (base_points[0].lat, base_points[0].lon)
+    base_last = (base_points[-1].lat, base_points[-1].lon)
+    var_first = (variant_points[0].lat, variant_points[0].lon)
+    var_last = (variant_points[-1].lat, variant_points[-1].lon)
+
+    # Calculate distances between all endpoint combinations
+    distances = {
+        'base_last_to_var_first': haversine_distance(base_last[0], base_last[1], var_first[0], var_first[1]),
+        'base_last_to_var_last': haversine_distance(base_last[0], base_last[1], var_last[0], var_last[1]),
+        'base_first_to_var_first': haversine_distance(base_first[0], base_first[1], var_first[0], var_first[1]),
+        'base_first_to_var_last': haversine_distance(base_first[0], base_first[1], var_last[0], var_last[1]),
+    }
+
+    # Find the closest connection
+    min_dist_key = min(distances, key=distances.get)
+
+    # Build combined shape based on closest connection
+    combined = []
+    seq = 0
+
+    if min_dist_key == 'base_last_to_var_first':
+        # Base -> Variant (normal order)
+        for p in base_points:
+            combined.append((p.lat, p.lon, seq))
+            seq += 1
+        for p in variant_points[1:]:  # Skip first point (duplicate)
+            combined.append((p.lat, p.lon, seq))
+            seq += 1
+
+    elif min_dist_key == 'base_last_to_var_last':
+        # Base -> Variant (reversed)
+        for p in base_points:
+            combined.append((p.lat, p.lon, seq))
+            seq += 1
+        for p in reversed(variant_points[:-1]):  # Skip last point, reverse
+            combined.append((p.lat, p.lon, seq))
+            seq += 1
+
+    elif min_dist_key == 'base_first_to_var_first':
+        # Variant (reversed) -> Base
+        for p in reversed(variant_points[1:]):
+            combined.append((p.lat, p.lon, seq))
+            seq += 1
+        for p in base_points:
+            combined.append((p.lat, p.lon, seq))
+            seq += 1
+
+    else:  # base_first_to_var_last
+        # Variant -> Base
+        for p in variant_points[:-1]:
+            combined.append((p.lat, p.lon, seq))
+            seq += 1
+        for p in base_points:
+            combined.append((p.lat, p.lon, seq))
+            seq += 1
+
+    return combined
+
+
 @router.get("/routes/{route_id}/shape", response_model=RouteShapeResponse)
 def get_route_shape(
     route_id: str,
@@ -1746,6 +1866,10 @@ def get_route_shape(
     Returns the sequence of coordinates that define the physical path
     of the route. Useful for drawing the actual line trajectory on maps
     (showing curves, tunnels, etc.) instead of just straight lines between stops.
+
+    **Variant routes (C4a, C4b, C8a, C8b):**
+    For routes with branches, this endpoint automatically combines the base
+    trunk shape with the branch shape to return the complete route.
 
     **Normalization (max_gap parameter):**
     When `max_gap` is specified, the server interpolates additional points
@@ -1767,6 +1891,8 @@ def get_route_shape(
     if not route:
         raise HTTPException(status_code=404, detail=f"Route {route_id} not found")
 
+    route_short = route.short_name.strip() if route.short_name else ""
+
     # Get a trip for this route to find its shape_id
     trip = db.query(TripModel).filter(
         TripModel.route_id == route_id,
@@ -1777,20 +1903,24 @@ def get_route_shape(
         # No shape data for this route
         return RouteShapeResponse(
             route_id=route_id,
-            route_short_name=route.short_name.strip() if route.short_name else "",
+            route_short_name=route_short,
             shape=[]
         )
 
-    # Get all shape points ordered by sequence
-    shape_points = (
-        db.query(ShapePointModel)
-        .filter(ShapePointModel.shape_id == trip.shape_id)
-        .order_by(ShapePointModel.sequence)
-        .all()
-    )
+    # Check if this is a variant route that needs combined shapes
+    points = []
+    if route_short in ('C4a', 'C4b', 'C8a', 'C8b'):
+        points = _get_combined_variant_shape(db, route_short, trip.shape_id)
 
-    # Convert to list of tuples for processing
-    points = [(p.lat, p.lon, p.sequence) for p in shape_points]
+    # If no combined shape (or not a variant), get regular shape
+    if not points:
+        shape_points = (
+            db.query(ShapePointModel)
+            .filter(ShapePointModel.shape_id == trip.shape_id)
+            .order_by(ShapePointModel.sequence)
+            .all()
+        )
+        points = [(p.lat, p.lon, p.sequence) for p in shape_points]
 
     # Normalize if max_gap is specified
     if max_gap is not None and points:
@@ -1798,7 +1928,7 @@ def get_route_shape(
 
     return RouteShapeResponse(
         route_id=route_id,
-        route_short_name=route.short_name.strip() if route.short_name else "",
+        route_short_name=route_short,
         shape=[
             ShapePointResponse(
                 lat=lat,
