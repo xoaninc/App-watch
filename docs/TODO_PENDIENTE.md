@@ -564,6 +564,33 @@ sudo systemctl restart renfeserver
 
 ## ⏳ Tareas Pendientes de Baja Prioridad
 
+### 🐛 Bug Metro Madrid - stop_times incompletos (2026-01-28)
+
+**Problema:** El RAPTOR no encuentra rutas directas en Metro Madrid porque faltan stop_times para muchas paradas.
+
+**Ejemplo:** Sol → Gran Vía (1 parada en L1) devuelve ruta de 81 minutos con 2 transbordos.
+
+**Análisis de datos:**
+
+| Línea | Paradas con stop_times | Total | Missing | Estado |
+|-------|------------------------|-------|---------|--------|
+| L1 | 30 | 33 | 3 | ⚠️ (Gran Vía, Pacífico, Chamartín) |
+| L2 | 15 | 19 | 4 | ⚠️ |
+| **L3** | **0** | **19** | **19** | ❌ Sin datos |
+| L5 | 28 | 32 | 4 | ⚠️ |
+| **L10** | **12** | **31** | **19** | ❌ Muy incompleto |
+| L12 | 28 | 28 | 0 | ✅ OK |
+
+**Causa:** El GTFS de Metro Madrid (CRTM) tiene datos incompletos o el import falló.
+
+**Solución necesaria:** Crear script `scripts/generate_metro_madrid_stop_times.py` similar a:
+- `scripts/generate_metro_sevilla_trips.py`
+- Usar `stop_route_sequence` + `frequencies` para generar stop_times
+
+**Impacto:** Route planner falla para muchos viajes en Metro Madrid.
+
+---
+
 ### 📋 CTAN Andalucía - Documentado (2026-01-28)
 
 **Estado:** Investigado, no integrado (solo buses, no metros)
@@ -886,6 +913,7 @@ curl "https://redcercanias.com/api/v1/gtfs/stops/RENFE_17000/departures?compact=
 - [x] ~~Investigar API Valencia tiempo real~~ → **Deshabilitado** (API devuelve vacío, problema del proveedor)
 - [x] ~~Investigar CTAN Andalucía~~ → Solo buses, no metros (documentado abajo)
 - [x] ~~Investigar servicio CIVIS Madrid~~ → **Implementado** (ver sección abajo)
+- [ ] **Bug Metro Madrid stop_times incompletos** → Ver sección abajo (prioridad alta)
 - [ ] Matching manual intercambiadores grandes
 - [x] ~~Mapear shapes OSM a route_ids existentes~~ ✅ Completado 2026-01-26
 
