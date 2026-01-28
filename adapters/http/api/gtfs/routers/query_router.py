@@ -1225,24 +1225,42 @@ def get_stop_departures(
     if frequency_departures:
         departures.extend(frequency_departures)
 
-    # Deduplicate departures with same time/route/headsign (overlapping calendars in GTFS)
+    # Deduplicate departures with overlapping times (GTFS frequency overlap bug)
     # ONLY deduplicate static entries (no realtime data) - GTFS-RT may have legitimate
     # multiple trains at same time which should NOT be deduplicated
-    seen_departures: dict = {}
-    unique_departures = []
-    for dep in departures:
-        # If this departure has realtime data, keep it without deduplication
-        if dep.delay_seconds is not None:
-            unique_departures.append(dep)
-            continue
+    #
+    # Use a minimum gap of 90 seconds between departures of same route+headsign
+    # to filter out duplicates caused by overlapping frequency periods in GTFS
+    MIN_GAP_SECONDS = 90
 
-        # For static-only departures, deduplicate by time/route/headsign
-        key = (dep.departure_time, dep.route_short_name, dep.headsign)
-        if key not in seen_departures:
-            seen_departures[key] = dep
+    # First, separate realtime and static departures
+    realtime_departures = []
+    static_departures = []
+    for dep in departures:
+        if dep.delay_seconds is not None:
+            realtime_departures.append(dep)
+        else:
+            static_departures.append(dep)
+
+    # Sort static departures by departure time
+    static_departures.sort(key=lambda d: d.departure_seconds)
+
+    # Deduplicate static departures using minimum time gap
+    # Key: (route_short_name, headsign) -> last_departure_seconds
+    last_departure_by_route_headsign: dict = {}
+    deduplicated_static = []
+
+    for dep in static_departures:
+        key = (dep.route_short_name, dep.headsign)
+        last_dep_seconds = last_departure_by_route_headsign.get(key)
+
+        # Keep if no previous departure or gap is >= MIN_GAP_SECONDS
+        if last_dep_seconds is None or (dep.departure_seconds - last_dep_seconds) >= MIN_GAP_SECONDS:
+            deduplicated_static.append(dep)
+            last_departure_by_route_headsign[key] = dep.departure_seconds
 
     # Combine: all realtime departures + deduplicated static departures
-    departures = unique_departures + list(seen_departures.values())
+    departures = realtime_departures + deduplicated_static
 
     # Sort by realtime departure (use realtime_minutes_until if available, else minutes_until)
     departures.sort(key=lambda d: d.realtime_minutes_until if d.realtime_minutes_until is not None else d.minutes_until)
