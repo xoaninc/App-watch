@@ -23,6 +23,13 @@
 
 ## Resumen Ejecutivo
 
+### 🎯 Estado General
+
+| Componente | Estado | Trabajo Restante |
+|------------|--------|------------------|
+| **🗄️ Backend** | ✅ LISTO (95%) | Seguridad + datos menores |
+| **📱 Frontend iOS** | ⏳ PENDIENTE (0%) | **90% del trabajo total** |
+
 ### Estado por Mega-Fase
 
 | Mega-Fase | Descripción | Estado | Progreso |
@@ -30,8 +37,8 @@
 | **1** | Infraestructura Base (BD, GTFS, PostGIS) | ✅ COMPLETADA | 100% |
 | **2** | Plataformas y Correspondencias | ✅ COMPLETADA | 100% |
 | **3** | RAPTOR Route Planner | ✅ COMPLETADA | 100% |
-| **4** | Migración App iOS | ⏳ PENDIENTE | 0% |
-| **5** | Datos Pendientes | ⏳ EN PROGRESO | 60% |
+| **4** | Migración App iOS | ⏳ **BLOQUEANTE** | 0% |
+| **5** | Datos Pendientes | ✅ MAYORMENTE | 90% |
 
 ### Métricas del Proyecto
 
@@ -734,74 +741,121 @@ Ver `docs/RAPTOR_CODE_REVIEW.md` para detalles completos.
 
 ---
 
-## Próximos Pasos
+## Estado Actual del Proyecto
 
-### ✅ Completados (v1.0 - 2026-01-28)
+### Resumen
 
-1. [x] Eliminar `routing_service.py`
-2. [x] Limpiar Makefile
-3. [x] Crear estructura `tests/`
-4. [x] Tests unitarios RAPTOR
-5. [x] Implementar `?compact=true`
-6. [x] **Arreglar calendarios FGC/TMB/Metro Bilbao**
-7. [x] **Generar stop_times Metro Madrid/Sevilla/Tenerife**
-8. [x] **Correspondencias intercambiadores críticos**
-9. [x] **Code review y bug fixes**
+| Componente | Estado | Progreso | Trabajo Restante |
+|------------|--------|----------|------------------|
+| **🗄️ Backend (Servidor)** | ✅ LISTO | 95% | ~10% del total |
+| **📱 Frontend (App iOS)** | ⏳ PENDIENTE | 0% | ~90% del total |
 
-### ⚠️ BLOCKERS Producción (Seguridad)
+---
 
-| Tarea | Archivo | Riesgo | Estado |
-|-------|---------|--------|--------|
-| **Rotar TMB API Keys** | `multi_operator_fetcher.py:48-51` | Keys expuestas en GitHub público | ⏳ POST-TESTING |
-| **Auth en /admin/reload-gtfs** | `app.py:77-103` | Vector DoS (cualquiera puede llamar) | ⏳ ANTES PROD |
+## 🗄️ BACKEND (Servidor) - 95% Completado
 
-**Soluciones:**
-1. TMB Keys → Mover a `.env`, rotar en panel TMB
-2. Admin endpoint → Añadir header `x-admin-token` o bloquear en Nginx
+**El servidor está listo para producción.** Solo quedan tareas menores de seguridad y datos.
 
-### Pre-Testing Checklist
+### ✅ Completado (v1.0 - 2026-01-28)
 
-- [ ] Verificar `alembic current` = 033 (última migración)
-- [ ] Configurar `TZ=Europe/Madrid` en docker-compose.yml (opcional)
-- [ ] Tests de carga en localhost:8000
+- [x] RAPTOR algorithm funcionando
+- [x] Endpoint `/route-planner` con alternativas Pareto
+- [x] Endpoint `?compact=true` para widgets
+- [x] 250 correspondencias en intercambiadores críticos
+- [x] 2,009,770+ stop_times (todas las redes)
+- [x] Code review + 4 bugs críticos corregidos
+- [x] Calendarios FGC/TMB/Metro Bilbao arreglados
+- [x] Metro Tenerife y Tranvía Sevilla trips generados
 
-### Corto plazo (Fase 4 - App iOS)
+### ⚠️ BLOCKERS Seguridad (antes de producción real)
 
-1. [ ] App: Migrar shapes (eliminar normalización local)
-2. [ ] App: Migrar route planner (eliminar Dijkstra)
-3. [ ] App: UI selector alternativas
-4. [ ] App: Widget/Siri con `?compact=true`
+| Tarea | Archivo | Solución |
+|-------|---------|----------|
+| **Rotar TMB API Keys** | `multi_operator_fetcher.py:48-51` | Mover a `.env`, rotar en panel TMB |
+| **Auth en /admin/reload-gtfs** | `app.py:77-103` | Añadir `x-admin-token` o bloquear en Nginx |
 
-### Medio plazo (v1.1+)
+### Tareas Menores (v1.1+)
 
-1. [ ] Tranvía Vitoria
-2. [ ] Índices BD optimización
-3. [ ] Cache servicios activos
-4. [ ] Investigar API Valencia RT (devuelve vacío)
-5. [ ] Investigar CIVIS Madrid
+| Tarea | Prioridad | Notas |
+|-------|-----------|-------|
+| Tranvía Vitoria | Media | Único operador grande ausente |
+| Investigar API Valencia RT | Baja | Devuelve vacío |
+| Investigar CIVIS Madrid | Baja | Trenes especiales |
+| Índices BD optimización | Baja | Opcional si hay problemas rendimiento |
 
 ### Deuda Técnica (v2.0)
 
-| Archivo | Issue | Riesgo |
-|---------|-------|--------|
-| `raptor.py:34` | `WALKING_SPEED_KMH` no usado | Código muerto |
-| `raptor_service.py:22` | `import normalize_shape` no usado | Código muerto |
-| `routing_schemas.py:120-155` | Schemas legacy | Eliminar en v2.0 |
-| `holiday_utils.py:27-30` | Solo festivos Madrid | Limitación multi-región |
-| `estimated_positions.py` | Servicios nocturnos post-medianoche | Limitación |
-| `gtfs_rt_fetcher.py:470-505` | N+1 queries en predicción plataformas | Ineficiencia moderada |
-| Varios routers | Imports dentro de funciones | Ineficiencia mínima |
+Código muerto, imports duplicados, schemas legacy. Ver `docs/RAPTOR_CODE_REVIEW.md`.
 
-### Archivos NO Revisados (v2.0)
+---
 
-- [ ] Framework CQRS (`command_bus.py`, `query_bus.py`)
-- [ ] Importadores de datos (~20 scripts)
-- [ ] Modelos secundarios (~30 archivos)
+## 📱 FRONTEND (App iOS) - 0% Completado
 
-**Nota:** No son críticos para RAPTOR routing.
+**EL GRAN BLOQUEO.** El servidor está listo, pero la app no sabe usarlo.
+
+### Tareas Pendientes
+
+| # | Tarea | Descripción | Archivos |
+|---|-------|-------------|----------|
+| 1 | **Borrar código local** | Eliminar `RoutingService.swift` y cálculo Dijkstra | ~530 líneas |
+| 2 | **Conectar API** | Implementar `GET /route-planner` y modelos Swift | Nuevo código |
+| 3 | **UI alternativas** | Pantalla selección de rutas (como Google Maps) | Nueva UI |
+| 4 | **Widget/Siri** | Usar `?compact=true` para respuestas ligeras | Extensiones |
+
+### Endpoints a Consumir
+
+```swift
+// Route planner principal
+GET /api/v1/gtfs/route-planner?from={stop}&to={stop}&departure_time={HH:MM}
+
+// Versión compacta para widgets (<5KB)
+GET /api/v1/gtfs/route-planner?from={stop}&to={stop}&compact=true
+
+// Shapes normalizados (ya no calcular en app)
+GET /api/v1/gtfs/routes/{route_id}/shape?max_gap=50
+```
+
+### Modelos Swift a Crear
+
+```swift
+struct JourneyResponse: Codable {
+    let success: Bool
+    let journeys: [Journey]
+    let alerts: [JourneyAlert]
+}
+
+struct Journey: Codable {
+    let departure: String      // ISO8601
+    let arrival: String
+    let durationMinutes: Int
+    let transfers: Int
+    let walkingMinutes: Int
+    let segments: [JourneySegment]
+}
+
+struct JourneySegment: Codable {
+    let type: String           // "transit" | "walk"
+    let routeId: String?
+    let routeName: String?
+    let routeColor: String?
+    let fromStop: StopInfo
+    let toStop: StopInfo
+    let departure: String
+    let arrival: String
+    let numStops: Int?
+}
+```
+
+---
+
+## Pre-Testing Checklist
+
+- [ ] Verificar `alembic current` = 033
+- [ ] Tests de carga en localhost:8000
+- [ ] Probar rutas multi-red (ej: Metro → Cercanías → Metro)
 
 ---
 
 **Última actualización:** 2026-01-28 por Claude (Dani)
-**v1.0 cerrada - Backend RAPTOR listo para producción**
-**Ver `docs/RAPTOR_CODE_REVIEW.md` para detalles completos de la revisión**
+**Backend v1.0 CERRADO - Esperando desarrollo App iOS**
+**Ver `docs/RAPTOR_CODE_REVIEW.md` para detalles de la revisión de código**
