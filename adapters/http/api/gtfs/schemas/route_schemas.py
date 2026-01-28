@@ -14,6 +14,7 @@ class RouteResponse(BaseModel):
     agency_id: str
     network_id: Optional[str]
     description: Optional[str] = None
+    is_circular: bool = False
 
     class Config:
         from_attributes = True
