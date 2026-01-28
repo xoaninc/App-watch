@@ -192,7 +192,10 @@ class GTFSRealtimeFetcher:
             self._record_platform_history(vp)
 
     def _record_platform_history(self, vp: VehiclePosition) -> None:
-        """Record platform usage for learning predictions (daily data)."""
+        """Record platform usage for learning predictions (daily data).
+
+        Uses UPSERT (ON CONFLICT DO UPDATE) to avoid race conditions.
+        """
         try:
             # Extract route short name from label (e.g., "C7-21811-PLATF.(1)" -> "C7")
             route_short_name = None
@@ -214,32 +217,27 @@ class GTFSRealtimeFetcher:
             # Normalize stop_id
             stop_id = vp.stop_id
             today = date.today()
+            now = datetime.utcnow()
 
-            # Check if this combination already exists FOR TODAY
-            existing = self.db.query(PlatformHistoryModel).filter(
-                PlatformHistoryModel.stop_id == stop_id,
-                PlatformHistoryModel.route_short_name == route_short_name,
-                PlatformHistoryModel.headsign == headsign,
-                PlatformHistoryModel.platform == vp.platform,
-                PlatformHistoryModel.observation_date == today,
-            ).first()
-
-            if existing:
-                # Increment count for today
-                existing.count += 1
-                existing.last_seen = datetime.utcnow()
-            else:
-                # Create new record for today
-                new_record = PlatformHistoryModel(
-                    stop_id=stop_id,
-                    route_short_name=route_short_name,
-                    headsign=headsign,
-                    platform=vp.platform,
-                    count=1,
-                    observation_date=today,
-                    last_seen=datetime.utcnow(),
-                )
-                self.db.add(new_record)
+            # Use UPSERT to avoid race conditions
+            from sqlalchemy.dialects.postgresql import insert
+            stmt = insert(PlatformHistoryModel).values(
+                stop_id=stop_id,
+                route_short_name=route_short_name,
+                headsign=headsign,
+                platform=vp.platform,
+                count=1,
+                observation_date=today,
+                last_seen=now,
+            )
+            stmt = stmt.on_conflict_do_update(
+                constraint='uq_platform_history_business_key',
+                set_={
+                    'count': PlatformHistoryModel.count + 1,
+                    'last_seen': now,
+                }
+            )
+            self.db.execute(stmt)
         except Exception as e:
             logger.warning(f"Error recording platform history: {e}")
 
