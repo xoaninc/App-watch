@@ -250,6 +250,41 @@ Extraídos desde OpenStreetMap usando Overpass API:
 
 Añadidos platforms para Sagrera (L1, L5, L9N/L10N). Verificados todos los intercambiadores principales tienen platforms con coordenadas.
 
+### ✅ CIVIS Express Detection (2026-01-28)
+
+**CIVIS** es un servicio semi-directo/exprés de Cercanías que salta paradas intermedias.
+
+**Implementación:**
+- Detectado por número de paradas del trip
+- Color oficial: `#2596be`
+- Mismo estilo de fuente que resto de líneas
+
+**Campos nuevos en `/departures`:**
+```json
+{
+  "is_express": true,
+  "express_name": "CIVIS",
+  "express_color": "#2596be"
+}
+```
+
+**Reglas de detección:**
+| Línea | Ruta | Máx paradas CIVIS | Normal |
+|-------|------|-------------------|--------|
+| C2 | Guadalajara - Chamartín | ≤9 | 15-19 |
+| C3 | Aranjuez - Chamartín | =9 | 13 |
+| C10 | Villalba - Chamartín | ≤8 | 14-18 |
+| C8a | El Escorial - Chamartín | ≤8 | 14-18 |
+
+**Horario CIVIS:** Hora punta (mañana hacia Madrid, tarde hacia periferia)
+
+**Archivos:**
+- `adapters/http/api/gtfs/utils/civis_utils.py` - Lógica de detección
+- `adapters/http/api/gtfs/schemas/departure_schemas.py` - Campos API
+- `adapters/http/api/gtfs/routers/query_router.py` - Integración
+
+---
+
 ### ✅ Fix headsign CIVIS (2026-01-26)
 
 735 trips tenían headsign "CIVIS" en lugar del destino real. CIVIS es un servicio semi-directo de Renfe, no un destino.
@@ -850,7 +885,7 @@ curl "https://redcercanias.com/api/v1/gtfs/stops/RENFE_17000/departures?compact=
 
 - [x] ~~Investigar API Valencia tiempo real~~ → **Deshabilitado** (API devuelve vacío, problema del proveedor)
 - [x] ~~Investigar CTAN Andalucía~~ → Solo buses, no metros (documentado abajo)
-- [ ] Investigar servicio CIVIS Madrid
+- [x] ~~Investigar servicio CIVIS Madrid~~ → **Implementado** (ver sección abajo)
 - [ ] Matching manual intercambiadores grandes
 - [x] ~~Mapear shapes OSM a route_ids existentes~~ ✅ Completado 2026-01-26
 
