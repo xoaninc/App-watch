@@ -88,6 +88,10 @@ class GTFSStore:
         # {date_str: {'added': {service_ids}, 'removed': {service_ids}}}
         self.calendar_exceptions: Dict[str, Dict[str, Set[str]]] = {}
 
+        # 11. Hijos por padre (para resolver estaciones -> andenes)
+        # {parent_station_id: [child_stop_id, ...]}
+        self.children_by_parent: Dict[str, List[str]] = defaultdict(list)
+
         # Estado
         self.is_loaded = False
         self.load_time_seconds = 0.0
@@ -151,6 +155,7 @@ class GTFSStore:
         self.trips_info.clear()
         self.stops_info.clear()
         self.routes_info.clear()
+        self.children_by_parent.clear()
         for day in self.services_by_weekday:
             self.services_by_weekday[day].clear()
         self.calendar_exceptions.clear()
@@ -166,7 +171,7 @@ class GTFSStore:
         # 1. Cargar paradas
         print("  📍 Cargando paradas...")
         result = db_session.execute(text("""
-            SELECT id, name, lat, lon FROM gtfs_stops
+            SELECT id, name, lat, lon, parent_station_id FROM gtfs_stops
         """))
 
         for row in result:
@@ -174,7 +179,13 @@ class GTFSStore:
             name = row[1] or ""
             lat = float(row[2]) if row[2] else 0.0
             lon = float(row[3]) if row[3] else 0.0
+            parent_id = sys.intern(row[4]) if row[4] else None
+
             self.stops_info[stop_id] = (name, lat, lon)
+
+            # Indexar hijo si tiene padre
+            if parent_id:
+                self.children_by_parent[parent_id].append(stop_id)
 
         self.stats['stops'] = len(self.stops_info)
         print(f"    ✓ {self.stats['stops']:,} paradas")
@@ -350,8 +361,8 @@ class GTFSStore:
         # Limpiar memoria temporal
         del temp_patterns
 
-        # 8. Cargar transbordos
-        print("  🚶 Cargando transbordos...")
+        # 8. Cargar transbordos (CON EXPANSIÓN INTELIGENTE)
+        print("  🚶 Cargando transbordos y expandiendo a andenes...")
         result = db_session.execute(text("""
             SELECT from_stop_id, to_stop_id, walk_time_s
             FROM stop_correspondence
@@ -360,17 +371,35 @@ class GTFSStore:
 
         transfer_count = 0
         for row in result:
-            from_stop = sys.intern(row[0])
-            to_stop = sys.intern(row[1])
+            raw_from = sys.intern(row[0])
+            raw_to = sys.intern(row[1])
             walk_secs = row[2]
 
-            # Sanity check: evitar transbordos A->A o con tiempo 0
-            if from_stop != to_stop and walk_secs > 0:
-                self.transfers[from_stop].append((to_stop, walk_secs))
-                transfer_count += 1
+            if raw_from == raw_to or walk_secs <= 0:
+                continue
+
+            # 1. Expandir ORIGEN
+            # Si 'raw_from' es un padre, obtenemos sus hijos. Si no, usamos 'raw_from' tal cual.
+            from_stops = self.children_by_parent.get(raw_from)
+            if not from_stops:
+                from_stops = [raw_from]
+
+            # 2. Expandir DESTINO
+            # Si 'raw_to' es un padre (ej. METRO_BILBAO_7), obtenemos sus andenes (7.0, 7.1).
+            to_stops = self.children_by_parent.get(raw_to)
+            if not to_stops:
+                to_stops = [raw_to]
+
+            # 3. Producto Cartesiano: Conectar TODOS con TODOS
+            # Esto asegura que si llego al Andén 1, puedo transbordar al Andén 2 de la otra línea
+            for f in from_stops:
+                for t in to_stops:
+                    if f != t:
+                        self.transfers[f].append((t, walk_secs))
+                        transfer_count += 1
 
         self.stats['transfers'] = transfer_count
-        print(f"    ✓ {transfer_count:,} transbordos")
+        print(f"    ✓ {transfer_count:,} transbordos (tras expansión)")
 
         # Limpiar memoria temporal
         del trip_to_route
@@ -544,6 +573,17 @@ class GTFSStore:
             Tupla (short_name, color, route_type) o None
         """
         return self.routes_info.get(route_id)
+
+    def get_children_stops(self, stop_id: str) -> List[str]:
+        """Obtener IDs de andenes hijos para una estación padre.
+
+        Args:
+            stop_id: ID de la estación padre
+
+        Returns:
+            Lista de IDs de andenes hijos (vacía si no tiene hijos)
+        """
+        return self.children_by_parent.get(stop_id, [])
 
 
 # Singleton global para importación directa

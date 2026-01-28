@@ -19,7 +19,7 @@ Date: 2026-01-27
 
 from dataclasses import dataclass, field
 from datetime import date, time
-from typing import Dict, List, Optional, Set
+from typing import Dict, List, Optional, Set, Union
 from collections import defaultdict
 
 from src.gtfs_bc.routing.gtfs_store import gtfs_store
@@ -111,8 +111,8 @@ class RaptorAlgorithm:
 
     def plan(
         self,
-        origin_stop_id: str,
-        destination_stop_id: str,
+        origin_stop_id: Union[str, List[str]],
+        destination_stop_id: Union[str, List[str]],
         departure_time: time,
         travel_date: date,
         max_transfers: int = 3
@@ -120,8 +120,8 @@ class RaptorAlgorithm:
         """Find optimal journeys from origin to destination.
 
         Args:
-            origin_stop_id: Starting stop ID
-            destination_stop_id: Destination stop ID
+            origin_stop_id: Starting stop ID or list of IDs (for multi-platform stations)
+            destination_stop_id: Destination stop ID or list of IDs
             departure_time: Earliest departure time
             travel_date: Date of travel
             max_transfers: Maximum number of transfers allowed
@@ -133,22 +133,29 @@ class RaptorAlgorithm:
         self._travel_date = travel_date
         self._active_services = self.store.get_active_services(travel_date)
 
-        # Validate stops using GTFSStore
-        if origin_stop_id not in self.store.stops_info:
-            raise ValueError(f"Origin stop not found: {origin_stop_id}")
-        if destination_stop_id not in self.store.stops_info:
-            raise ValueError(f"Destination stop not found: {destination_stop_id}")
+        # Normalize inputs to lists
+        origins = origin_stop_id if isinstance(origin_stop_id, list) else [origin_stop_id]
+        destinations = destination_stop_id if isinstance(destination_stop_id, list) else [destination_stop_id]
+
+        # Validate - keep only valid stops
+        valid_origins = [oid for oid in origins if oid in self.store.stops_info]
+        valid_destinations = [did for did in destinations if did in self.store.stops_info]
+
+        if not valid_origins:
+            raise ValueError(f"No valid origin stops found: {origins}")
+        if not valid_destinations:
+            raise ValueError(f"No valid destination stops found: {destinations}")
 
         # Convert departure time to seconds since midnight
         departure_seconds = departure_time.hour * 3600 + departure_time.minute * 60 + departure_time.second
 
         # Run RAPTOR algorithm
         rounds = min(max_transfers + 1, MAX_ROUNDS)
-        labels = self._run_raptor(origin_stop_id, destination_stop_id, departure_seconds, rounds)
+        labels = self._run_raptor(valid_origins, valid_destinations, departure_seconds, rounds)
 
         # Extract journeys from labels
         journeys = self._extract_journeys(
-            labels, origin_stop_id, destination_stop_id, departure_seconds
+            labels, valid_origins, valid_destinations, departure_seconds
         )
 
         # Apply Pareto filter
@@ -158,16 +165,16 @@ class RaptorAlgorithm:
 
     def _run_raptor(
         self,
-        origin_stop_id: str,
-        destination_stop_id: str,
+        origin_stop_ids: List[str],
+        destination_stop_ids: List[str],
         departure_seconds: int,
         max_rounds: int
     ) -> Dict[int, Dict[str, Label]]:
         """Run the RAPTOR algorithm.
 
         Args:
-            origin_stop_id: Starting stop
-            destination_stop_id: Destination stop
+            origin_stop_ids: List of starting stops (multi-origin for platforms)
+            destination_stop_ids: List of destination stops
             departure_seconds: Departure time in seconds since midnight
             max_rounds: Maximum number of rounds (transfers + 1)
 
@@ -181,12 +188,35 @@ class RaptorAlgorithm:
         # Best overall arrival time at each stop (across all rounds)
         best_arrival: Dict[str, int] = defaultdict(lambda: INFINITY)
 
-        # Initialize round 0 with origin
-        labels[0][origin_stop_id] = Label(arrival_time=departure_seconds)
-        best_arrival[origin_stop_id] = departure_seconds
+        # Initialize round 0 with ALL origins (coste 0 para llegar a cualquier andén)
+        for origin_id in origin_stop_ids:
+            labels[0][origin_id] = Label(arrival_time=departure_seconds)
+            best_arrival[origin_id] = departure_seconds
 
         # Marked stops (stops improved in previous round)
-        marked_stops: Set[str] = {origin_stop_id}
+        marked_stops: Set[str] = set(origin_stop_ids)
+
+        # =========================================================================
+        # FASE DE CAMINATA INICIAL (INITIAL FOOTPATHS)
+        # Permite rutas tipo "Caminar -> Metro" desde el inicio.
+        # Si empezamos en Renfe Abando, esto nos "teletransporta" (caminando)
+        # a los andenes de Metro Abando ANTES de buscar el primer tren.
+        # =========================================================================
+        initial_origins = list(marked_stops)
+
+        for stop_id in initial_origins:
+            for to_stop_id, walk_seconds in self.store.get_transfers(stop_id):
+                arrival_after_walk = departure_seconds + walk_seconds + TRANSFER_PENALTY_SECONDS
+
+                if arrival_after_walk < best_arrival[to_stop_id]:
+                    labels[0][to_stop_id] = Label(
+                        arrival_time=arrival_after_walk,
+                        is_transfer=True,
+                        from_stop_id=stop_id
+                    )
+                    best_arrival[to_stop_id] = arrival_after_walk
+                    marked_stops.add(to_stop_id)
+        # =========================================================================
 
         # Run rounds
         for k in range(1, max_rounds + 1):
@@ -374,16 +404,16 @@ class RaptorAlgorithm:
     def _extract_journeys(
         self,
         labels: Dict[int, Dict[str, Label]],
-        origin_stop_id: str,
-        destination_stop_id: str,
+        origin_stop_ids: List[str],
+        destination_stop_ids: List[str],
         departure_seconds: int
     ) -> List[Journey]:
         """Extract journeys from the labels.
 
         Args:
             labels: Labels computed by RAPTOR
-            origin_stop_id: Starting stop
-            destination_stop_id: Destination stop
+            origin_stop_ids: List of starting stops
+            destination_stop_ids: List of destination stops
             departure_seconds: Original departure time
 
         Returns:
@@ -392,24 +422,26 @@ class RaptorAlgorithm:
         journeys: List[Journey] = []
 
         for round_num, round_labels in labels.items():
-            if destination_stop_id not in round_labels:
-                continue
+            # Check if ANY destination was reached in this round
+            for dest_id in destination_stop_ids:
+                if dest_id not in round_labels:
+                    continue
 
-            label = round_labels[destination_stop_id]
-            if label.arrival_time >= INFINITY:
-                continue
+                label = round_labels[dest_id]
+                if label.arrival_time >= INFINITY:
+                    continue
 
-            # Reconstruct journey by backtracking
-            legs = self._reconstruct_legs(labels, destination_stop_id, round_num, origin_stop_id)
+                # Reconstruct journey by backtracking
+                legs = self._reconstruct_legs(labels, dest_id, round_num, origin_stop_ids)
 
-            if legs:
-                journey = Journey(
-                    departure_time=departure_seconds,
-                    arrival_time=label.arrival_time,
-                    transfers=max(0, round_num - 1),
-                    legs=legs
-                )
-                journeys.append(journey)
+                if legs:
+                    journey = Journey(
+                        departure_time=departure_seconds,
+                        arrival_time=label.arrival_time,
+                        transfers=max(0, round_num - 1),
+                        legs=legs
+                    )
+                    journeys.append(journey)
 
         return journeys
 
@@ -418,7 +450,7 @@ class RaptorAlgorithm:
         labels: Dict[int, Dict[str, Label]],
         destination_stop_id: str,
         round_num: int,
-        origin_stop_id: str
+        origin_stop_ids: List[str]
     ) -> List[JourneyLeg]:
         """Reconstruct the journey legs by backtracking through labels."""
         legs: List[JourneyLeg] = []
@@ -430,7 +462,8 @@ class RaptorAlgorithm:
         safety_counter = 0
         MAX_STEPS = 20  # 5 rondas * 2 tramos + margen
 
-        while current_stop != origin_stop_id and current_round >= 0:
+        # Stop when we reach ANY of the origin stops
+        while current_stop not in origin_stop_ids and current_round >= 0:
             safety_counter += 1
             if safety_counter > MAX_STEPS:
                 print(f"⚠️ Infinite loop detected reconstructing journey to {destination_stop_id}")
