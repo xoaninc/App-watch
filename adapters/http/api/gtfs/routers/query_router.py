@@ -20,6 +20,7 @@ from adapters.http.api.gtfs.utils.occupancy_utils import (
     estimate_occupancy_by_time,
 )
 from adapters.http.api.gtfs.utils.civis_utils import detect_civis
+from adapters.http.api.gtfs.utils.text_utils import normalize_headsign
 from adapters.http.api.gtfs.schemas import (
     RouteResponse,
     RouteFrequencyResponse,
@@ -1157,7 +1158,8 @@ def get_stop_departures(
         train_position = train_positions.get(trip.id)
 
         # Get headsign: prefer trip.headsign, fall back to last stop name (destination)
-        headsign = trip.headsign or last_stop_names.get(trip.id)
+        # Normalize to Title Case (some GTFS data has ALL CAPS headsigns)
+        headsign = normalize_headsign(trip.headsign or last_stop_names.get(trip.id))
 
         # Get platform from GTFS-RT (prefer stop_time_update, then vehicle_position, then by stop_id)
         platform = stop_platforms.get(trip.id) or vehicle_platforms.get(trip.id)
@@ -1325,9 +1327,11 @@ def get_trip(trip_id: str, db: Session = Depends(get_db)):
     ]
 
     # Get headsign: prefer trip.headsign, fall back to last stop name (destination)
+    # Normalize to Title Case (some GTFS data has ALL CAPS headsigns)
     headsign = trip.headsign
     if not headsign and stops:
         headsign = stops[-1].stop_name
+    headsign = normalize_headsign(headsign)
 
     return TripDetailResponse(
         id=trip.id,
