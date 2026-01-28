@@ -529,6 +529,44 @@ sudo systemctl restart renfeserver
 
 ## ⏳ Tareas Pendientes de Baja Prioridad
 
+### 📋 CTAN Andalucía - Documentado (2026-01-28)
+
+**Estado:** Investigado, no integrado (solo buses, no metros)
+
+**Portal:** https://api.ctan.es - Red de Consorcios de Transporte de Andalucía
+
+**GTFS Unificado:** `https://api.ctan.es/v1/datos/UNIFICADO/gtfs.zip`
+- ~5MB, actualizado diariamente
+- 467 rutas de bus + 2 ferrys
+- 9 áreas metropolitanas: Sevilla, Málaga, Granada, Cádiz, Almería, Jaén, Córdoba, Huelva, Gibraltar
+
+**IDs de Consorcios:**
+| ID | Área | Código |
+|----|------|--------|
+| 1 | Sevilla | CTAS |
+| 2 | Bahía de Cádiz | CMTBC |
+| 3 | Granada | CTMGR |
+| 4 | Málaga | CTMAM |
+| 5 | Campo de Gibraltar | CTMCG |
+| 6 | Almería | CTAL |
+| 7 | Jaén | CTJA |
+| 8 | Córdoba | CTCO |
+| 9 | Huelva | CTHU |
+
+**API REST:** https://api.ctan.es/doc
+- Endpoints: `/v1/Consorcios/{id}/lineas`, `/paradas`, `/horarios_lineas`, etc.
+- Solo datos estáticos (horarios, paradas, tarifas)
+- ❌ Sin tiempo real
+
+**Limitaciones:**
+- NO incluye Metro Sevilla, Metro Granada, Metro Málaga (solo buses)
+- NO incluye Cercanías RENFE
+- Sin datos de tiempo real
+
+**Decisión:** No integrar - no aporta metros/trenes que ya tenemos de otras fuentes.
+
+---
+
 ### ❌ Valencia RT API - Deshabilitado (2026-01-28)
 
 **Estado:** Código comentado, API no funciona
@@ -811,6 +849,7 @@ curl "https://redcercanias.com/api/v1/gtfs/stops/RENFE_17000/departures?compact=
 ### Mejoras opcionales (baja prioridad)
 
 - [x] ~~Investigar API Valencia tiempo real~~ → **Deshabilitado** (API devuelve vacío, problema del proveedor)
+- [x] ~~Investigar CTAN Andalucía~~ → Solo buses, no metros (documentado abajo)
 - [ ] Investigar servicio CIVIS Madrid
 - [ ] Matching manual intercambiadores grandes
 - [x] ~~Mapear shapes OSM a route_ids existentes~~ ✅ Completado 2026-01-26
