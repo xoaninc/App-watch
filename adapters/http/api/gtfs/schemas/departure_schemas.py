@@ -37,6 +37,12 @@ class DepartureResponse(BaseModel):
     # Frequency-based estimation
     frequency_based: bool = False
     headway_secs: Optional[int] = None
+    # Occupancy info (GTFS-RT OccupancyStatus)
+    # 0=EMPTY, 1=MANY_SEATS, 2=FEW_SEATS, 3=STANDING_ONLY,
+    # 4=CRUSHED, 5=FULL, 6=NOT_ACCEPTING, 7=NO_DATA, 8=NOT_BOARDABLE
+    occupancy_status: Optional[int] = None
+    occupancy_percentage: Optional[int] = None  # 0-100
+    occupancy_per_car: Optional[List[int]] = None  # Per-carriage occupancy
 
 
 class CompactDepartureResponse(BaseModel):
@@ -47,6 +53,7 @@ class CompactDepartureResponse(BaseModel):
     mins: int  # minutes_until (realtime if available)
     plat: Optional[str] = None  # platform
     delay: bool = False  # is_delayed
+    occ: Optional[int] = None  # occupancy_status (0-8)
 
 
 class TripStopResponse(BaseModel):

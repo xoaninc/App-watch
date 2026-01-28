@@ -363,7 +363,74 @@ Extraídos desde OpenStreetMap usando Overpass API con shapes bidireccionales:
 | **Vincular shapes Metro Madrid** | Media | ✅ 19,658 trips (2026-01-27) |
 | Optimizar queries con índices BD | Baja | ✅ **Migración 035** |
 | Rate limiting API | Media | ✅ **SlowAPI implementado** |
+| Ocupación en tiempo real | Media | ✅ **Implementado (TMB)** |
 | **Generar stop_times Metro Ligero MAD** | Baja | ⏳ Pendiente (ver sección abajo) |
+
+---
+
+## ✅ Ocupación en Tiempo Real (2026-01-28)
+
+### GTFS-RT OccupancyStatus
+
+**Estado:** ✅ Implementado para TMB Metro Barcelona
+
+**Operadores con datos de ocupación:**
+| Operador | Datos | Fuente |
+|----------|-------|--------|
+| TMB Metro Barcelona | ✅ `percentatge_ocupacio` (0-100%) | API iMetro |
+| TMB Metro Barcelona | ✅ `percentatge_ocupacio_cotxes` (por vagón) | API iMetro |
+| Metro Bilbao | ❌ No incluido en feed | Protobuf |
+| Euskotren | ❌ No incluido en feed | Protobuf |
+| FGC | ❌ No incluido en feed | Protobuf |
+| Renfe Cercanías | ❌ No incluido en feed | JSON |
+
+**Valores OccupancyStatus (GTFS-RT estándar):**
+```
+0 = EMPTY                      // Vacío
+1 = MANY_SEATS_AVAILABLE       // Muchos asientos
+2 = FEW_SEATS_AVAILABLE        // Pocos asientos
+3 = STANDING_ROOM_ONLY         // Solo de pie
+4 = CRUSHED_STANDING_ROOM_ONLY // Muy lleno
+5 = FULL                       // Completo
+6 = NOT_ACCEPTING_PASSENGERS   // No admite pasajeros
+7 = NO_DATA_AVAILABLE          // Sin datos
+8 = NOT_BOARDABLE              // No accesible
+```
+
+**Conversión porcentaje → status:**
+- 0-10% → EMPTY (0)
+- 11-30% → MANY_SEATS (1)
+- 31-50% → FEW_SEATS (2)
+- 51-70% → STANDING (3)
+- 71-85% → CRUSHED (4)
+- 86-100% → FULL (5)
+
+**Campos añadidos a `/stops/{id}/departures`:**
+```json
+{
+  "occupancy_status": 2,       // Enum 0-8
+  "occupancy_percentage": 45,  // 0-100
+  "occupancy_per_car": [40, 45, 50, 42]  // Por vagón (TMB)
+}
+```
+
+**Campos añadidos a `/stops/{id}/departures?compact=true`:**
+```json
+{
+  "occ": 2  // occupancy_status (0-8)
+}
+```
+
+**Uso en app iOS:**
+- 🟢 Verde: 0-1 (vacío/muchos asientos)
+- 🟡 Amarillo: 2-3 (pocos asientos/de pie)
+- 🔴 Rojo: 4-6 (lleno)
+- ⚫ Gris: 7-8 o null (sin datos)
+
+**Archivos:**
+- `adapters/http/api/gtfs/utils/occupancy_utils.py` - Utilidades
+- `adapters/http/api/gtfs/schemas/departure_schemas.py` - Schemas
+- `adapters/http/api/gtfs/routers/query_router.py` - Endpoint
 
 ---
 
