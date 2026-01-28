@@ -424,10 +424,11 @@ Todos los bugs críticos corregidos. Deuda técnica documentada para v2.0.
 **Solución:** INSERT manual en stop_correspondence
 **Resultado:** 4 conexiones añadidas (Francesc Macià ↔ FGC Provença, Metro Diagonal)
 
-### ⏳ Tranvía Vitoria - Known Issue (v1.1)
-**Estado:** Pendiente de integración
-**Razón:** Evitar conflictos con config.py del motor nuevo
-**Acción:** Se integrará en parche v1.1 (no bloquea v1.0)
+### ✅ Tranvía Vitoria - FUNCIONANDO
+**Estado:** Completado (2026-01-28)
+**Líneas:** TG1, TG2, 41 (parte del feed Euskotren)
+**Trips:** 2,233 trips, 32,945 stop_times
+**Nota:** Usar IDs de StopPlace (estación padre), no Quay (plataforma). La resolución multi-plataforma funciona automáticamente.
 
 ---
 
