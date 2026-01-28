@@ -62,6 +62,12 @@ class JourneySegmentResponse(BaseModel):
     # NEW: Suggested camera heading for 3D animations (degrees, 0-360)
     suggested_heading: float = 0.0
 
+    # Occupancy info (GTFS-RT OccupancyStatus) - only for transit segments
+    # 0=EMPTY, 1=MANY_SEATS, 2=FEW_SEATS, 3=STANDING_ONLY,
+    # 4=CRUSHED, 5=FULL, 6=NOT_ACCEPTING, 7=NO_DATA, 8=NOT_BOARDABLE
+    occupancy_status: Optional[int] = None
+    occupancy_percentage: Optional[int] = None  # 0-100
+
 
 class JourneyResponse(BaseModel):
     """Complete journey from origin to destination.

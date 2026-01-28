@@ -14,6 +14,11 @@ from adapters.http.api.gtfs.utils.holiday_utils import get_effective_day_type, M
 from adapters.http.api.gtfs.utils.route_utils import is_static_gtfs_route, is_route_operating, has_real_cercanias
 from adapters.http.api.gtfs.utils.shape_utils import normalize_shape
 from adapters.http.api.gtfs.utils.walking_route import generate_walking_route, coords_to_json, json_to_coords
+from adapters.http.api.gtfs.utils.occupancy_utils import (
+    percentage_to_status,
+    parse_occupancy_per_car,
+    estimate_occupancy_by_time,
+)
 from adapters.http.api.gtfs.schemas import (
     RouteResponse,
     RouteFrequencyResponse,
@@ -961,9 +966,10 @@ def get_stop_departures(
         ).all()
         trip_delays = {tu.trip_id: tu.delay for tu in trip_updates}
 
-    # Get stop-specific delays and platform info
+    # Get stop-specific delays, platform info, and occupancy
     stop_delays = {}
     stop_platforms = {}
+    stop_occupancy = {}  # {trip_id: (occupancy_percent, occupancy_per_car)}
     if trip_ids:
         stop_time_updates = db.query(StopTimeUpdateModel).filter(
             StopTimeUpdateModel.trip_id.in_(trip_ids),
@@ -973,6 +979,12 @@ def get_stop_departures(
             stop_delays[stu.trip_id] = stu.departure_delay
             if stu.platform:
                 stop_platforms[stu.trip_id] = stu.platform
+            # Extract occupancy data (available from TMB Metro Barcelona)
+            if stu.occupancy_percent is not None or stu.occupancy_per_car:
+                stop_occupancy[stu.trip_id] = (
+                    stu.occupancy_percent,
+                    stu.occupancy_per_car
+                )
 
     # For TMB/FGC: Also get platforms by stop_id (RT trip_ids differ from static GTFS)
     # Get all recent platforms for the queried stop_ids
@@ -1146,6 +1158,16 @@ def get_stop_departures(
                 platform = estimated
                 platform_estimated = True
 
+        # Get occupancy data from GTFS-RT (available for TMB Metro Barcelona)
+        occupancy_percent = None
+        occupancy_status = None
+        occupancy_per_car = None
+        if trip.id in stop_occupancy:
+            occ_pct, occ_per_car_json = stop_occupancy[trip.id]
+            occupancy_percent = occ_pct
+            occupancy_status = percentage_to_status(occ_pct)
+            occupancy_per_car = parse_occupancy_per_car(occ_per_car_json)
+
         departures.append(
             DepartureResponse(
                 trip_id=trip.id,
@@ -1164,6 +1186,9 @@ def get_stop_departures(
                 realtime_minutes_until=realtime_minutes_until,
                 is_delayed=is_delayed,
                 train_position=train_position,
+                occupancy_status=occupancy_status,
+                occupancy_percentage=occupancy_percent,
+                occupancy_per_car=occupancy_per_car,
             )
         )
 
@@ -1205,6 +1230,7 @@ def get_stop_departures(
                 mins=d.realtime_minutes_until if d.realtime_minutes_until is not None else d.minutes_until,
                 plat=d.platform,
                 delay=d.is_delayed,
+                occ=d.occupancy_status,
             )
             for d in departures
         ]
