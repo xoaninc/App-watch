@@ -20,7 +20,7 @@ from alembic import op
 
 # revision identifiers
 revision = '035_add_query_optimization_indexes'
-down_revision = '034'
+down_revision = '034_add_walking_shape_to_correspondence'
 branch_labels = None
 depends_on = None
 
