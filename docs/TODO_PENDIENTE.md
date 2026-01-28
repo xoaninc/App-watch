@@ -362,6 +362,90 @@ Extraídos desde OpenStreetMap usando Overpass API con shapes bidireccionales:
 | **Generar stop_times Metro Sevilla** | Alta | ✅ Ejecutado en producción |
 | **Vincular shapes Metro Madrid** | Media | ✅ 19,658 trips (2026-01-27) |
 | Optimizar queries con índices BD | Baja | ⏳ Opcional |
+| **Generar stop_times Metro Ligero MAD** | Baja | ⏳ Pendiente (ver sección abajo) |
+
+---
+
+## ⏳ Tareas Pendientes de Baja Prioridad
+
+### Metro Ligero Madrid - Script de Generación de Stop Times
+
+**Estado:** ⏳ Pendiente (baja prioridad, el sistema funciona sin esto)
+
+**Problema:** Metro Ligero Madrid usa `frequencies.txt` en su GTFS en lugar de `stop_times.txt` completos. Actualmente tiene ~3,001 trips pero RAPTOR necesita stop_times individuales para cada trip para funcionar de forma óptima.
+
+**Solución necesaria:** Crear un script similar a:
+- `scripts/generate_metro_madrid_from_gtfs.py`
+- `scripts/generate_metro_sevilla_trips.py`
+
+**Líneas de Metro Ligero:**
+- ML1: Pinar de Chamartín ↔ Las Tablas
+- ML2: Colonia Jardín ↔ Estación de Aravaca
+- ML3: Colonia Jardín ↔ Puerta de Boadilla
+
+**Fuente GTFS:** CRTM (Consorcio Regional de Transportes de Madrid)
+- URL: `https://crtm.maps.arcgis.com/sharing/rest/content/items/5c7f2951962540d69ffe8f640d94c246/data`
+
+**Notas:**
+- El GTFS de CRTM incluye Metro Ligero junto con Metro Madrid
+- Hay que filtrar por `route_type` o `route_id` para separar Metro Ligero de Metro
+- Script debería generar ~3,000-5,000 trips con sus stop_times
+
+---
+
+### Scripts de Shapes de Sevilla (Experimentales)
+
+**Estado:** ⚠️ Scripts creados pero NO ejecutados en producción. Propósito: mejora futura de shapes.
+
+#### `scripts/import_sevilla_shapes_osm.py`
+
+**Propósito:** Importar shapes de alta resolución para Cercanías Sevilla (C1-C5) y Tranvía Sevilla (T1) desde OpenStreetMap.
+
+**Relaciones OSM mapeadas:**
+| Línea | Relación IDA | Relación VUELTA |
+|-------|--------------|-----------------|
+| C-1 | 11378448 (Utrera → Lora) | 11378449 (Lora → Utrera) |
+| C-2 | 11378341 (Sta Justa → Cartuja) | 11378342 (Cartuja → Sta Justa) |
+| C-3 | 11382022 (Sta Justa → Cazalla) | 11382023 (Cazalla → Sta Justa) |
+| C-4 | 11382118 (Sta Justa → Virgen Rocío) | (reverse automático) |
+| C-5 | 11384991 (Hércules → Benacazón) | 11384992 (Benacazón → Hércules) |
+| T1 | 36937 (Plaza Nueva → San Bernardo) | (reverse automático) |
+
+**Uso:**
+```bash
+# Ver qué haría (sin cambios)
+python scripts/import_sevilla_shapes_osm.py --dry-run
+
+# Importar solo una línea
+python scripts/import_sevilla_shapes_osm.py --line C1
+
+# Importar todo
+python scripts/import_sevilla_shapes_osm.py
+```
+
+**⚠️ Notas:**
+- NO se ha ejecutado en producción
+- Los shapes actuales de Cercanías Sevilla vienen del GTFS de RENFE (funcionan bien)
+- Este script es para MEJORA FUTURA si se quieren shapes más detallados de OSM
+- Requiere conexión a Overpass API (puede tener rate limiting)
+
+#### `scripts/restore_sevilla_shapes.py`
+
+**Propósito:** Restaurar shapes de Sevilla desde un backup JSON (útil si se corrompen datos).
+
+**Uso:**
+```bash
+# Ver qué restauraría
+python scripts/restore_sevilla_shapes.py backups/sevilla_shapes_backup.json --dry-run
+
+# Restaurar
+python scripts/restore_sevilla_shapes.py backups/sevilla_shapes_backup.json
+```
+
+**⚠️ Notas:**
+- Script de utilidad para backup/restore
+- Requiere archivo JSON de backup previo
+- NO hay backups creados actualmente
 
 ---
 
