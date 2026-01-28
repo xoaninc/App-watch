@@ -11,6 +11,7 @@ from sqlalchemy import and_, or_, func
 from adapters.http.api.gtfs.utils.holiday_utils import get_effective_day_type, MADRID_TZ
 from adapters.http.api.gtfs.utils.route_utils import is_static_gtfs_route, is_route_operating, has_real_cercanias
 from adapters.http.api.gtfs.utils.shape_utils import normalize_shape
+from adapters.http.api.gtfs.utils.walking_route import generate_walking_route, coords_to_json, json_to_coords
 from adapters.http.api.gtfs.schemas import (
     RouteResponse,
     RouteFrequencyResponse,
@@ -24,6 +25,7 @@ from adapters.http.api.gtfs.schemas import (
     StopPlatformsResponse,
     CorrespondenceResponse,
     StopCorrespondencesResponse,
+    WalkingShapePoint,
     TrainPositionSchema,
     DepartureResponse,
     CompactDepartureResponse,
@@ -1767,6 +1769,7 @@ def get_stop_platforms(
 @router.get("/stops/{stop_id}/correspondences", response_model=StopCorrespondencesResponse)
 def get_stop_correspondences(
     stop_id: str,
+    include_shape: bool = Query(False, description="Include walking route shape (generates on-demand if not cached)"),
     db: Session = Depends(get_db),
 ):
     """Get walking correspondences to nearby stations.
@@ -1775,6 +1778,10 @@ def get_stop_correspondences(
     at the same station). Example: Acacias (L5) ↔ Embajadores (L3, C5).
 
     These are different stations that share underground walking connections.
+
+    If include_shape=true, returns pedestrian route coordinates for each
+    correspondence. Routes are generated on-demand using BRouter and cached
+    for subsequent requests.
     """
     # Get stop
     stop = db.query(StopModel).filter(StopModel.id == stop_id).first()
@@ -1810,6 +1817,31 @@ def get_stop_correspondences(
 
             to_lines = ", ".join(lines_parts) if lines_parts else None
 
+            # Handle walking shape
+            walking_shape = None
+            if include_shape:
+                # Check if shape is cached
+                if corr.walking_shape:
+                    # Parse cached shape
+                    coords = json_to_coords(corr.walking_shape)
+                    walking_shape = [WalkingShapePoint(lat=lat, lon=lon) for lat, lon in coords]
+                else:
+                    # Generate shape on-demand using BRouter
+                    route_result = generate_walking_route(
+                        stop.lat, stop.lon,
+                        to_stop.lat, to_stop.lon
+                    )
+                    if route_result:
+                        coords, distance_m, walk_time_s = route_result
+                        # Cache the shape and update distance/time
+                        corr.walking_shape = coords_to_json(coords)
+                        if distance_m and (not corr.distance_m or corr.distance_m == 0):
+                            corr.distance_m = distance_m
+                        if walk_time_s and (not corr.walk_time_s or corr.walk_time_s == 0):
+                            corr.walk_time_s = walk_time_s
+                        db.commit()
+                        walking_shape = [WalkingShapePoint(lat=lat, lon=lon) for lat, lon in coords]
+
             result.append(CorrespondenceResponse(
                 id=corr.id,
                 to_stop_id=corr.to_stop_id,
@@ -1818,7 +1850,8 @@ def get_stop_correspondences(
                 to_transport_types=transport_types,
                 distance_m=corr.distance_m,
                 walk_time_s=corr.walk_time_s,
-                source=corr.source
+                source=corr.source,
+                walking_shape=walking_shape
             ))
 
     return StopCorrespondencesResponse(

@@ -14,7 +14,7 @@ from alembic import op
 
 # revision identifiers
 revision = '033_add_raptor_indexes'
-down_revision = '032_add_color_description_to_platform'
+down_revision = '032'
 branch_labels = None
 depends_on = None
 

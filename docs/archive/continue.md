@@ -306,7 +306,88 @@ Cuando los datos del CSV difieren de la BD, **NO se sobreescribe**. Se guarda en
 - [x] ~~Importar stop_area_group Valencia, Zaragoza~~ ✅ Sant Isidre, Delicias, Plaza Aragón
 - [x] ~~Documentación completa~~ ✅ `docs/PLATFORMS_AND_CORRESPONDENCES.md`
 
+### Tareas Completadas (2026-01-28)
+
+#### Shapes Sevilla - Estado Final
+
+**Problema encontrado:** Los shapes GTFS de Renfe Sevilla solo contienen coordenadas de estaciones, no geometría real de vías. Las relaciones OSM de Cercanías Sevilla están mal formadas (ways no conectan entre sí - 56/70 transiciones desconectadas).
+
+**Solución aplicada:** Shapes GTFS originales interpolados con `normalize_shape()` (max gap 100m):
+
+| Línea | Original | Normalizado | Max Gap | Estado |
+|-------|----------|-------------|---------|--------|
+| C1 | 440 pts | 1506 pts | 100m | ✅ `30_C1_NORM` |
+| C2 | 98 pts | 185 pts | 100m | ✅ `30_C2_NORM` |
+| C3 | 577 pts | 1113 pts | 100m | ✅ `30_C3_NORM` |
+| C4 | 101 pts | 231 pts | 100m | ✅ `30_C4_NORM` |
+| C5 | 360 pts | 631 pts | 100m | ✅ `30_C5_NORM` |
+| T1 | N/A | Sin shape | - | ⚠️ Usa coords paradas |
+| Metro L1 | 590 pts | Sin cambios | - | ✅ Original |
+
+**Limitación:** La interpolación dibuja líneas rectas entre estaciones, no sigue la geometría real de las vías. Esto es una limitación del GTFS de origen.
+
+**Backup creado:**
+- `backups/sevilla_shapes_backup_20260128.json` - Contiene todos los shapes y asignaciones
+- `scripts/restore_sevilla_shapes.py` - Script para restaurar desde backup
+
+**Scripts creados:**
+- `scripts/import_sevilla_shapes_osm.py` - Importador OSM (shapes guardados pero no usados por problemas de conectividad)
+
+**OSM Relations documentadas (para futuro):**
+- C1: 11378448 (ida), 11378449 (vuelta)
+- C2: 11378341 (ida), 11378342 (vuelta)
+- C3: 11382022 (ida), 11382023 (vuelta)
+- C4: 11382118 (solo ida)
+- C5: 11384991 (ida), 11384992 (vuelta)
+- T1: 36937
+
+### Tareas Completadas (2026-01-28 - Sesión 2)
+
+#### Fixes Sevilla - Shapes y Network
+- [x] **Metro L1 Sevilla**: Corregido network (30T → 32T) y asignado shape (590 pts)
+- [x] **Tram T1 Sevilla**: Corregido network (30T → 31T) y generado nuevo shape con BRouter (104 pts)
+- [x] **Cercanías Sevilla**: Generados shapes con BRouter para C1, C2, C3, C5
+
+| Línea | Puntos | Distancia | Trips |
+|-------|--------|-----------|-------|
+| C1 | 562 | 129.5km | 1874 |
+| C2 | 184 | 13.3km | 410 |
+| C3 | 818 | 84.7km | 303 |
+| C4 | 200 | 18.6km | 711 |
+| C5 | 502 | 50.9km | 1044 |
+
+#### Walking Shapes - Rutas Peatonales
+- [x] Sistema de generación de rutas peatonales para correspondencias
+- [x] Endpoint actualizado: `/stops/{id}/correspondences?include_shape=true`
+- [x] Cache en BD (columna `walking_shape` en `stop_correspondence`)
+- [x] Servicios: BRouter (prioridad) + OSRM (fallback)
+- [x] Script de pre-generación: `scripts/pregenerate_walking_shapes.py`
+- [x] Filtro de correspondencias internas (misma estación): sin walking_shape
+- [x] Documentación: `docs/WALKING_SHAPES.md`
+
+### Tareas Completadas (2026-01-28 - Sesión 3)
+
+#### Fix C5 Shape - Dos Hermanas
+- [x] **Problema**: Shape C5 terminaba en Bellavista (lat 37.32) en lugar de Dos Hermanas (lat 37.28)
+- [x] **Solución**: Script `scripts/fix_c5_shape.py` genera shape completo segmento a segmento
+- [x] Usa OSRM como routing (BRouter retorna 500 actualmente)
+- [x] Shape generado: 2346 puntos, cubre todas las 13 paradas
+- [x] Actualiza 1044 trips
+
+**Uso:**
+```bash
+python scripts/fix_c5_shape.py --dry-run  # Preview
+python scripts/fix_c5_shape.py            # Aplicar
+```
+
 ### Tareas Pendientes
+
+#### Shapes Sevilla - Mejoras Futuras
+- [x] ~~Obtener geometría real de vías~~ ✅ Resuelto con BRouter rail routing
+- [ ] Mejorar T1 con tramo de túnel (actualmente usa superficie)
+- [ ] Contactar Renfe para shapes.txt con geometría real
+
+#### Matching Manual Intercambiadores (cuando el usuario esté listo)
 
 #### Matching Manual Intercambiadores (cuando el usuario esté listo)
 - [ ] Nuevos Ministerios (separar plataformas por líneas)
@@ -356,4 +437,12 @@ alembic/versions/028_add_coords_to_line_transfer.py                # Coords + di
 
 # Documentación
 docs/GTFS_OPERATORS_STATUS.md            # Estado de operadores
+docs/WALKING_SHAPES.md                   # Sistema de rutas peatonales
+
+# Walking Shapes
+adapters/http/api/gtfs/utils/walking_route.py  # Servicio OSRM/BRouter
+scripts/pregenerate_walking_shapes.py          # Pre-generación de rutas
+
+# Fix Shapes
+scripts/fix_c5_shape.py                        # Fix C5 Sevilla (Bellavista → Dos Hermanas)
 ```

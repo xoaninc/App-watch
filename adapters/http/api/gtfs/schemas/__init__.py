@@ -20,6 +20,7 @@ from .stop_schemas import (
     StopPlatformsResponse,
     CorrespondenceResponse,
     StopCorrespondencesResponse,
+    WalkingShapePoint,
 )
 
 from .departure_schemas import (
