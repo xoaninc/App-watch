@@ -422,17 +422,19 @@ class GTFSStore:
     def get_earliest_trip(
         self,
         pattern_id: str,
+        stop_index: int,
         min_departure: int,
         active_services: Set[str]
     ) -> Optional[str]:
-        """Encontrar el trip mas temprano en un PATTERN especifico.
+        """Encontrar el trip mas temprano en un PATTERN desde una parada especifica.
 
         Esta es la operacion mas frecuente en RAPTOR.
         Complejidad: O(n) donde n = trips en el pattern.
 
         Args:
             pattern_id: ID del pattern (ej: METRO_1_0)
-            min_departure: Tiempo minimo de salida (segundos desde medianoche)
+            stop_index: Indice de la parada en la secuencia del pattern (0, 1, 2...)
+            min_departure: Tiempo minimo de salida desde ESA parada
             active_services: Set de service_ids activos hoy
 
         Returns:
@@ -440,11 +442,20 @@ class GTFSStore:
         """
         trips = self.trips_by_pattern.get(pattern_id, [])
 
-        for departure_sec, trip_id in trips:
-            if departure_sec >= min_departure:
+        for _, trip_id in trips:
+            # Acceso directo por indice O(1)
+            # Todos los trips del pattern tienen la misma secuencia de paradas
+            try:
+                stop_time_data = self.stop_times_by_trip[trip_id][stop_index]
+                # stop_time_data es (stop_id, arrival, departure) -> index 2 es departure
+                real_departure = stop_time_data[2]
+            except (IndexError, KeyError):
+                continue
+
+            if real_departure >= min_departure:
                 # Verificar que el servicio esta activo
                 trip_info = self.trips_info.get(trip_id)
-                if trip_info and trip_info[2] in active_services:  # indice 2 = service_id
+                if trip_info and trip_info[2] in active_services:
                     return trip_id
 
         return None

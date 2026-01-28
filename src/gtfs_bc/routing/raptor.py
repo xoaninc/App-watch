@@ -215,14 +215,13 @@ class RaptorAlgorithm:
                 if not any(s in marked_stops for s in pattern_stops):
                     continue
 
-                # Get trips for this pattern
-                trips_list = self.store.trips_by_pattern.get(pattern_id, [])
-                if not trips_list:
+                # Skip if pattern has no trips
+                if not self.store.trips_by_pattern.get(pattern_id):
                     continue
 
                 # Scan this pattern
                 improved = self._scan_pattern(
-                    pattern_id, pattern_stops, trips_list,
+                    pattern_id, pattern_stops,
                     labels[k - 1], labels[k], best_arrival, marked_stops
                 )
                 new_marked_stops.update(improved)
@@ -256,7 +255,6 @@ class RaptorAlgorithm:
         self,
         pattern_id: str,
         pattern_stops: List[str],
-        trips_list: List[tuple],
         prev_labels: Dict[str, Label],
         curr_labels: Dict[str, Label],
         best_arrival: Dict[str, int],
@@ -267,7 +265,6 @@ class RaptorAlgorithm:
         Args:
             pattern_id: The pattern ID (e.g., "METRO_1_0")
             pattern_stops: List of stop_ids in order
-            trips_list: List of (departure_seconds, trip_id) tuples sorted by departure
             prev_labels: Labels from previous round
             curr_labels: Labels for current round (to update)
             best_arrival: Best arrival times across all rounds
@@ -301,9 +298,9 @@ class RaptorAlgorithm:
             if stop_id in prev_labels:
                 arrival_at_stop = prev_labels[stop_id].arrival_time
 
-                # Find earliest trip we can board at this stop
-                new_trip_id = self._find_earliest_trip_at_stop(
-                    trips_list, stop_id, idx, arrival_at_stop
+                # Find earliest trip we can board at this stop (usando Store)
+                new_trip_id = self.store.get_earliest_trip(
+                    pattern_id, idx, arrival_at_stop, self._active_services
                 )
 
                 if new_trip_id:
@@ -313,15 +310,12 @@ class RaptorAlgorithm:
                         boarding_stop_id = stop_id
                         boarding_stop_idx = idx
                         boarding_time = arrival_at_stop
-                    else:
-                        # Check if new trip arrives earlier at next stop
-                        if self._trip_arrives_earlier_at_idx(
-                            new_trip_id, current_trip_id, idx + 1, pattern_stops
-                        ):
-                            current_trip_id = new_trip_id
-                            boarding_stop_id = stop_id
-                            boarding_stop_idx = idx
-                            boarding_time = arrival_at_stop
+                    elif current_trip_id != new_trip_id:
+                        # Switch to new trip if different
+                        current_trip_id = new_trip_id
+                        boarding_stop_id = stop_id
+                        boarding_stop_idx = idx
+                        boarding_time = arrival_at_stop
 
             # If we're on a trip, check if we improve arrival at this stop
             if current_trip_id and boarding_stop_idx is not None and idx > boarding_stop_idx:
@@ -344,61 +338,6 @@ class RaptorAlgorithm:
                         improved_stops.add(stop_id)
 
         return improved_stops
-
-    def _find_earliest_trip_at_stop(
-        self,
-        trips_list: List[tuple],
-        stop_id: str,
-        stop_idx: int,
-        min_departure: int
-    ) -> Optional[str]:
-        """Find the earliest trip departing from a stop after a given time.
-
-        Args:
-            trips_list: List of (departure_seconds, trip_id) tuples sorted by departure
-            stop_id: The stop to board at
-            stop_idx: Index of the stop in the pattern
-            min_departure: Minimum departure time (seconds since midnight)
-
-        Returns:
-            The earliest valid trip_id, or None
-        """
-        for first_departure, trip_id in trips_list:
-            # Check if service is active
-            trip_info = self.store.get_trip_info(trip_id)
-            if not trip_info or trip_info[2] not in self._active_services:
-                continue
-
-            # Get stop times for this trip: [(stop_id, arrival_sec, departure_sec), ...]
-            stop_times = self.store.get_stop_times(trip_id)
-            if stop_idx >= len(stop_times):
-                continue
-
-            # Check departure at this specific stop
-            st_stop_id, _, departure_sec = stop_times[stop_idx]
-            if st_stop_id == stop_id and departure_sec >= min_departure:
-                return trip_id
-
-        return None
-
-    def _trip_arrives_earlier_at_idx(
-        self,
-        trip1_id: str,
-        trip2_id: str,
-        next_stop_idx: int,
-        pattern_stops: List[str]
-    ) -> bool:
-        """Check if trip1 arrives earlier than trip2 at the next stop."""
-        if next_stop_idx >= len(pattern_stops):
-            return False
-
-        next_stop = pattern_stops[next_stop_idx]
-        arr1 = self._get_trip_arrival(trip1_id, next_stop)
-        arr2 = self._get_trip_arrival(trip2_id, next_stop)
-
-        if arr1 is not None and arr2 is not None:
-            return arr1 < arr2
-        return False
 
     def _get_trip_arrival(self, trip_id: str, stop_id: str) -> Optional[int]:
         """Get arrival time at a stop for a trip.
