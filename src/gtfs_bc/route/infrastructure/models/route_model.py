@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Integer, ForeignKey
+from sqlalchemy import Column, String, Integer, Boolean, ForeignKey
 from sqlalchemy.orm import relationship
 from geoalchemy2 import Geometry
 from core.base import Base
@@ -20,6 +20,7 @@ class RouteModel(Base):
     description = Column(String(500), nullable=True)
     url = Column(String(500), nullable=True)
     sort_order = Column(Integer, nullable=True)
+    is_circular = Column(Boolean, default=False)  # True for circular lines (L6, L12, etc.)
 
     # Network relationship
     network_id = Column(String(20), ForeignKey("gtfs_networks.code", ondelete="SET NULL"), nullable=True, index=True)
