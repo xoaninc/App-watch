@@ -53,7 +53,7 @@ def upgrade():
     # Used in: Metro/static departures frequency calculation (500+ times/day)
     op.execute("""
         CREATE INDEX IF NOT EXISTS ix_route_frequency_route_day_time
-        ON gtfs_route_frequency (route_id, day_type, start_time)
+        ON gtfs_route_frequencies (route_id, day_type, start_time)
     """)
 
     # 4. Index for platform history (without headsign fallback)
@@ -121,6 +121,7 @@ def upgrade():
 
 def downgrade():
     """Remove query optimization indexes."""
+    # Note: DROP INDEX IF EXISTS is schema-independent
     op.execute("DROP INDEX IF EXISTS ix_stop_times_stop_departure_trip")
     op.execute("DROP INDEX IF EXISTS ix_routes_network_short_name")
     op.execute("DROP INDEX IF EXISTS ix_route_frequency_route_day_time")
