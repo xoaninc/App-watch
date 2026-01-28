@@ -40,12 +40,13 @@ def get_client_identifier(request: Request) -> str:
 
 # Initialize limiter with custom key function
 # Uses in-memory storage by default (suitable for single instance)
-# For Redis: storage_uri="redis://localhost:6379"
-redis_url = os.getenv("REDIS_URL", "memory://")
+# For Redis: Set RATE_LIMIT_STORAGE_URI=redis://localhost:6379
+# Note: REDIS_URL is used by Celery, separate env var for rate limiting
+rate_limit_storage = os.getenv("RATE_LIMIT_STORAGE_URI", "memory://")
 limiter = Limiter(
     key_func=get_client_identifier,
     default_limits=["200/minute"],  # Default limit for unlabeled endpoints
-    storage_uri=redis_url if "redis" in redis_url else "memory://",
+    storage_uri=rate_limit_storage,
     strategy="fixed-window",  # or "moving-window" for smoother limiting
 )
 
