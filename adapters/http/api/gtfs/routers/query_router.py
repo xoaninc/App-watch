@@ -144,10 +144,15 @@ def get_routes(
 
     if search:
         search_term = f"%{search}%"
+        # Use unaccent for accent-insensitive search
         query = query.filter(
             or_(
-                RouteModel.short_name.ilike(search_term),
-                RouteModel.long_name.ilike(search_term),
+                func.unaccent(func.lower(RouteModel.short_name)).like(
+                    func.unaccent(func.lower(search_term))
+                ),
+                func.unaccent(func.lower(RouteModel.long_name)).like(
+                    func.unaccent(func.lower(search_term))
+                ),
             )
         )
 
@@ -289,7 +294,12 @@ def get_stops(
 
     if search:
         search_term = f"%{search}%"
-        query = query.filter(StopModel.name.ilike(search_term))
+        # Use unaccent for accent-insensitive search (alcala matches Alcalá)
+        query = query.filter(
+            func.unaccent(func.lower(StopModel.name)).like(
+                func.unaccent(func.lower(search_term))
+            )
+        )
 
     if network_id:
         # Filter stops by ID prefix based on network
