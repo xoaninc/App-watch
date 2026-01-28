@@ -1163,6 +1163,21 @@ def get_stop_departures(
     if frequency_departures:
         departures.extend(frequency_departures)
 
+    # Deduplicate departures with same time/route/headsign (overlapping calendars in GTFS)
+    # Group by (departure_time, route_short_name, headsign) and keep one per group
+    # Prefer: 1) trips with realtime data, 2) any trip (first encountered)
+    seen_departures: dict = {}
+    for dep in departures:
+        key = (dep.departure_time, dep.route_short_name, dep.headsign)
+        if key not in seen_departures:
+            seen_departures[key] = dep
+        else:
+            # Keep the one with realtime data if available
+            existing = seen_departures[key]
+            if dep.delay_seconds is not None and existing.delay_seconds is None:
+                seen_departures[key] = dep
+    departures = list(seen_departures.values())
+
     # Sort by realtime departure (use realtime_minutes_until if available, else minutes_until)
     departures.sort(key=lambda d: d.realtime_minutes_until if d.realtime_minutes_until is not None else d.minutes_until)
 
