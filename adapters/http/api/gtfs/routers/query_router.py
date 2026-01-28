@@ -1899,7 +1899,20 @@ def get_route_shape(
         TripModel.shape_id.isnot(None)
     ).first()
 
-    if not trip or not trip.shape_id:
+    shape_id = trip.shape_id if trip else None
+
+    # If no trip with shape, try convention-based shape lookup for Metro Madrid
+    if not shape_id and route_id.startswith('METRO_'):
+        line_suffix = route_id.replace('METRO_', '')
+        convention_shape_id = f"METRO_MAD_{line_suffix}_BROUTER"
+        # Check if this shape exists
+        shape_exists = db.query(ShapePointModel).filter(
+            ShapePointModel.shape_id == convention_shape_id
+        ).first()
+        if shape_exists:
+            shape_id = convention_shape_id
+
+    if not shape_id:
         # No shape data for this route
         return RouteShapeResponse(
             route_id=route_id,
@@ -1910,13 +1923,13 @@ def get_route_shape(
     # Check if this is a variant route that needs combined shapes
     points = []
     if route_short in ('C4a', 'C4b', 'C8a', 'C8b'):
-        points = _get_combined_variant_shape(db, route_short, trip.shape_id)
+        points = _get_combined_variant_shape(db, route_short, shape_id)
 
     # If no combined shape (or not a variant), get regular shape
     if not points:
         shape_points = (
             db.query(ShapePointModel)
-            .filter(ShapePointModel.shape_id == trip.shape_id)
+            .filter(ShapePointModel.shape_id == shape_id)
             .order_by(ShapePointModel.sequence)
             .all()
         )
