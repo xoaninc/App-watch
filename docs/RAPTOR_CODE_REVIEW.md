@@ -419,6 +419,11 @@ Todos los bugs críticos corregidos. Deuda técnica documentada para v2.0.
 **Solución:** Script `generate_tranvia_sevilla_trips.py`
 **Resultado:** 636 trips, 4,452 stop_times generados
 
+### ✅ TRAM Barcelona - Correspondencia Francesc Macià
+**Problema:** Faltaba conexión del terminal Trambaix con FGC/Metro
+**Solución:** INSERT manual en stop_correspondence
+**Resultado:** 4 conexiones añadidas (Francesc Macià ↔ FGC Provença, Metro Diagonal)
+
 ### ⏳ Tranvía Vitoria - Known Issue (v1.1)
 **Estado:** Pendiente de integración
 **Razón:** Evitar conflictos con config.py del motor nuevo
