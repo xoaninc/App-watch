@@ -1,6 +1,6 @@
 # TODO - Tareas Pendientes
 
-**Última actualización:** 2026-01-27 06:00
+**Última actualización:** 2026-01-28 20:30
 
 ---
 
@@ -364,7 +364,7 @@ Extraídos desde OpenStreetMap usando Overpass API con shapes bidireccionales:
 | Optimizar queries con índices BD | Baja | ✅ **Migración 035** |
 | Rate limiting API | Media | ✅ **SlowAPI implementado** |
 | Ocupación en tiempo real | Media | ✅ **Implementado (TMB)** |
-| **Generar stop_times Metro Ligero MAD** | Baja | ⏳ Pendiente (ver sección abajo) |
+| **Metro Ligero MAD** | - | ✅ **Funciona** (3,001 trips con stop_times) |
 
 ---
 
@@ -528,31 +528,6 @@ sudo systemctl restart renfeserver
 ---
 
 ## ⏳ Tareas Pendientes de Baja Prioridad
-
-### Metro Ligero Madrid - Script de Generación de Stop Times
-
-**Estado:** ⏳ Pendiente (baja prioridad, el sistema funciona sin esto)
-
-**Problema:** Metro Ligero Madrid usa `frequencies.txt` en su GTFS en lugar de `stop_times.txt` completos. Actualmente tiene ~3,001 trips pero RAPTOR necesita stop_times individuales para cada trip para funcionar de forma óptima.
-
-**Solución necesaria:** Crear un script similar a:
-- `scripts/generate_metro_madrid_from_gtfs.py`
-- `scripts/generate_metro_sevilla_trips.py`
-
-**Líneas de Metro Ligero:**
-- ML1: Pinar de Chamartín ↔ Las Tablas
-- ML2: Colonia Jardín ↔ Estación de Aravaca
-- ML3: Colonia Jardín ↔ Puerta de Boadilla
-
-**Fuente GTFS:** CRTM (Consorcio Regional de Transportes de Madrid)
-- URL: `https://crtm.maps.arcgis.com/sharing/rest/content/items/5c7f2951962540d69ffe8f640d94c246/data`
-
-**Notas:**
-- El GTFS de CRTM incluye Metro Ligero junto con Metro Madrid
-- Hay que filtrar por `route_type` o `route_id` para separar Metro Ligero de Metro
-- Script debería generar ~3,000-5,000 trips con sus stop_times
-
----
 
 ### Scripts de Shapes de Sevilla (Experimentales)
 
@@ -751,7 +726,7 @@ ON CONFLICT (service_id) DO NOTHING;
 |-----|--------|-----------------|--------|
 | **Metro Sevilla** | `scripts/generate_metro_sevilla_trips.py` | ~3,340 | ✅ Script listo |
 | **Metro Madrid** | `scripts/generate_metro_madrid_from_gtfs.py` | ~21,574 | ✅ Script listo |
-| **Metro Ligero MAD** | Pendiente | - | ⏳ Por crear |
+| **Metro Ligero MAD** | N/A (GTFS completo) | 3,001 | ✅ Funciona |
 
 #### Metro Sevilla - Uso del Script
 
