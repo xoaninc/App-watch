@@ -856,6 +856,73 @@ struct JourneySegment: Codable {
 
 ---
 
+## 🔧 Deuda Técnica (v2.0)
+
+### Bugs Corregidos en v1.0 (referencia)
+
+| Bug | Archivo | Commit | Estado |
+|-----|---------|--------|--------|
+| Label copy perdiendo trip_id | `raptor.py:199` | `524e59d` | ✅ |
+| Tiempo fantasma walking legs | `raptor.py:437` | `524e59d` | ✅ |
+| boarding_time or 0 | `raptor.py:454` | `6f84cd2` | ✅ |
+| Infinite loop _reconstruct_legs | `raptor.py:426` | `d7fb325` | ✅ |
+| except Exception silencioso | `raptor_service.py:217` | `8dd26f4` | ✅ |
+
+### Código Muerto (eliminar en v2.0)
+
+| Archivo | Línea | Descripción |
+|---------|-------|-------------|
+| `raptor.py` | 34 | `WALKING_SPEED_KMH = 4.5` no usado |
+| `raptor_service.py` | 22 | `import normalize_shape` no usado |
+| `routing_schemas.py` | 120-155 | Schemas legacy backwards compatibility |
+
+### Imports Dentro de Funciones (ineficiencia mínima)
+
+| Archivo | Líneas | Import |
+|---------|--------|--------|
+| `raptor_service.py` | 269 | `haversine_distance` |
+| `query_router.py` | 1029, 1838, 1850 | `datetime` |
+| `query_router.py` | 1226 | `StopRouteSequenceModel` |
+| `query_router.py` | 1629-1630 | shapes utils |
+| `gtfs_rt_fetcher.py` | 435, 467, 523 | varios |
+
+### N+1 Queries (optimización moderada)
+
+| Archivo | Líneas | Descripción |
+|---------|--------|-------------|
+| `gtfs_rt_fetcher.py` | 208-209 | `_record_platform_history` |
+| `gtfs_rt_fetcher.py` | 470-505 | `_predict_platforms_from_history` |
+| `realtime_router.py` | 149-150 | Búsqueda vehículo en memoria |
+
+### Limitaciones Conocidas (v2.0)
+
+| Archivo | Descripción | Impacto |
+|---------|-------------|---------|
+| `holiday_utils.py:27-30` | Solo festivos Madrid hardcoded | Multi-región |
+| `estimated_positions.py` | Servicios nocturnos post-medianoche | Trenes noche |
+| `estimated_positions.py:191-192` | Interpolación lineal vs esférica | Mínimo |
+
+### Código Defensivo Redundante (bajo riesgo)
+
+| Archivo | Línea | Descripción |
+|---------|-------|-------------|
+| `gtfs_store.py` | 259 | `service_id = ... if row[2] else ""` |
+| `gtfs_store.py` | 285-286 | `arr_sec = row[2] or 0` (BD tiene NOT NULL) |
+| `raptor_service.py` | 89, 95-96 | Lat/lon 0,0 si falta parada |
+| `raptor_service.py` | 232 | Duración negativa si datos corruptos |
+
+### Archivos NO Revisados (v2.0)
+
+| Categoría | Archivos | Notas |
+|-----------|----------|-------|
+| Framework CQRS | `command_bus.py`, `query_bus.py` | No crítico para routing |
+| Importadores | ~20 scripts en `scripts/` | Solo se usan en import inicial |
+| Modelos secundarios | ~30 archivos | calendar, route, shape, agency, etc. |
+
+**Nota:** Estos archivos no afectan al routing RAPTOR. Son auxiliares.
+
+---
+
 **Última actualización:** 2026-01-28 por Claude (Dani)
 **Backend v1.0 CERRADO - Esperando desarrollo App iOS**
-**Ver `docs/RAPTOR_CODE_REVIEW.md` para detalles de la revisión de código**
+**Ver `docs/RAPTOR_CODE_REVIEW.md` para detalles completos de la revisión de código**
