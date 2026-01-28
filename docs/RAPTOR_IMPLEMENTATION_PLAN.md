@@ -778,10 +778,12 @@ Ver `docs/RAPTOR_CODE_REVIEW.md` para detalles completos.
 
 | Tarea | Prioridad | Notas |
 |-------|-----------|-------|
-| Tranvía Vitoria | Media | Único operador grande ausente |
+| ~~Tranvía Vitoria~~ | ~~Media~~ | ✅ Ya funciona (parte de Euskotren GTFS) |
 | Investigar API Valencia RT | Baja | Devuelve vacío |
 | Investigar CIVIS Madrid | Baja | Trenes especiales |
 | Índices BD optimización | Baja | Opcional si hay problemas rendimiento |
+
+**Nota Tranvía Vitoria:** Las líneas TG1, TG2, y 41 están importadas como parte del feed Euskotren. RAPTOR funciona correctamente usando los IDs de estación padre (`StopPlace`) que se resuelven automáticamente a las plataformas (`Quay`).
 
 ### Deuda Técnica (v2.0)
 
