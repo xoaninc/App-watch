@@ -1,6 +1,6 @@
 # TODO - Tareas Pendientes
 
-**Última actualización:** 2026-01-28 20:30
+**Última actualización:** 2026-01-28 21:15
 
 ---
 
@@ -564,30 +564,56 @@ sudo systemctl restart renfeserver
 
 ## ⏳ Tareas Pendientes de Baja Prioridad
 
-### 🐛 Bug Metro Madrid - stop_times incompletos (2026-01-28)
+### ✅ Bug Metro Madrid - stop_times CORREGIDO (2026-01-28)
 
-**Problema:** El RAPTOR no encuentra rutas directas en Metro Madrid porque faltan stop_times para muchas paradas.
+**Problema original:** El RAPTOR no encontraba rutas directas en Metro Madrid. Sol → Gran Vía (1 parada) devolvía 81 minutos con 2 transbordos.
 
-**Ejemplo:** Sol → Gran Vía (1 parada en L1) devuelve ruta de 81 minutos con 2 transbordos.
+**Causa raíz identificada:** El CRTM usa diferentes `stop_id` para la misma estación en diferentes líneas:
+- Gran Vía: `par_4_11` (L1) y `par_4_87` (L5)
+- Chamartín: `par_4_189` (L10) y `par_4_261` (L8)
+- Pacífico: `par_4_18` (L1) y `par_4_112` (L6)
 
-**Análisis de datos:**
+El script original hacía mapping simple `par_4_XXX` → `METRO_XXX`, creando stop_ids inexistentes.
 
-| Línea | Paradas con stop_times | Total | Missing | Estado |
-|-------|------------------------|-------|---------|--------|
-| L1 | 30 | 33 | 3 | ⚠️ (Gran Vía, Pacífico, Chamartín) |
-| L2 | 15 | 19 | 4 | ⚠️ |
-| **L3** | **0** | **19** | **19** | ❌ Sin datos |
-| L5 | 28 | 32 | 4 | ⚠️ |
-| **L10** | **12** | **31** | **19** | ❌ Muy incompleto |
-| L12 | 28 | 28 | 0 | ✅ OK |
+**Solución implementada:**
+1. **Mapping por nombre de estación** en vez de extracción de número
+2. **Función `build_stop_mapping()`** que normaliza nombres y mapea por coincidencia
+3. **288 de 290 paradas mapeadas** correctamente (2 sin match: San Bernardo no en stop_route_sequence)
 
-**Causa:** El GTFS de Metro Madrid (CRTM) tiene datos incompletos o el import falló.
+**Archivos modificados:**
+- `scripts/generate_metro_madrid_from_gtfs.py` - Nuevo sistema de mapping
+- `scripts/generate_metro_l3_trips.py` - Nuevo script para L3 (no en GTFS CRTM)
 
-**Solución necesaria:** Crear script `scripts/generate_metro_madrid_stop_times.py` similar a:
-- `scripts/generate_metro_sevilla_trips.py`
-- Usar `stop_route_sequence` + `frequencies` para generar stop_times
+**L3 añadida manualmente:**
+La L3 no está en el GTFS de CRTM (estaba cerrada por obras, ya reabierta). Script genera trips basándose en:
+- 19 paradas de `stop_route_sequence`
+- Frecuencias típicas de metro (3-7 min según hora)
+- 1,940 trips, 36,860 stop_times
 
-**Impacto:** Route planner falla para muchos viajes en Metro Madrid.
+**Resultado final:**
+```
+Sol → Gran Vía vía L1
+- Duración: 4 minutos
+- Transferencias: 0
+- Línea: L1 dirección Pinar de Chamartín
+```
+
+| Línea | Trips | Estado |
+|-------|-------|--------|
+| L1 | 1,610 | ✅ |
+| L2 | 1,822 | ✅ |
+| **L3** | **1,940** | ✅ **NUEVO** |
+| L4 | 1,646 | ✅ |
+| L5 | 1,482 | ✅ |
+| L6 | 1,592 | ✅ |
+| L7 | 2,348 | ✅ |
+| L8 | 1,568 | ✅ |
+| L9 | 2,282 | ✅ |
+| L10 | 2,830 | ✅ |
+| L11 | 1,252 | ✅ |
+| L12 | 1,226 | ✅ |
+| R | 1,512 | ✅ |
+| **Total** | **23,110** | ✅ |
 
 ---
 
@@ -913,7 +939,7 @@ curl "https://redcercanias.com/api/v1/gtfs/stops/RENFE_17000/departures?compact=
 - [x] ~~Investigar API Valencia tiempo real~~ → **Deshabilitado** (API devuelve vacío, problema del proveedor)
 - [x] ~~Investigar CTAN Andalucía~~ → Solo buses, no metros (documentado abajo)
 - [x] ~~Investigar servicio CIVIS Madrid~~ → **Implementado** (ver sección abajo)
-- [ ] **Bug Metro Madrid stop_times incompletos** → Ver sección abajo (prioridad alta)
+- [x] ~~**Bug Metro Madrid stop_times incompletos**~~ → ✅ **CORREGIDO** (mapping por nombre, L3 añadida)
 - [ ] Matching manual intercambiadores grandes
 - [x] ~~Mapear shapes OSM a route_ids existentes~~ ✅ Completado 2026-01-26
 
