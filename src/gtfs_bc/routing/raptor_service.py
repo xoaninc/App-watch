@@ -214,8 +214,9 @@ class RaptorService:
                     "active_until": alert.active_until.isoformat() if alert.active_until else None
                 })
             return result
-        except Exception:
-            # If alerts table doesn't exist or has different schema, return empty
+        except Exception as e:
+            # Log error but don't break route planning
+            print(f"⚠️ ALERTS SYSTEM ERROR: {e}")
             return []
 
     def _format_leg(self, leg: JourneyLeg, travel_date: date) -> dict:

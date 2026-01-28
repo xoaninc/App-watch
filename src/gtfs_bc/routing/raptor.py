@@ -193,10 +193,10 @@ class RaptorAlgorithm:
             if not marked_stops:
                 break
 
-            # Copy previous round's labels
+            # Copy previous round's labels (referencia directa, no crear objeto nuevo)
             for stop_id, label in labels[k - 1].items():
                 if stop_id not in labels[k] or label.arrival_time < labels[k][stop_id].arrival_time:
-                    labels[k][stop_id] = Label(arrival_time=label.arrival_time)
+                    labels[k][stop_id] = label
 
             new_marked_stops: Set[str] = set()
 
@@ -229,7 +229,9 @@ class RaptorAlgorithm:
             # Step 2: Process transfers (walking) - using GTFSStore tuples
             # Solo procesamos new_marked_stops (paradas mejoradas en ESTA ronda)
             # Las marked_stops ya tuvieron su fase de transbordos en la ronda anterior
-            for stop_id in new_marked_stops:
+            # IMPORTANTE: Copiamos el set porque lo modificamos durante la iteración
+            transfer_improved: Set[str] = set()
+            for stop_id in list(new_marked_stops):
                 if stop_id not in labels[k]:
                     continue
 
@@ -247,8 +249,9 @@ class RaptorAlgorithm:
                                 from_stop_id=stop_id
                             )
                             best_arrival[to_stop_id] = arrival_after_walk
-                            new_marked_stops.add(to_stop_id)
+                            transfer_improved.add(to_stop_id)
 
+            new_marked_stops.update(transfer_improved)
             marked_stops = new_marked_stops
 
         return labels
@@ -423,7 +426,16 @@ class RaptorAlgorithm:
         current_stop = destination_stop_id
         current_round = round_num
 
+        # Safety counter para evitar infinite loops con datos corruptos
+        safety_counter = 0
+        MAX_STEPS = 20  # 5 rondas * 2 tramos + margen
+
         while current_stop != origin_stop_id and current_round >= 0:
+            safety_counter += 1
+            if safety_counter > MAX_STEPS:
+                print(f"⚠️ Infinite loop detected reconstructing journey to {destination_stop_id}")
+                return []  # Abortar ruta corrupta
+
             if current_stop not in labels[current_round]:
                 break
 
@@ -433,8 +445,13 @@ class RaptorAlgorithm:
                 # Walking leg
                 from_stop = label.from_stop_id
                 if from_stop:
-                    # Get arrival time at from_stop
-                    from_arrival = labels[current_round].get(from_stop, Label(arrival_time=0)).arrival_time
+                    # Get arrival time at from_stop (validar existencia, no inventar 0)
+                    from_label = labels[current_round].get(from_stop)
+                    if not from_label:
+                        # Datos inconsistentes - saltar este leg
+                        current_stop = from_stop
+                        continue
+                    from_arrival = from_label.arrival_time
 
                     legs.append(JourneyLeg(
                         type="walking",
@@ -446,11 +463,11 @@ class RaptorAlgorithm:
                     current_stop = from_stop
             elif label.boarding_stop_id:
                 # Transit leg - use GTFSStore to get departure time
-                actual_departure = label.boarding_time or 0
+                actual_departure = None
                 headsign = None
 
                 if label.trip_id:
-                    # Get actual departure time from stop_times
+                    # Get actual departure time from stop_times (fuente de verdad)
                     dep_time = self._get_trip_departure(label.trip_id, label.boarding_stop_id)
                     if dep_time is not None:
                         actual_departure = dep_time
@@ -459,6 +476,16 @@ class RaptorAlgorithm:
                     trip_info = self.store.get_trip_info(label.trip_id)
                     if trip_info:
                         headsign = trip_info[1]  # index 1 is headsign
+
+                # Fallback a boarding_time del label si store no tiene dato
+                if actual_departure is None:
+                    actual_departure = label.boarding_time
+
+                # Si aún no tenemos tiempo, datos corruptos - skip leg
+                if actual_departure is None:
+                    current_stop = label.boarding_stop_id
+                    current_round -= 1
+                    continue
 
                 legs.append(JourneyLeg(
                     type="transit",
