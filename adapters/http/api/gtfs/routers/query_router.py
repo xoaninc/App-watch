@@ -57,9 +57,26 @@ from src.gtfs_bc.stop_route_sequence.infrastructure.models import StopRouteSeque
 from src.gtfs_bc.stop.infrastructure.models.stop_platform_model import StopPlatformModel
 from src.gtfs_bc.stop.infrastructure.models.stop_correspondence_model import StopCorrespondenceModel
 from src.gtfs_bc.routing import RaptorService
+from src.gtfs_bc.routing.gtfs_store import gtfs_store
 
 
 router = APIRouter(prefix="/gtfs", tags=["GTFS Query"])
+
+
+def resolve_stop_to_platforms(stop_id: str) -> List[str]:
+    """Resolve a parent station ID to its platform children.
+
+    If the stop_id is a parent station, returns its child platforms.
+    If it has no children (is already a platform or simple stop), returns [stop_id].
+
+    This is essential for networks like Metro Bilbao where stop_times
+    reference platform IDs (e.g., METRO_BILBAO_7.0) but users search
+    by station ID (e.g., METRO_BILBAO_7).
+    """
+    children = gtfs_store.get_children_stops(stop_id)
+    if children:
+        return children
+    return [stop_id]
 
 
 def _calculate_is_hub(stop: StopModel) -> bool:
@@ -1856,13 +1873,19 @@ def plan_route(
                 message=f"Invalid departure_time format: {departure_time}. Use HH:MM or ISO8601."
             )
 
+    # Resolve station IDs to platform IDs (for networks like Metro Bilbao)
+    # This handles cases where users search by station (METRO_BILBAO_7) but
+    # stop_times reference platforms (METRO_BILBAO_7.0)
+    real_origins = resolve_stop_to_platforms(from_stop)
+    real_destinations = resolve_stop_to_platforms(to_stop)
+
     # Initialize RAPTOR service
     raptor_service = RaptorService(db)
 
-    # Plan journey
+    # Plan journey (passing lists for multi-platform support)
     result = raptor_service.plan_journey(
-        origin_stop_id=from_stop,
-        destination_stop_id=to_stop,
+        origin_stop_id=real_origins,
+        destination_stop_id=real_destinations,
         departure_time=dep_time,
         travel_date=date.today(),
         max_transfers=max_transfers,

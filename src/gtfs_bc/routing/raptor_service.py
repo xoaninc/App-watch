@@ -12,7 +12,7 @@ Date: 2026-01-27
 
 import math
 from datetime import datetime, date, time, timedelta
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Union
 
 from sqlalchemy.orm import Session
 
@@ -299,8 +299,8 @@ class RaptorService:
 
     def plan_journey(
         self,
-        origin_stop_id: str,
-        destination_stop_id: str,
+        origin_stop_id: Union[str, List[str]],
+        destination_stop_id: Union[str, List[str]],
         departure_time: Optional[time] = None,
         travel_date: Optional[date] = None,
         max_transfers: int = 3,
@@ -309,8 +309,8 @@ class RaptorService:
         """Plan journeys between two stops.
 
         Args:
-            origin_stop_id: Starting stop ID
-            destination_stop_id: Destination stop ID
+            origin_stop_id: Starting stop ID or list of IDs (for multi-platform stations)
+            destination_stop_id: Destination stop ID or list of IDs
             departure_time: Departure time (defaults to now)
             travel_date: Travel date (defaults to today)
             max_transfers: Maximum transfers allowed
