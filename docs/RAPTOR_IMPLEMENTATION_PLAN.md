@@ -769,10 +769,10 @@ Ver `docs/RAPTOR_CODE_REVIEW.md` para detalles completos.
 
 ### ⚠️ BLOCKERS Seguridad (antes de producción real)
 
-| Tarea | Archivo | Solución |
-|-------|---------|----------|
-| **Rotar TMB API Keys** | `multi_operator_fetcher.py:48-51` | Mover a `.env`, rotar en panel TMB |
-| **Auth en /admin/reload-gtfs** | `app.py:77-103` | Añadir `x-admin-token` o bloquear en Nginx |
+| Tarea | Archivo | Solución | Estado |
+|-------|---------|----------|--------|
+| ~~TMB API Keys~~ | `multi_operator_fetcher.py` | Movidas a `.env` | ✅ HECHO |
+| **Auth en /admin/reload-gtfs** | `app.py:77-103` | Añadir `x-admin-token` o bloquear en Nginx | ⏳ |
 
 ### Tareas Menores (v1.1+)
 

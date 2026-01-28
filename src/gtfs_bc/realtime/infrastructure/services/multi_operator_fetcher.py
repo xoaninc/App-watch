@@ -45,9 +45,10 @@ from src.gtfs_bc.realtime.infrastructure.models import (
 logger = logging.getLogger(__name__)
 
 
-# TMB API credentials
-TMB_APP_ID = 'e76ae269'
-TMB_APP_KEY = '291c7f8027c5e684e010e6a54e76428c'
+# TMB API credentials (from environment variables)
+import os
+TMB_APP_ID = os.getenv('TMB_APP_ID', '')
+TMB_APP_KEY = os.getenv('TMB_APP_KEY', '')
 
 # Operator configurations with GTFS-RT endpoints
 GTFS_RT_OPERATORS = {

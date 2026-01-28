@@ -217,28 +217,19 @@ except Exception as e:
 
 ---
 
-## Seguridad - Claves Expuestas
+## Seguridad - Claves API
 
-### URGENTE: TMB API Keys públicas
+### TMB API Keys
 
-**Archivo:** `src/gtfs_bc/realtime/infrastructure/services/multi_operator_fetcher.py:48-51`
+**Archivo:** `src/gtfs_bc/realtime/infrastructure/services/multi_operator_fetcher.py`
+
+**Estado:** ✅ Movidas a variables de entorno (.env)
 
 ```python
-TMB_APP_ID = 'e76ae269'
-TMB_APP_KEY = '291c7f8027c5e684e010e6a54e76428c'
+import os
+TMB_APP_ID = os.getenv('TMB_APP_ID')
+TMB_APP_KEY = os.getenv('TMB_APP_KEY')
 ```
-
-**Estado:** EXPUESTAS en repositorio público de GitHub.
-
-**Acción requerida POST-TESTING:**
-1. Rotar claves en panel TMB (generar nuevas)
-2. Mover a variables de entorno:
-   ```python
-   import os
-   TMB_APP_ID = os.getenv('TMB_APP_ID')
-   TMB_APP_KEY = os.getenv('TMB_APP_KEY')
-   ```
-3. Añadir a `.env` (ya está en `.gitignore`)
 
 ### Claves NO expuestas (protegidas por .gitignore)
 
