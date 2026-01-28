@@ -748,6 +748,23 @@ Ver `docs/RAPTOR_CODE_REVIEW.md` para detalles completos.
 8. [x] **Correspondencias intercambiadores críticos**
 9. [x] **Code review y bug fixes**
 
+### ⚠️ BLOCKERS Producción (Seguridad)
+
+| Tarea | Archivo | Riesgo | Estado |
+|-------|---------|--------|--------|
+| **Rotar TMB API Keys** | `multi_operator_fetcher.py:48-51` | Keys expuestas en GitHub público | ⏳ POST-TESTING |
+| **Auth en /admin/reload-gtfs** | `app.py:77-103` | Vector DoS (cualquiera puede llamar) | ⏳ ANTES PROD |
+
+**Soluciones:**
+1. TMB Keys → Mover a `.env`, rotar en panel TMB
+2. Admin endpoint → Añadir header `x-admin-token` o bloquear en Nginx
+
+### Pre-Testing Checklist
+
+- [ ] Verificar `alembic current` = 033 (última migración)
+- [ ] Configurar `TZ=Europe/Madrid` en docker-compose.yml (opcional)
+- [ ] Tests de carga en localhost:8000
+
 ### Corto plazo (Fase 4 - App iOS)
 
 1. [ ] App: Migrar shapes (eliminar normalización local)
@@ -760,8 +777,31 @@ Ver `docs/RAPTOR_CODE_REVIEW.md` para detalles completos.
 1. [ ] Tranvía Vitoria
 2. [ ] Índices BD optimización
 3. [ ] Cache servicios activos
+4. [ ] Investigar API Valencia RT (devuelve vacío)
+5. [ ] Investigar CIVIS Madrid
+
+### Deuda Técnica (v2.0)
+
+| Archivo | Issue | Riesgo |
+|---------|-------|--------|
+| `raptor.py:34` | `WALKING_SPEED_KMH` no usado | Código muerto |
+| `raptor_service.py:22` | `import normalize_shape` no usado | Código muerto |
+| `routing_schemas.py:120-155` | Schemas legacy | Eliminar en v2.0 |
+| `holiday_utils.py:27-30` | Solo festivos Madrid | Limitación multi-región |
+| `estimated_positions.py` | Servicios nocturnos post-medianoche | Limitación |
+| `gtfs_rt_fetcher.py:470-505` | N+1 queries en predicción plataformas | Ineficiencia moderada |
+| Varios routers | Imports dentro de funciones | Ineficiencia mínima |
+
+### Archivos NO Revisados (v2.0)
+
+- [ ] Framework CQRS (`command_bus.py`, `query_bus.py`)
+- [ ] Importadores de datos (~20 scripts)
+- [ ] Modelos secundarios (~30 archivos)
+
+**Nota:** No son críticos para RAPTOR routing.
 
 ---
 
 **Última actualización:** 2026-01-28 por Claude (Dani)
 **v1.0 cerrada - Backend RAPTOR listo para producción**
+**Ver `docs/RAPTOR_CODE_REVIEW.md` para detalles completos de la revisión**
