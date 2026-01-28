@@ -86,14 +86,17 @@ GTFS_RT_OPERATORS = {
         'stop_id_prefix': 'FGC_',
         'trip_id_prefix': 'FGC_',
     },
-    'metrovalencia': {
-        'name': 'Metrovalencia',
-        'format': 'metrovalencia_api',
-        'stations_url': 'https://valencia.opendatasoft.com/api/explore/v2.1/catalog/datasets/fgv-estacions-estaciones/exports/json',
-        'realtime_url': 'https://geoportal.valencia.es/geoportal-services/api/v1/salidas-metro.json',
-        'stop_id_prefix': 'METROVALENCIA_',
-        'trip_id_prefix': 'METROVALENCIA_',
-    },
+    # NOTA: Metrovalencia deshabilitado - la API de geoportal.valencia.es devuelve vacío (2026-01-28)
+    # Contactar con FGV Valencia para información sobre nueva API de tiempo real
+    # Configuración preservada para futura implementación:
+    # 'metrovalencia': {
+    #     'name': 'Metrovalencia',
+    #     'format': 'metrovalencia_api',
+    #     'stations_url': 'https://valencia.opendatasoft.com/api/explore/v2.1/catalog/datasets/fgv-estacions-estaciones/exports/json',
+    #     'realtime_url': 'https://geoportal.valencia.es/geoportal-services/api/v1/salidas-metro.json',
+    #     'stop_id_prefix': 'METROVALENCIA_',
+    #     'trip_id_prefix': 'METROVALENCIA_',
+    # },
 }
 
 
@@ -221,8 +224,6 @@ class MultiOperatorFetcher:
                 results['alerts'] = await self._fetch_json_alerts(config)
             elif config['format'] == 'tmb_api':
                 results['trip_updates'] = await self._fetch_tmb_predictions(config)
-            elif config['format'] == 'metrovalencia_api':
-                results['trip_updates'] = await self._fetch_metrovalencia_predictions(config)
 
             logger.info(f"Fetched from {config['name']}: "
                        f"{results['vehicle_positions']} positions, "
@@ -262,8 +263,6 @@ class MultiOperatorFetcher:
                 results['alerts'] = self._fetch_json_alerts_sync(config)
             elif config['format'] == 'tmb_api':
                 results['trip_updates'] = self._fetch_tmb_predictions_sync(config)
-            elif config['format'] == 'metrovalencia_api':
-                results['trip_updates'] = self._fetch_metrovalencia_predictions_sync(config)
 
             logger.info(f"Fetched from {config['name']}: "
                        f"{results['vehicle_positions']} positions, "
@@ -1043,191 +1042,61 @@ class MultiOperatorFetcher:
         return count
 
     # -------------------------------------------------------------------------
-    # Metrovalencia API fetchers (Valencia Metro/Tram)
+    # Metrovalencia API fetchers (Valencia Metro/Tram) - DESHABILITADO
+    # -------------------------------------------------------------------------
+    #
+    # NOTA: Deshabilitado el 2026-01-28 porque la API de geoportal.valencia.es
+    # devuelve arrays vacíos para todas las estaciones.
+    #
+    # Investigación realizada:
+    # - Endpoint: https://geoportal.valencia.es/geoportal-services/api/v1/salidas-metro.json?estacion=XXX
+    # - Sin parámetro: HTTP 400 Bad Request
+    # - Con parámetro: {"salidasMetro":[]} (vacío para todas las estaciones)
+    # - Versión HTML también muestra "No hay paradas"
+    #
+    # Posibles causas:
+    # - FGV ha dejado de proporcionar datos en tiempo real por esta vía
+    # - El servicio está en mantenimiento indefinido
+    # - Han cambiado a una API privada/de pago
+    #
+    # Acción requerida:
+    # - Contactar con FGV Valencia (https://www.fgv.es) para obtener información
+    #   sobre la nueva API de tiempo real
+    #
+    # El código de parsing está preservado abajo (comentado) para cuando
+    # se reactive el servicio o se obtenga acceso a una nueva API.
     # -------------------------------------------------------------------------
 
-    async def _fetch_metrovalencia_predictions(self, config: dict) -> int:
-        """Fetch predictions from Metrovalencia (FGV Valencia) API."""
-        stations_url = config.get('stations_url')
-        realtime_url = config.get('realtime_url')
-        if not stations_url or not realtime_url:
-            return 0
-
-        async with httpx.AsyncClient() as client:
-            # First get all stations
-            stations_response = await client.get(stations_url, timeout=30.0)
-            stations_response.raise_for_status()
-            stations = stations_response.json()
-
-            # Then fetch real-time data for each station
-            return await self._fetch_metrovalencia_realtime_async(client, stations, realtime_url, config)
-
-    def _fetch_metrovalencia_predictions_sync(self, config: dict) -> int:
-        """Sync version of _fetch_metrovalencia_predictions."""
-        stations_url = config.get('stations_url')
-        realtime_url = config.get('realtime_url')
-        if not stations_url or not realtime_url:
-            return 0
-
-        # Get all stations from Valencia OpenData
-        stations_response = httpx.get(stations_url, timeout=30.0)
-        stations_response.raise_for_status()
-        stations = stations_response.json()
-
-        # Fetch real-time data for each station
-        return self._fetch_metrovalencia_realtime_sync(stations, realtime_url, config)
-
-    async def _fetch_metrovalencia_realtime_async(
-        self, client: httpx.AsyncClient, stations: List[dict], realtime_url: str, config: dict
-    ) -> int:
-        """Fetch real-time arrivals for all Metrovalencia stations (async)."""
-        prefix = config.get('stop_id_prefix', '')
-        count = 0
-
-        for station in stations:
-            station_code = station.get('codigo')
-            if not station_code:
-                continue
-
-            try:
-                response = await client.get(
-                    realtime_url,
-                    params={'estacion': station_code},
-                    timeout=10.0
-                )
-                response.raise_for_status()
-                data = response.json()
-
-                arrivals = data.get('salidasMetro', [])
-                count += self._parse_metrovalencia_arrivals(arrivals, station, config)
-
-            except Exception as e:
-                logger.debug(f"Error fetching Metrovalencia station {station_code}: {e}")
-
-        self.db.commit()
-        logger.info(f"Fetched {count} Metrovalencia predictions from {len(stations)} stations")
-        return count
-
-    def _fetch_metrovalencia_realtime_sync(
-        self, stations: List[dict], realtime_url: str, config: dict
-    ) -> int:
-        """Fetch real-time arrivals for all Metrovalencia stations (sync)."""
-        prefix = config.get('stop_id_prefix', '')
-        count = 0
-
-        for station in stations:
-            station_code = station.get('codigo')
-            if not station_code:
-                continue
-
-            try:
-                response = httpx.get(
-                    realtime_url,
-                    params={'estacion': station_code},
-                    timeout=10.0
-                )
-                response.raise_for_status()
-                data = response.json()
-
-                arrivals = data.get('salidasMetro', [])
-                count += self._parse_metrovalencia_arrivals(arrivals, station, config)
-
-            except Exception as e:
-                logger.debug(f"Error fetching Metrovalencia station {station_code}: {e}")
-
-        self.db.commit()
-        logger.info(f"Fetched {count} Metrovalencia predictions from {len(stations)} stations")
-        return count
-
-    def _parse_metrovalencia_arrivals(
-        self, arrivals: List[dict], station: dict, config: dict
-    ) -> int:
-        """Parse Metrovalencia arrivals and store in DB.
-
-        Expected arrival format (when API returns data):
-        {
-            "linea": "L3",
-            "destino": "Rafelbunyol",
-            "minutos": 5,
-            "via": 1,
-            ...
-        }
-
-        Note: As of 2026-01, the geoportal API returns empty data.
-        This parser is ready for when the API starts working.
-        """
-        prefix = config.get('stop_id_prefix', '')
-        station_code = station.get('codigo', '')
-        station_name = station.get('nombre', '')
-        station_line = station.get('linea', '')
-
-        stop_id = f"{prefix}{station_code}"
-        count = 0
-
-        for arrival in arrivals:
-            try:
-                line = arrival.get('linea', arrival.get('nom_linia', station_line))
-                destination = arrival.get('destino', arrival.get('desti', ''))
-                minutes = arrival.get('minutos', arrival.get('temps_restant'))
-                via = arrival.get('via', arrival.get('codi_via'))
-
-                if minutes is None:
-                    continue
-
-                # Convert minutes to seconds if needed
-                if isinstance(minutes, (int, float)) and minutes < 100:
-                    delay_seconds = int(minutes * 60)
-                else:
-                    delay_seconds = int(minutes)
-
-                # Create unique trip_id
-                trip_id = f"{prefix}{line}_{destination}_{station_code}"
-
-                # Delete existing stop time updates for this trip
-                self.db.query(StopTimeUpdateModel).filter(
-                    StopTimeUpdateModel.trip_id == trip_id
-                ).delete()
-
-                stmt = insert(TripUpdateModel).values(
-                    trip_id=trip_id,
-                    delay=delay_seconds,
-                    vehicle_id=f"{prefix}train_{line}",
-                    wheelchair_accessible=None,
-                    timestamp=datetime.utcnow(),
-                    updated_at=datetime.utcnow(),
-                )
-                stmt = stmt.on_conflict_do_update(
-                    index_elements=["trip_id"],
-                    set_={
-                        "delay": stmt.excluded.delay,
-                        "vehicle_id": stmt.excluded.vehicle_id,
-                        "timestamp": stmt.excluded.timestamp,
-                        "updated_at": stmt.excluded.updated_at,
-                    },
-                )
-                self.db.execute(stmt)
-
-                # Calculate arrival time
-                arrival_time = datetime.utcnow() + timedelta(seconds=delay_seconds)
-                platform = str(via) if via else None
-
-                stop_time_model = StopTimeUpdateModel(
-                    trip_id=trip_id,
-                    stop_id=stop_id,
-                    arrival_delay=delay_seconds,
-                    arrival_time=arrival_time,
-                    departure_delay=None,
-                    departure_time=None,
-                    platform=platform,
-                    headsign=destination,
-                )
-                self.db.add(stop_time_model)
-                count += 1
-
-            except Exception as e:
-                logger.warning(f"Error parsing Metrovalencia arrival: {e}")
-
-        return count
+    # async def _fetch_metrovalencia_predictions(self, config: dict) -> int:
+    #     """Fetch predictions from Metrovalencia (FGV Valencia) API."""
+    #     stations_url = config.get('stations_url')
+    #     realtime_url = config.get('realtime_url')
+    #     if not stations_url or not realtime_url:
+    #         return 0
+    #
+    #     async with httpx.AsyncClient() as client:
+    #         stations_response = await client.get(stations_url, timeout=30.0)
+    #         stations_response.raise_for_status()
+    #         stations = stations_response.json()
+    #         return await self._fetch_metrovalencia_realtime_async(client, stations, realtime_url, config)
+    #
+    # def _fetch_metrovalencia_predictions_sync(self, config: dict) -> int:
+    #     """Sync version of _fetch_metrovalencia_predictions."""
+    #     stations_url = config.get('stations_url')
+    #     realtime_url = config.get('realtime_url')
+    #     if not stations_url or not realtime_url:
+    #         return 0
+    #     stations_response = httpx.get(stations_url, timeout=30.0)
+    #     stations_response.raise_for_status()
+    #     stations = stations_response.json()
+    #     return self._fetch_metrovalencia_realtime_sync(stations, realtime_url, config)
+    #
+    # API response format (when working):
+    # {
+    #     "salidasMetro": [
+    #         {"linea": "L3", "destino": "Rafelbunyol", "minutos": 5, "via": 1}
+    #     ]
+    # }
 
 
 # CLI for testing

@@ -529,6 +529,29 @@ sudo systemctl restart renfeserver
 
 ## ⏳ Tareas Pendientes de Baja Prioridad
 
+### ❌ Valencia RT API - Deshabilitado (2026-01-28)
+
+**Estado:** Código comentado, API no funciona
+
+**Investigación realizada:**
+- Endpoint: `https://geoportal.valencia.es/geoportal-services/api/v1/salidas-metro.json?estacion=XXX`
+- Sin parámetro `estacion`: HTTP 400 Bad Request
+- Con parámetro: `{"salidasMetro":[]}` (vacío para TODAS las estaciones)
+- Versión HTML: "No hay paradas"
+
+**Causa:** FGV Valencia ha dejado de proporcionar datos RT por esta API pública
+
+**Acción requerida para reactivar:**
+1. Contactar con FGV Valencia (https://www.fgv.es)
+2. Preguntar por nueva API de tiempo real
+3. Si hay nueva API, descomentar código en `multi_operator_fetcher.py`
+
+**Código preservado en:** `src/gtfs_bc/realtime/infrastructure/services/multi_operator_fetcher.py`
+- Configuración comentada en `GTFS_RT_OPERATORS`
+- Métodos de parsing comentados al final del archivo
+
+---
+
 ### Scripts de Shapes de Sevilla (Experimentales)
 
 **Estado:** ⚠️ Scripts creados pero NO ejecutados en producción. Propósito: mejora futura de shapes.
@@ -787,7 +810,7 @@ curl "https://redcercanias.com/api/v1/gtfs/stops/RENFE_17000/departures?compact=
 
 ### Mejoras opcionales (baja prioridad)
 
-- [ ] Investigar API Valencia tiempo real (devuelve vacío)
+- [x] ~~Investigar API Valencia tiempo real~~ → **Deshabilitado** (API devuelve vacío, problema del proveedor)
 - [ ] Investigar servicio CIVIS Madrid
 - [ ] Matching manual intercambiadores grandes
 - [x] ~~Mapear shapes OSM a route_ids existentes~~ ✅ Completado 2026-01-26
