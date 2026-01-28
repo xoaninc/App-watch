@@ -234,10 +234,11 @@ Para ahorrar tiempo, inicialmente asumimos FIFO. Si hay tiempo en Hora 5, implem
 
 ### Criterio de exito
 - [x] `_scan_pattern` usa `store.stops_by_pattern` ✓ commit 670a501
-- [x] `_find_earliest_trip` trabaja con tuplas ✓ commit 670a501
-- [x] Verifica `active_services` con lazy check ✓ commit 670a501
+- [x] `_find_earliest_trip` trabaja con tuplas ✓ commit 90a6117
+- [x] Verifica `active_services` con lazy check ✓ commit 90a6117
+- [x] Bug FIFO corregido (no bajarse del tren rápido) ✓ commit f8e6154
 
-**PENDIENTE REVISIÓN DEL USUARIO**
+**REVISADO Y APROBADO**
 
 ---
 
@@ -278,8 +279,8 @@ curl http://localhost:8080/health
 ```
 
 ### Criterio de exito
-- [ ] Health check retorna `loaded: true`
-- [ ] Journey legs tienen headsign y route info
+- [x] Health check retorna `loaded: true` ✓ app.py:47-74
+- [x] Journey legs tienen headsign y route info ✓ raptor.py + raptor_service.py
 
 ---
 
@@ -383,8 +384,8 @@ ssh root@juanmacias.com "systemctl restart renfeserver"
 
 - [x] Hora 1: GTFSStore con patterns - commit 596d267
 - [x] Hora 2: raptor.py sin SQL - commit f6f2cf3
-- [ ] Hora 3: _scan_pattern ajustado - commit 670a501 (pendiente revisión)
-- [ ] Hora 4: Integracion OK - commit
+- [x] Hora 3: _scan_pattern ajustado - commits 90a6117, f8e6154
+- [x] Hora 4: Integracion OK - verificado
 - [ ] Hora 5: Tests OK
 - [ ] Hora 6: Deploy exitoso
 - [ ] Documentacion actualizada
