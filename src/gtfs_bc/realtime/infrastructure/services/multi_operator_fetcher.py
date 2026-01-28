@@ -157,37 +157,37 @@ class MultiOperatorFetcher:
         headsign: Optional[str],
         operator_prefix: str
     ) -> None:
-        """Record platform usage for learning predictions (daily data)."""
+        """Record platform usage for learning predictions (daily data).
+
+        Uses UPSERT (ON CONFLICT DO UPDATE) to avoid race conditions.
+        """
         try:
             if not route_short_name:
                 return
 
             headsign = headsign or "Unknown"
             today = date.today()
+            now = datetime.utcnow()
 
-            # Check if this combination already exists for today
-            existing = self.db.query(PlatformHistoryModel).filter(
-                PlatformHistoryModel.stop_id == stop_id,
-                PlatformHistoryModel.route_short_name == route_short_name,
-                PlatformHistoryModel.headsign == headsign,
-                PlatformHistoryModel.platform == platform,
-                PlatformHistoryModel.observation_date == today,
-            ).first()
-
-            if existing:
-                existing.count += 1
-                existing.last_seen = datetime.utcnow()
-            else:
-                new_record = PlatformHistoryModel(
-                    stop_id=stop_id,
-                    route_short_name=route_short_name,
-                    headsign=headsign,
-                    platform=platform,
-                    count=1,
-                    observation_date=today,
-                    last_seen=datetime.utcnow(),
-                )
-                self.db.add(new_record)
+            # Use UPSERT to avoid race conditions
+            from sqlalchemy.dialects.postgresql import insert
+            stmt = insert(PlatformHistoryModel).values(
+                stop_id=stop_id,
+                route_short_name=route_short_name,
+                headsign=headsign,
+                platform=platform,
+                count=1,
+                observation_date=today,
+                last_seen=now,
+            )
+            stmt = stmt.on_conflict_do_update(
+                constraint='uq_platform_history_business_key',
+                set_={
+                    'count': PlatformHistoryModel.count + 1,
+                    'last_seen': now,
+                }
+            )
+            self.db.execute(stmt)
         except Exception as e:
             logger.warning(f"Error recording platform history for {operator_prefix}: {e}")
 
