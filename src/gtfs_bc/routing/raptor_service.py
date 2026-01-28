@@ -20,6 +20,7 @@ from src.gtfs_bc.routing.raptor import RaptorAlgorithm, Journey, JourneyLeg
 from src.gtfs_bc.routing.gtfs_store import gtfs_store
 from src.gtfs_bc.realtime.infrastructure.models.alert import AlertModel
 from adapters.http.api.gtfs.utils.shape_utils import normalize_shape
+from adapters.http.api.gtfs.utils.text_utils import normalize_headsign
 
 
 def calculate_heading(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
@@ -243,7 +244,7 @@ class RaptorService:
             result["line_id"] = leg.route_id
             result["line_name"] = route_info[0] if route_info else ""
             result["line_color"] = route_info[1] if route_info and route_info[1] else "888888"
-            result["headsign"] = leg.headsign or (trip_info[1] if trip_info else "")
+            result["headsign"] = normalize_headsign(leg.headsign or (trip_info[1] if trip_info else ""))
             result["intermediate_stops"] = [
                 self._format_stop(stop_id) for stop_id in leg.intermediate_stops
             ]
