@@ -1,6 +1,9 @@
 from pathlib import Path
-
 import os
+
+from dotenv import load_dotenv
+load_dotenv()  # Load .env file for ADMIN_TOKEN and other env vars
+
 from fastapi import FastAPI, BackgroundTasks, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
