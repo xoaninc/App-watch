@@ -361,8 +361,52 @@ Extraídos desde OpenStreetMap usando Overpass API con shapes bidireccionales:
 | **Generar stop_times Metro Madrid** | Alta | ✅ Ejecutado en producción |
 | **Generar stop_times Metro Sevilla** | Alta | ✅ Ejecutado en producción |
 | **Vincular shapes Metro Madrid** | Media | ✅ 19,658 trips (2026-01-27) |
-| Optimizar queries con índices BD | Baja | ⏳ Opcional |
+| Optimizar queries con índices BD | Baja | ✅ **Migración 035** |
 | **Generar stop_times Metro Ligero MAD** | Baja | ⏳ Pendiente (ver sección abajo) |
+
+---
+
+## ✅ Optimización de Índices BD (2026-01-28)
+
+### Migración 035: Query Optimization Indexes
+
+**Estado:** ✅ Migración creada, pendiente de ejecutar en producción
+
+**Índices creados (10 nuevos):**
+
+| Índice | Tabla | Columnas | Uso |
+|--------|-------|----------|-----|
+| `ix_stop_times_stop_departure_trip` | gtfs_stop_times | (stop_id, departure_seconds, trip_id) | Departures query |
+| `ix_routes_network_short_name` | gtfs_routes | (network_id, short_name) | Routes filtering |
+| `ix_route_frequency_route_day_time` | gtfs_route_frequency | (route_id, day_type, start_time) | Frequency lookups |
+| `ix_platform_history_stop_route_date` | gtfs_rt_platform_history | (stop_id, route_short_name, observation_date) | Platform prediction |
+| `ix_stop_time_updates_stop_trip` | gtfs_rt_stop_time_updates | (stop_id, trip_id) | RT delay lookups |
+| `ix_trips_route_service` | gtfs_trips | (route_id, service_id) | Estimated positions |
+| `ix_stop_route_sequence_stop` | gtfs_stop_route_sequence | (stop_id, route_id, sequence) | Reverse route lookup |
+| `ix_calendar_date_range` | gtfs_calendar | (start_date, end_date) | Calendar filtering |
+| `ix_calendar_dates_date_exception` | gtfs_calendar_dates | (date, exception_type) | Service exceptions |
+| `ix_stops_location_parent` | gtfs_stops | (location_type, parent_station_id) | Station filtering |
+
+**Índices existentes (migración 033):**
+- `ix_trips_service_id` - gtfs_trips (service_id)
+- `ix_stop_times_trip_sequence` - gtfs_stop_times (trip_id, stop_sequence)
+- `ix_stop_correspondence_from_stop` - stop_correspondence (from_stop_id)
+- `ix_calendar_dates_service` - gtfs_calendar_dates (service_id)
+- `ix_stop_times_stop_departure` - gtfs_stop_times (stop_id, departure_seconds)
+
+**Impacto estimado:**
+- Departures endpoint: ~800ms → ~100ms (10x mejora)
+- Routes endpoint: ~200ms → ~30ms (7x mejora)
+- Calendar filtering: ~100ms → ~10ms (10x mejora)
+
+**Ejecución:**
+```bash
+# En producción
+cd /var/www/renfeserver
+source venv/bin/activate
+alembic upgrade head
+sudo systemctl restart renfeserver
+```
 
 ---
 
