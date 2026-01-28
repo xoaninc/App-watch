@@ -19,6 +19,7 @@ from adapters.http.api.gtfs.utils.occupancy_utils import (
     parse_occupancy_per_car,
     estimate_occupancy_by_time,
 )
+from adapters.http.api.gtfs.utils.civis_utils import detect_civis
 from adapters.http.api.gtfs.schemas import (
     RouteResponse,
     RouteFrequencyResponse,
@@ -928,6 +929,20 @@ def get_stop_departures(
     # Get trip IDs for realtime delay lookup
     trip_ids = [trip.id for _, trip, _ in results]
 
+    # Get stop count per trip (for CIVIS express detection)
+    trip_stop_counts = {}
+    if trip_ids:
+        stop_count_query = (
+            db.query(
+                StopTimeModel.trip_id,
+                func.count(StopTimeModel.stop_id).label("stop_count")
+            )
+            .filter(StopTimeModel.trip_id.in_(trip_ids))
+            .group_by(StopTimeModel.trip_id)
+            .all()
+        )
+        trip_stop_counts = {row.trip_id: row.stop_count for row in stop_count_query}
+
     # Get last stop names for trips (to use as headsign when trip.headsign is null)
     # The headsign should be the final destination of the train
     last_stop_names = {}
@@ -1168,11 +1183,21 @@ def get_stop_departures(
             occupancy_status = percentage_to_status(occ_pct)
             occupancy_per_car = parse_occupancy_per_car(occ_per_car_json)
 
+        # Detect CIVIS express service (Madrid Cercanías semi-direct trains)
+        stop_count = trip_stop_counts.get(trip.id, 0)
+        route_short = route.short_name.strip() if route.short_name else ""
+        is_express, express_name, express_color = detect_civis(
+            route_id=route.id,
+            route_short_name=route_short,
+            stop_count=stop_count,
+            network_id=route.network_id
+        )
+
         departures.append(
             DepartureResponse(
                 trip_id=trip.id,
                 route_id=route.id,
-                route_short_name=route.short_name.strip() if route.short_name else "",
+                route_short_name=route_short,
                 route_color=route.color,
                 headsign=headsign,
                 departure_time=stop_time.departure_time,
@@ -1189,6 +1214,9 @@ def get_stop_departures(
                 occupancy_status=occupancy_status,
                 occupancy_percentage=occupancy_percent,
                 occupancy_per_car=occupancy_per_car,
+                is_express=is_express,
+                express_name=express_name,
+                express_color=express_color,
             )
         )
 
@@ -1231,6 +1259,8 @@ def get_stop_departures(
                 plat=d.platform,
                 delay=d.is_delayed,
                 occ=d.occupancy_status,
+                exp=d.is_express,
+                exp_color=d.express_color,
             )
             for d in departures
         ]

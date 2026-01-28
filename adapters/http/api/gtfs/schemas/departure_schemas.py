@@ -43,6 +43,10 @@ class DepartureResponse(BaseModel):
     occupancy_status: Optional[int] = None
     occupancy_percentage: Optional[int] = None  # 0-100
     occupancy_per_car: Optional[List[int]] = None  # Per-carriage occupancy
+    # Express service info (CIVIS semi-direct trains)
+    is_express: bool = False
+    express_name: Optional[str] = None  # "CIVIS" for Madrid Cercanías
+    express_color: Optional[str] = None  # "#2596be" for CIVIS
 
 
 class CompactDepartureResponse(BaseModel):
@@ -54,6 +58,8 @@ class CompactDepartureResponse(BaseModel):
     plat: Optional[str] = None  # platform
     delay: bool = False  # is_delayed
     occ: Optional[int] = None  # occupancy_status (0-8)
+    exp: bool = False  # is_express (CIVIS)
+    exp_color: Optional[str] = None  # express_color "#2596be"
 
 
 class TripStopResponse(BaseModel):
