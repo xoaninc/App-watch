@@ -125,20 +125,98 @@ def seconds_to_time_str(secs: int) -> str:
     return f"{hours:02d}:{mins:02d}:{seconds:02d}"
 
 
-def map_gtfs_stop_to_our_stop(gtfs_stop_id: str) -> Optional[str]:
-    """Map GTFS stop_id (par_4_XXX) to our stop_id (METRO_XXX).
+# Global mapping from CRTM stop_ids to our canonical stop_ids
+# Will be populated by build_stop_mapping()
+CRTM_TO_OUR_STOP_MAPPING: Dict[str, str] = {}
 
-    GTFS format: par_4_XXX where XXX is the station number
-    Our format: METRO_XXX
+
+def normalize_stop_name(name: str) -> str:
+    """Normalize station name for matching."""
+    n = name.upper().strip()
+    # Remove accents
+    replacements = {'Á': 'A', 'É': 'E', 'Í': 'I', 'Ó': 'O', 'Ú': 'U', 'Ñ': 'N'}
+    for old, new in replacements.items():
+        n = n.replace(old, new)
+    # Normalize punctuation and whitespace
+    n = n.replace('-', ' ').replace("'", '').replace("'", '')
+    n = ' '.join(n.split())
+    return n
+
+
+def build_stop_mapping(zip_path: str, db) -> Dict[str, str]:
+    """Build mapping from CRTM stop_ids to our canonical stop_ids.
+
+    CRTM uses different stop_ids for the same station on different lines:
+    - Gran Vía: par_4_11 (L1) and par_4_87 (L5) -> both should map to METRO_87
+    - Chamartín: par_4_189 (L10) and par_4_261 (L8) -> both should map to METRO_189
+
+    This function builds the mapping by matching station NAMES.
+    """
+    logger.info("Building CRTM -> Our stop mapping...")
+
+    # Load CRTM stops from GTFS
+    crtm_stops = {}  # {stop_id: stop_name}
+    with zipfile.ZipFile(zip_path, 'r') as zf:
+        with zf.open('stops.txt') as f:
+            reader = csv.DictReader(TextIOWrapper(f, encoding='utf-8-sig'))
+            for row in reader:
+                stop_id = row['stop_id'].strip()
+                if stop_id.startswith('par_4_'):
+                    crtm_stops[stop_id] = row['stop_name'].strip()
+
+    logger.info(f"  CRTM metro stops: {len(crtm_stops)}")
+
+    # Load our Metro Madrid stops
+    result = db.execute(text('''
+        SELECT DISTINCT s.id, s.name
+        FROM gtfs_stops s
+        JOIN gtfs_stop_route_sequence srs ON s.id = srs.stop_id
+        JOIN gtfs_routes r ON srs.route_id = r.id
+        WHERE r.id IN (
+            'METRO_1', 'METRO_2', 'METRO_3', 'METRO_4', 'METRO_5',
+            'METRO_6', 'METRO_7', 'METRO_8', 'METRO_9', 'METRO_10',
+            'METRO_11', 'METRO_12', 'METRO_R'
+        )
+    ''')).fetchall()
+
+    # Build name -> our_id lookup (normalized)
+    our_stops_by_name = {}
+    for row in result:
+        normalized = normalize_stop_name(row[1])
+        our_stops_by_name[normalized] = row[0]
+
+    logger.info(f"  Our Metro Madrid stops: {len(our_stops_by_name)}")
+
+    # Build mapping
+    mapping = {}
+    unmatched = []
+
+    for crtm_id, crtm_name in crtm_stops.items():
+        normalized = normalize_stop_name(crtm_name)
+        if normalized in our_stops_by_name:
+            mapping[crtm_id] = our_stops_by_name[normalized]
+        else:
+            unmatched.append((crtm_id, crtm_name))
+
+    logger.info(f"  Matched: {len(mapping)}, Unmatched: {len(unmatched)}")
+
+    if unmatched:
+        logger.warning(f"  Unmatched CRTM stops: {unmatched}")
+
+    return mapping
+
+
+def map_gtfs_stop_to_our_stop(gtfs_stop_id: str) -> Optional[str]:
+    """Map GTFS stop_id (par_4_XXX) to our canonical stop_id (METRO_XXX).
+
+    Uses the pre-built CRTM_TO_OUR_STOP_MAPPING which matches by station name
+    to handle the case where CRTM uses different IDs for the same station
+    on different lines.
     """
     if not gtfs_stop_id or not gtfs_stop_id.startswith('par_4_'):
         return None
 
-    try:
-        num = gtfs_stop_id.replace('par_4_', '')
-        return f"METRO_{num}"
-    except (ValueError, IndexError):
-        return None
+    return CRTM_TO_OUR_STOP_MAPPING.get(gtfs_stop_id)
 
 
 def parse_gtfs(zip_path: str) -> Tuple[Dict, Dict]:
@@ -589,22 +667,29 @@ def main():
     else:
         zip_path = download_gtfs(GTFS_URL)
 
-    # Parse GTFS
-    templates, frequencies = parse_gtfs(zip_path)
-
-    if args.analyze:
-        analyze_gtfs(templates, frequencies)
-        sys.exit(0)
-
-    if args.dry_run:
-        logger.info("[DRY RUN MODE - no database changes]")
-        analyze_gtfs(templates, frequencies)
-        sys.exit(0)
-
-    # Connect to database
+    # Connect to database to build stop mapping
+    # (needed before parsing GTFS since parse uses map_gtfs_stop_to_our_stop)
     db = SessionLocal()
 
     try:
+        # Build the CRTM -> Our stop mapping by matching station names
+        global CRTM_TO_OUR_STOP_MAPPING
+        CRTM_TO_OUR_STOP_MAPPING = build_stop_mapping(zip_path, db)
+
+        # Parse GTFS
+        templates, frequencies = parse_gtfs(zip_path)
+
+        if args.analyze:
+            analyze_gtfs(templates, frequencies)
+            db.close()
+            sys.exit(0)
+
+        if args.dry_run:
+            logger.info("[DRY RUN MODE - no database changes]")
+            analyze_gtfs(templates, frequencies)
+            db.close()
+            sys.exit(0)
+
         start_time = datetime.now()
 
         # Verify our stops exist
