@@ -72,8 +72,10 @@ METRO_SEQUENCES = {
 # Route metadata updates
 ROUTE_METADATA = {
     'METRO_7': {'long_name': 'Estadio Metropolitano - Pitis'},
+    'METRO_7B': {'long_name': 'MetroEste'},
+    'METRO_9B': {'long_name': 'TFM'},
     'METRO_10': {'long_name': 'Puerta del Sur - Tres Olivos'},
-    'METRO_10B': {'long_name': 'Tres Olivos - Hospital Infanta Sofía'},
+    'METRO_10B': {'long_name': 'MetroNorte'},
     'METRO_12': {'long_name': 'MetroSur'},
     'METRO_R': {'long_name': 'Ramal'},
 }
