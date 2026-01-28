@@ -21,6 +21,10 @@ from .stop_schemas import (
     CorrespondenceResponse,
     StopCorrespondencesResponse,
     WalkingShapePoint,
+    AccessResponse,
+    StopAccessesResponse,
+    VestibuleResponse,
+    StopVestibulesResponse,
 )
 
 from .departure_schemas import (
@@ -87,6 +91,10 @@ REQUIRED_SCHEMAS = [
     "StopPlatformsResponse",
     "CorrespondenceResponse",
     "StopCorrespondencesResponse",
+    "AccessResponse",
+    "StopAccessesResponse",
+    "VestibuleResponse",
+    "StopVestibulesResponse",
     # Departure schemas
     "TrainPositionSchema",
     "DepartureResponse",

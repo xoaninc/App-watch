@@ -35,6 +35,10 @@ from adapters.http.api.gtfs.schemas import (
     CorrespondenceResponse,
     StopCorrespondencesResponse,
     WalkingShapePoint,
+    AccessResponse,
+    StopAccessesResponse,
+    VestibuleResponse,
+    StopVestibulesResponse,
     TrainPositionSchema,
     DepartureResponse,
     CompactDepartureResponse,
@@ -68,6 +72,8 @@ from src.gtfs_bc.realtime.infrastructure.services.gtfs_rt_fetcher import GTFSRea
 from src.gtfs_bc.stop_route_sequence.infrastructure.models import StopRouteSequenceModel
 from src.gtfs_bc.stop.infrastructure.models.stop_platform_model import StopPlatformModel
 from src.gtfs_bc.stop.infrastructure.models.stop_correspondence_model import StopCorrespondenceModel
+from src.gtfs_bc.stop.infrastructure.models.stop_access_model import StopAccessModel
+from src.gtfs_bc.stop.infrastructure.models.stop_vestibule_model import StopVestibuleModel
 from src.gtfs_bc.routing import RaptorService
 from src.gtfs_bc.routing.gtfs_store import gtfs_store
 
@@ -2011,6 +2017,100 @@ def get_stop_platforms(
         stop_id=stop_id,
         stop_name=stop.name,
         platforms=platform_responses
+    )
+
+
+@router.get("/stops/{stop_id}/accesses", response_model=StopAccessesResponse)
+def get_stop_accesses(
+    stop_id: str,
+    db: Session = Depends(get_db),
+):
+    """Get access points (entrances/exits) for a stop.
+
+    Returns all physical entrances to the station at street level,
+    including their addresses, coordinates, and operating hours.
+
+    Example: Sol station has ~10 different entrances on different streets.
+    """
+    # Get stop name
+    stop = db.query(StopModel).filter(StopModel.id == stop_id).first()
+    if not stop:
+        raise HTTPException(status_code=404, detail=f"Stop {stop_id} not found")
+
+    # Get all accesses for this stop
+    accesses = db.query(StopAccessModel).filter(
+        StopAccessModel.stop_id == stop_id
+    ).order_by(StopAccessModel.name).all()
+
+    # Build response, converting time objects to strings
+    access_responses = []
+    for a in accesses:
+        access_responses.append(AccessResponse(
+            id=a.id,
+            stop_id=a.stop_id,
+            name=a.name,
+            lat=a.lat,
+            lon=a.lon,
+            street=a.street,
+            street_number=a.street_number,
+            opening_time=str(a.opening_time) if a.opening_time else None,
+            closing_time=str(a.closing_time) if a.closing_time else None,
+            wheelchair=a.wheelchair,
+            level=a.level,
+            source=a.source,
+        ))
+
+    return StopAccessesResponse(
+        stop_id=stop_id,
+        stop_name=stop.name,
+        accesses=access_responses
+    )
+
+
+@router.get("/stops/{stop_id}/vestibules", response_model=StopVestibulesResponse)
+def get_stop_vestibules(
+    stop_id: str,
+    db: Session = Depends(get_db),
+):
+    """Get vestibules (internal lobbies) for a stop.
+
+    Returns all internal vestibules at the station, typically located
+    underground between the entrance and the platforms.
+
+    Includes information about turnstiles, operating hours, and accessibility.
+    """
+    # Get stop name
+    stop = db.query(StopModel).filter(StopModel.id == stop_id).first()
+    if not stop:
+        raise HTTPException(status_code=404, detail=f"Stop {stop_id} not found")
+
+    # Get all vestibules for this stop
+    vestibules = db.query(StopVestibuleModel).filter(
+        StopVestibuleModel.stop_id == stop_id
+    ).order_by(StopVestibuleModel.name).all()
+
+    # Build response, converting time objects to strings
+    vestibule_responses = []
+    for v in vestibules:
+        vestibule_responses.append(VestibuleResponse(
+            id=v.id,
+            stop_id=v.stop_id,
+            name=v.name,
+            lat=v.lat,
+            lon=v.lon,
+            level=v.level,
+            vestibule_type=v.vestibule_type,
+            turnstile_type=v.turnstile_type,
+            opening_time=str(v.opening_time) if v.opening_time else None,
+            closing_time=str(v.closing_time) if v.closing_time else None,
+            wheelchair=v.wheelchair,
+            source=v.source,
+        ))
+
+    return StopVestibulesResponse(
+        stop_id=stop_id,
+        stop_name=stop.name,
+        vestibules=vestibule_responses
     )
 
 
