@@ -26,6 +26,7 @@ from adapters.http.api.gtfs.schemas import (
     StopCorrespondencesResponse,
     TrainPositionSchema,
     DepartureResponse,
+    CompactDepartureResponse,
     TripStopResponse,
     TripDetailResponse,
     AgencyResponse,
@@ -717,16 +718,19 @@ def _get_frequency_based_departures(
     return departures[:limit]
 
 
-@router.get("/stops/{stop_id}/departures", response_model=List[DepartureResponse])
+@router.get("/stops/{stop_id}/departures")
 def get_stop_departures(
     stop_id: str,
     route_id: Optional[str] = Query(None, description="Filter by route ID"),
     limit: int = Query(20, ge=1, le=100, description="Maximum results"),
+    compact: bool = Query(False, description="Return compact response for widgets/Siri"),
     db: Session = Depends(get_db),
 ):
     """Get upcoming departures from a stop.
 
     Returns the next departures from this stop, filtered by current time and active services.
+
+    Use `?compact=true` for a minimal response suitable for widgets (<100 bytes per departure).
     """
     # Verify stop exists
     stop = db.query(StopModel).filter(StopModel.id == stop_id).first()
@@ -1145,7 +1149,23 @@ def get_stop_departures(
     # Sort by realtime departure (use realtime_minutes_until if available, else minutes_until)
     departures.sort(key=lambda d: d.realtime_minutes_until if d.realtime_minutes_until is not None else d.minutes_until)
 
-    return departures[:limit]
+    departures = departures[:limit]
+
+    # Return compact response if requested (for widgets/Siri)
+    if compact:
+        return [
+            CompactDepartureResponse(
+                line=d.route_short_name,
+                color=d.route_color,
+                dest=d.headsign[:20] if d.headsign else None,  # Truncate to 20 chars
+                mins=d.realtime_minutes_until if d.realtime_minutes_until is not None else d.minutes_until,
+                plat=d.platform,
+                delay=d.is_delayed,
+            )
+            for d in departures
+        ]
+
+    return departures
 
 
 @router.get("/trips/{trip_id}", response_model=TripDetailResponse)
