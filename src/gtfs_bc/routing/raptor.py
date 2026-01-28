@@ -316,7 +316,7 @@ class RaptorAlgorithm:
 
             # If we're on a trip, check if we improve arrival at this stop
             if current_trip_id and boarding_stop_idx is not None and idx > boarding_stop_idx:
-                arrival_time = self._get_trip_arrival(current_trip_id, stop_id)
+                arrival_time = self._get_trip_arrival(current_trip_id, idx)
 
                 if arrival_time is not None and arrival_time < best_arrival[stop_id]:
                     # Found improvement - get route_id from trip_info
@@ -336,21 +336,21 @@ class RaptorAlgorithm:
 
         return improved_stops
 
-    def _get_trip_arrival(self, trip_id: str, stop_id: str) -> Optional[int]:
-        """Get arrival time at a stop for a trip.
+    def _get_trip_arrival(self, trip_id: str, stop_index: int) -> Optional[int]:
+        """Get arrival time at a stop for a trip using O(1) index access.
 
         Args:
             trip_id: The trip ID
-            stop_id: The stop to get arrival time for
+            stop_index: Index of the stop in the pattern sequence
 
         Returns:
-            Arrival time in seconds, or None if stop not found
+            Arrival time in seconds, or None if index out of bounds
         """
-        stop_times = self.store.get_stop_times(trip_id)
-        for st_stop_id, arrival_sec, _ in stop_times:
-            if st_stop_id == stop_id:
-                return arrival_sec
-        return None
+        try:
+            # O(1) access: stop_times_by_trip[trip_id][stop_index] = (stop_id, arrival, departure)
+            return self.store.stop_times_by_trip[trip_id][stop_index][1]
+        except (KeyError, IndexError):
+            return None
 
     def _get_trip_departure(self, trip_id: str, stop_id: str) -> Optional[int]:
         """Get departure time at a stop for a trip.

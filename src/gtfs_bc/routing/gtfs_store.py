@@ -65,26 +65,26 @@ class GTFSStore:
 
         # ===== ESTRUCTURAS AUXILIARES =====
 
-        # 5. Info de trips para reconstrucción de ruta
+        # 6. Info de trips para reconstrucción de ruta
         # {trip_id: (route_id, headsign, service_id)} - tupla para menor memoria
         self.trips_info: Dict[str, Tuple[str, Optional[str], str]] = {}
 
-        # 6. Info de paradas para respuesta API
+        # 7. Info de paradas para respuesta API
         # {stop_id: (name, lat, lon)} - tupla para menor memoria
         self.stops_info: Dict[str, Tuple[str, float, float]] = {}
 
-        # 7. Info de rutas para respuesta API
+        # 8. Info de rutas para respuesta API
         # {route_id: (short_name, color, route_type)}
         self.routes_info: Dict[str, Tuple[str, Optional[str], int]] = {}
 
-        # 8. Calendarios activos por día de semana
+        # 9. Calendarios activos por día de semana
         # {'monday': {service_id, ...}, 'tuesday': {...}, ...}
         self.services_by_weekday: Dict[str, Set[str]] = {
             'monday': set(), 'tuesday': set(), 'wednesday': set(),
             'thursday': set(), 'friday': set(), 'saturday': set(), 'sunday': set()
         }
 
-        # 9. Excepciones de calendario (calendar_dates)
+        # 10. Excepciones de calendario (calendar_dates)
         # {date_str: {'added': {service_ids}, 'removed': {service_ids}}}
         self.calendar_exceptions: Dict[str, Dict[str, Set[str]]] = {}
 
