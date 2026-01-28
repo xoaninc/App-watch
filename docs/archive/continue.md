@@ -189,8 +189,9 @@ Estado: ⚠️ Responde HTTP 200 pero devuelve {"salidasMetro":[]}
 
 ### Credenciales
 ```
-app_id: e76ae269
-app_key: 291c7f8027c5e684e010e6a54e76428c
+# Movidas a variables de entorno (.env)
+TMB_APP_ID=xxx
+TMB_APP_KEY=xxx
 ```
 
 ### APIs Implementadas

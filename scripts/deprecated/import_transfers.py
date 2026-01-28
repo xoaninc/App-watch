@@ -16,6 +16,7 @@ Usage:
 """
 
 import sys
+import os
 import csv
 import io
 import zipfile
@@ -59,7 +60,7 @@ OPERATORS_WITH_TRANSFERS = {
     },
     'tmb_metro': {
         'name': 'TMB Metro Barcelona',
-        'gtfs_url': 'https://api.tmb.cat/v1/static/datasets/gtfs.zip?app_id=e76ae269&app_key=291c7f8027c5e684e010e6a54e76428c',
+        'gtfs_url': f'https://api.tmb.cat/v1/static/datasets/gtfs.zip?app_id={os.getenv("TMB_APP_ID", "")}&app_key={os.getenv("TMB_APP_KEY", "")}',
         'network_id': 'TMB_METRO',
         'stop_prefix': 'TMB_METRO_',
     },

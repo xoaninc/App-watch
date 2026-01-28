@@ -18,6 +18,7 @@ Usage:
     tmb = get_operator('tmb_metro')
 """
 
+import os
 from dataclasses import dataclass, field
 from typing import Optional, Dict, List
 from enum import Enum
@@ -198,8 +199,8 @@ OPERATORS['tmb_metro'] = OperatorConfig(
     color='E30613',
     gtfs_url='https://api.tmb.cat/v1/static/datasets/gtfs.zip',
     auth_method=AuthMethod.API_KEY,  # Requires app_id and app_key
-    api_id='e76ae269',
-    api_key='291c7f8027c5e684e010e6a54e76428c',
+    api_id=os.getenv('TMB_APP_ID', ''),
+    api_key=os.getenv('TMB_APP_KEY', ''),
     route_type=1,
     agency_id='TMB_METRO',
     agency_name='Transports Metropolitans de Barcelona',
