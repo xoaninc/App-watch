@@ -37,6 +37,7 @@ from adapters.http.api.gtfs.schemas import (
     TrainPositionSchema,
     DepartureResponse,
     CompactDepartureResponse,
+    CompactDeparturesWrapper,
     TripStopResponse,
     TripDetailResponse,
     AgencyResponse,
@@ -1250,7 +1251,7 @@ def get_stop_departures(
 
     # Return compact response if requested (for widgets/Siri)
     if compact:
-        return [
+        compact_departures = [
             CompactDepartureResponse(
                 line=d.route_short_name,
                 color=d.route_color,
@@ -1264,6 +1265,12 @@ def get_stop_departures(
             )
             for d in departures
         ]
+        return CompactDeparturesWrapper(
+            stop_id=stop_id,
+            stop_name=stop.name,
+            departures=compact_departures,
+            updated_at=now,
+        )
 
     return departures
 

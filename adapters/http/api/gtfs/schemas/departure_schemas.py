@@ -1,6 +1,7 @@
 """Departure and trip response schemas."""
 
 from typing import Optional, List
+from datetime import datetime
 from pydantic import BaseModel
 
 
@@ -60,6 +61,14 @@ class CompactDepartureResponse(BaseModel):
     occ: Optional[int] = None  # occupancy_status (0-8)
     exp: bool = False  # is_express (CIVIS)
     exp_color: Optional[str] = None  # express_color "#2596be"
+
+
+class CompactDeparturesWrapper(BaseModel):
+    """Wrapped compact response for widgets (<5KB total)."""
+    stop_id: str
+    stop_name: str
+    departures: List[CompactDepartureResponse]
+    updated_at: datetime
 
 
 class TripStopResponse(BaseModel):
