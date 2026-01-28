@@ -103,3 +103,55 @@ class StopCorrespondencesResponse(BaseModel):
     stop_id: str
     stop_name: str
     correspondences: List[CorrespondenceResponse]
+
+
+class AccessResponse(BaseModel):
+    """Station access point (entrance/exit) with street-level location."""
+    id: int
+    stop_id: str
+    name: str
+    lat: float
+    lon: float
+    street: Optional[str] = None
+    street_number: Optional[str] = None
+    opening_time: Optional[str] = None
+    closing_time: Optional[str] = None
+    wheelchair: Optional[bool] = None
+    level: Optional[int] = None
+    source: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+class StopAccessesResponse(BaseModel):
+    """All access points (entrances) at a stop."""
+    stop_id: str
+    stop_name: str
+    accesses: List[AccessResponse]
+
+
+class VestibuleResponse(BaseModel):
+    """Station vestibule (internal lobby) with underground location."""
+    id: int
+    stop_id: str
+    name: str
+    lat: float
+    lon: float
+    level: Optional[int] = None
+    vestibule_type: Optional[str] = None
+    turnstile_type: Optional[str] = None
+    opening_time: Optional[str] = None
+    closing_time: Optional[str] = None
+    wheelchair: Optional[bool] = None
+    source: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+class StopVestibulesResponse(BaseModel):
+    """All vestibules (internal lobbies) at a stop."""
+    stop_id: str
+    stop_name: str
+    vestibules: List[VestibuleResponse]
