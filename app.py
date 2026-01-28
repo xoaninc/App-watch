@@ -1,6 +1,7 @@
 from pathlib import Path
 
-from fastapi import FastAPI, BackgroundTasks
+import os
+from fastapi import FastAPI, BackgroundTasks, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
@@ -75,7 +76,10 @@ def create_app() -> FastAPI:
         }
 
     @app.post("/admin/reload-gtfs")
-    async def reload_gtfs(background_tasks: BackgroundTasks):
+    async def reload_gtfs(
+        background_tasks: BackgroundTasks,
+        x_admin_token: str = Header(None, alias="X-Admin-Token")
+    ):
         """Reload GTFS data into memory without restarting the server.
 
         This endpoint triggers a background reload of all GTFS data.
@@ -83,7 +87,14 @@ def create_app() -> FastAPI:
 
         Note: During reload, the old data remains available for requests.
         Once the new data is loaded, it atomically replaces the old data.
+
+        Requires X-Admin-Token header for authentication.
         """
+        # Verify admin token
+        expected_token = os.getenv('ADMIN_TOKEN')
+        if not expected_token or x_admin_token != expected_token:
+            raise HTTPException(status_code=401, detail="Unauthorized: Invalid or missing X-Admin-Token")
+
         from src.gtfs_bc.routing.gtfs_store import GTFSStore
         from core.database import SessionLocal
 
