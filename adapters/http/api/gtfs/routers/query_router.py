@@ -881,10 +881,14 @@ def get_stop_departures(
     if route_id:
         query = query.filter(TripModel.route_id == route_id)
 
+    # Query with higher limit to account for duplicates that will be filtered later
+    # (GTFS data may have overlapping frequency periods causing duplicate departure times)
+    query_limit = limit * 3
+
     results = (
         query
         .order_by(StopTimeModel.departure_seconds)
-        .limit(limit)
+        .limit(query_limit)
         .all()
     )
 
