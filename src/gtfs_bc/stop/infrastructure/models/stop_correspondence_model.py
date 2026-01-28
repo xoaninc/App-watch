@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Integer
+from sqlalchemy import Column, String, Integer, Text
 from core.base import Base
 
 
@@ -17,6 +17,7 @@ class StopCorrespondenceModel(Base):
     distance_m = Column(Integer, nullable=True)  # Walking distance in meters
     walk_time_s = Column(Integer, nullable=True)  # Estimated walk time in seconds
     source = Column(String(50), nullable=True)  # 'manual', 'gtfs', 'proximity'
+    walking_shape = Column(Text, nullable=True)  # Cached pedestrian route from BRouter (JSON array of [lat, lon])
 
     def __repr__(self):
         return f"<StopCorrespondence {self.from_stop_id} → {self.to_stop_id}>"

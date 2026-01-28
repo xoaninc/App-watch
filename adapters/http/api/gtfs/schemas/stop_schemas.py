@@ -76,6 +76,12 @@ class StopPlatformsResponse(BaseModel):
     platforms: List[PlatformResponse]
 
 
+class WalkingShapePoint(BaseModel):
+    """A point in a walking route shape."""
+    lat: float
+    lon: float
+
+
 class CorrespondenceResponse(BaseModel):
     """Walking connection to another station."""
     id: int
@@ -86,6 +92,7 @@ class CorrespondenceResponse(BaseModel):
     distance_m: Optional[int]
     walk_time_s: Optional[int]
     source: Optional[str]
+    walking_shape: Optional[List[WalkingShapePoint]] = None  # Pedestrian route coordinates
 
     class Config:
         from_attributes = True
