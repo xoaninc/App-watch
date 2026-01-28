@@ -297,6 +297,10 @@ def create_trips_and_stop_times(db, dry_run: bool, use_crtm_times: bool = False)
         # Get travel times for this route
         travel_times = get_travel_times_for_route(crtm_times, route_id, len(stops))
 
+        # Shape ID for this route (CRTM format)
+        line_num = route_id.replace('METRO_', '')
+        shape_id = f"METRO_MAD_{line_num}_CRTM"
+
         for service in SERVICE_TYPES:
             for direction in [0, 1]:
                 # Create trip
@@ -309,15 +313,17 @@ def create_trips_and_stop_times(db, dry_run: bool, use_crtm_times: bool = False)
                     'service_id': service['id'],
                     'headsign': headsign,
                     'direction_id': direction,
+                    'shape_id': shape_id,
                 }
 
                 if not dry_run:
                     db.execute(text("""
-                        INSERT INTO gtfs_trips (id, route_id, service_id, headsign, direction_id)
-                        VALUES (:id, :route_id, :service_id, :headsign, :direction_id)
+                        INSERT INTO gtfs_trips (id, route_id, service_id, headsign, direction_id, shape_id)
+                        VALUES (:id, :route_id, :service_id, :headsign, :direction_id, :shape_id)
                         ON CONFLICT (id) DO UPDATE SET
                             route_id = EXCLUDED.route_id, service_id = EXCLUDED.service_id,
-                            headsign = EXCLUDED.headsign, direction_id = EXCLUDED.direction_id
+                            headsign = EXCLUDED.headsign, direction_id = EXCLUDED.direction_id,
+                            shape_id = EXCLUDED.shape_id
                     """), trip_data)
 
                 total_trips += 1
