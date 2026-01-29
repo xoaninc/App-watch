@@ -430,7 +430,7 @@ curl "http://localhost:8002/api/v1/gtfs/route-planner?from=METRO_SEV_L1_E1&to=ME
 - [x] Test RAPTOR routing viernes nocturno ✓ Trips hasta 26:00 (02:00)
 - [x] Test RAPTOR routing festivo ✓ 1 enero funciona
 - [x] Test RAPTOR routing Feria de Abril ✓ Servicio VIERNES añadido
-- [ ] Deploy a producción
+- [x] Deploy a producción ✓ Commit 4209dcd
 
 ---
 
