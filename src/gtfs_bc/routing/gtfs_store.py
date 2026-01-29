@@ -401,6 +401,73 @@ class GTFSStore:
         self.stats['transfers'] = transfer_count
         print(f"    ✓ {transfer_count:,} transbordos (tras expansión)")
 
+        # 9. Cargar accesos de Metro Madrid como puntos de entrada virtuales
+        print("  🚪 Cargando accesos de Metro Madrid...")
+        from adapters.http.api.gtfs.utils.shape_utils import haversine_distance
+
+        access_result = db_session.execute(text("""
+            SELECT id, stop_id, name, lat, lon
+            FROM stop_access
+            WHERE stop_id LIKE 'METRO\\_%'
+        """))
+
+        access_count = 0
+        access_transfers = 0
+
+        for row in access_result:
+            access_id = row[0]
+            station_id = row[1]  # e.g., METRO_SOL
+            access_name = row[2]
+            access_lat = row[3]
+            access_lon = row[4]
+
+            # Crear ID virtual para el acceso
+            virtual_access_id = sys.intern(f"ACCESS_{access_id}")
+
+            # Añadir a stops_info para que RAPTOR pueda usarlo
+            self.stops_info[virtual_access_id] = (access_name, access_lat, access_lon)
+            access_count += 1
+
+            # Buscar plataformas de esta estación
+            # Primero intentar hijos directos
+            platform_ids = self.children_by_parent.get(station_id, [])
+
+            # Si no hay hijos, la estación es la plataforma
+            if not platform_ids:
+                platform_ids = [station_id] if station_id in self.stops_info else []
+
+            # Crear transfers bidireccionales acceso <-> plataformas
+            for platform_id in platform_ids:
+                platform_info = self.stops_info.get(platform_id)
+                if not platform_info:
+                    continue
+
+                platform_lat = platform_info[1]
+                platform_lon = platform_info[2]
+
+                # Calcular distancia y tiempo de caminata
+                distance_m = haversine_distance(access_lat, access_lon, platform_lat, platform_lon)
+                walk_seconds = int(distance_m / 1.25)  # 4.5 km/h = 1.25 m/s
+
+                # Mínimo 30 segundos (tiempo de bajar escaleras, etc.)
+                walk_seconds = max(walk_seconds, 30)
+
+                # Añadir transfer acceso -> plataforma
+                if virtual_access_id not in self.transfers:
+                    self.transfers[virtual_access_id] = []
+                self.transfers[virtual_access_id].append((platform_id, walk_seconds))
+
+                # Añadir transfer plataforma -> acceso (para salir)
+                if platform_id not in self.transfers:
+                    self.transfers[platform_id] = []
+                self.transfers[platform_id].append((virtual_access_id, walk_seconds))
+
+                access_transfers += 2
+
+        self.stats['accesses'] = access_count
+        self.stats['access_transfers'] = access_transfers
+        print(f"    ✓ {access_count:,} accesos cargados, {access_transfers:,} transfers creados")
+
         # Limpiar memoria temporal
         del trip_to_route
         del temp_stop_times
