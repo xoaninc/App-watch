@@ -338,6 +338,8 @@ def create_calendars(db, dry_run: bool) -> int:
             logger.info(f"  [DRY-RUN] Would create calendar: {cal[0]}")
         return len(calendars)
 
+    # Delete calendar_dates first (FK constraint)
+    db.execute(text("DELETE FROM gtfs_calendar_dates WHERE service_id LIKE 'METRO_MALAGA_%'"))
     db.execute(text("DELETE FROM gtfs_calendar WHERE service_id LIKE 'METRO_MALAGA_%'"))
 
     for cal_id, mon, tue, wed, thu, fri, sat, sun in calendars:
