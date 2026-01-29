@@ -1,0 +1,2 @@
+agency_id,agency_lang,agency_name,agency_timezone,agency_url,agency_phone,agency_fare_url
+METRO_MALAGA,ES,"Metro de Málaga",Europe/Madrid,https://metromalaga.es,952 061 642,

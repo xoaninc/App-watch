@@ -1,0 +1,3 @@
+agency_id,route_id,route_short_name,route_long_name,route_desc,route_type,route_url,route_color,route_text_color
+METRO_MALAGA,1,"L1","Línea 1",,1,,DC241F,000000
+METRO_MALAGA,2,"L2","Línea 2",,1,,005EAB,000000
