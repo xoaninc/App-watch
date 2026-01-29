@@ -401,14 +401,14 @@ class GTFSStore:
         self.stats['transfers'] = transfer_count
         print(f"    ✓ {transfer_count:,} transbordos (tras expansión)")
 
-        # 9. Cargar accesos de Metro Madrid como puntos de entrada virtuales
-        print("  🚪 Cargando accesos de Metro Madrid...")
+        # 9. Cargar accesos de Metro Madrid y Metro Ligero como puntos de entrada virtuales
+        print("  🚪 Cargando accesos de Metro Madrid y Metro Ligero...")
         from adapters.http.api.gtfs.utils.shape_utils import haversine_distance
 
         access_result = db_session.execute(text("""
             SELECT id, stop_id, name, lat, lon
             FROM stop_access
-            WHERE stop_id LIKE 'METRO\\_%'
+            WHERE stop_id LIKE 'METRO\\_%' OR stop_id LIKE 'ML\\_%'
         """))
 
         access_count = 0
