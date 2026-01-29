@@ -27,6 +27,8 @@ from adapters.http.api.gtfs.schemas import (
     DayOperatingHours,
     RouteOperatingHoursResponse,
     ShapePointResponse,
+    CoordinateResponse,
+    StopOnShapeResponse,
     RouteShapeResponse,
     StopResponse,
     RouteStopResponse,
@@ -112,6 +114,76 @@ def _calculate_is_hub(stop: StopModel) -> bool:
     if stop.cor_tranvia:
         transport_count += 1
     return transport_count >= 2
+
+
+def _project_point_to_polyline(
+    point_lat: float,
+    point_lon: float,
+    shape_points: List[Tuple[float, float, int]]
+) -> Tuple[float, float]:
+    """Project a point onto the nearest location on a polyline.
+
+    Args:
+        point_lat: Latitude of the point to project
+        point_lon: Longitude of the point to project
+        shape_points: List of (lat, lon, sequence) tuples defining the polyline
+
+    Returns:
+        Tuple of (lat, lon) for the projected point on the polyline
+    """
+    if not shape_points:
+        return point_lat, point_lon
+
+    min_dist = float('inf')
+    best_point = (point_lat, point_lon)
+
+    # Convert to radians for distance calculation
+    def to_rad(deg):
+        return deg * math.pi / 180
+
+    def haversine_dist(lat1, lon1, lat2, lon2):
+        """Calculate distance in meters between two points."""
+        R = 6371000  # Earth radius in meters
+        dlat = to_rad(lat2 - lat1)
+        dlon = to_rad(lon2 - lon1)
+        a = math.sin(dlat/2)**2 + math.cos(to_rad(lat1)) * math.cos(to_rad(lat2)) * math.sin(dlon/2)**2
+        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+        return R * c
+
+    def project_to_segment(px, py, ax, ay, bx, by):
+        """Project point P onto line segment AB, return closest point."""
+        # Vector AB
+        abx = bx - ax
+        aby = by - ay
+        # Vector AP
+        apx = px - ax
+        apy = py - ay
+        # Project AP onto AB
+        ab_sq = abx * abx + aby * aby
+        if ab_sq == 0:
+            return ax, ay  # A and B are the same point
+        t = (apx * abx + apy * aby) / ab_sq
+        t = max(0, min(1, t))  # Clamp to segment
+        return ax + t * abx, ay + t * aby
+
+    # Check each segment of the polyline
+    for i in range(len(shape_points) - 1):
+        lat1, lon1, _ = shape_points[i]
+        lat2, lon2, _ = shape_points[i + 1]
+
+        # Project point onto this segment
+        proj_lat, proj_lon = project_to_segment(
+            point_lat, point_lon, lat1, lon1, lat2, lon2
+        )
+
+        # Calculate distance to projected point
+        dist = haversine_dist(point_lat, point_lon, proj_lat, proj_lon)
+
+        if dist < min_dist:
+            min_dist = dist
+            best_point = (proj_lat, proj_lon)
+
+    return best_point
 
 
 @router.get("/agencies", response_model=List[AgencyResponse])
@@ -1875,6 +1947,10 @@ def get_route_shape(
         le=500,
         description="Maximum gap in meters between points. When set, interpolates points using spherical interpolation (slerp) to ensure smooth curves. Recommended: 50 for 3D animations."
     ),
+    include_stops: bool = Query(
+        False,
+        description="Include stops with their positions projected onto the shape and real platform coordinates."
+    ),
     db: Session = Depends(get_db),
 ):
     """Get the shape (path) of a route for drawing on maps.
@@ -1896,6 +1972,11 @@ def get_route_shape(
     - Preventing visual artifacts from large gaps
 
     Example: `?max_gap=50` ensures points are at most 50m apart.
+
+    **Stop positions (include_stops parameter):**
+    When `include_stops=true`, returns stop positions with:
+    - `on_shape`: Coordinates projected onto the shape line (for drawing markers on the route)
+    - `platform`: Real platform coordinates (for navigation or detailed view)
 
     Data source: shapes.txt from GTFS feed.
     """
@@ -1933,7 +2014,8 @@ def get_route_shape(
         return RouteShapeResponse(
             route_id=route_id,
             route_short_name=route_short,
-            shape=[]
+            shape=[],
+            stops=[] if include_stops else None
         )
 
     # Check if this is a variant route that needs combined shapes
@@ -1955,6 +2037,48 @@ def get_route_shape(
     if max_gap is not None and points:
         points = normalize_shape(points, max_gap_meters=max_gap)
 
+    # Build stops data if requested
+    stops_on_shape = None
+    if include_stops and points:
+        stops_on_shape = []
+
+        # Get stops for this route from gtfs_stop_route_sequence
+        route_stops = (
+            db.query(StopRouteSequenceModel, StopModel)
+            .join(StopModel, StopRouteSequenceModel.stop_id == StopModel.id)
+            .filter(StopRouteSequenceModel.route_id == route_id)
+            .order_by(StopRouteSequenceModel.sequence)
+            .all()
+        )
+
+        for seq_entry, stop in route_stops:
+            # Project stop onto shape
+            proj_lat, proj_lon = _project_point_to_polyline(
+                stop.lat, stop.lon, points
+            )
+
+            # Try to get platform coordinates for this stop and route
+            platform_coord = None
+
+            # Get platform for this specific line
+            platform = db.query(StopPlatformModel).filter(
+                StopPlatformModel.stop_id == stop.id
+            ).first()
+
+            if platform:
+                platform_coord = CoordinateResponse(
+                    lat=platform.lat,
+                    lon=platform.lon
+                )
+
+            stops_on_shape.append(StopOnShapeResponse(
+                stop_id=stop.id,
+                name=stop.name,
+                sequence=seq_entry.sequence,
+                on_shape=CoordinateResponse(lat=proj_lat, lon=proj_lon),
+                platform=platform_coord
+            ))
+
     return RouteShapeResponse(
         route_id=route_id,
         route_short_name=route_short,
@@ -1965,7 +2089,8 @@ def get_route_shape(
                 sequence=seq
             )
             for lat, lon, seq in points
-        ]
+        ],
+        stops=stops_on_shape
     )
 
 
