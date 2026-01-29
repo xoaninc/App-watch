@@ -261,6 +261,68 @@ def create_calendar_entries(db, dry_run: bool) -> int:
     return len(rows)
 
 
+def time_str_to_seconds(time_str: str) -> int:
+    """Convert time string (HH:MM:SS) to seconds since midnight."""
+    parts = time_str.split(':')
+    hours = int(parts[0])
+    minutes = int(parts[1]) if len(parts) > 1 else 0
+    seconds = int(parts[2]) if len(parts) > 2 else 0
+    return hours * 3600 + minutes * 60 + seconds
+
+
+def get_frequencies_for_route(db, route_id: str, day_type: str) -> List[Tuple[int, int, int]]:
+    """Get frequency periods for a route and day type.
+
+    Returns:
+        List of (start_seconds, end_seconds, headway_secs) tuples
+    """
+    result = db.execute(text("""
+        SELECT start_time, end_time, headway_secs
+        FROM gtfs_route_frequencies
+        WHERE route_id = :route_id AND day_type = :day_type
+        ORDER BY start_time
+    """), {'route_id': route_id, 'day_type': day_type}).fetchall()
+
+    frequencies = []
+    for row in result:
+        start_secs = time_str_to_seconds(str(row[0]))
+        end_secs = time_str_to_seconds(str(row[1]))
+        headway = row[2]
+        frequencies.append((start_secs, end_secs, headway))
+
+    return frequencies
+
+
+def generate_departure_times(frequencies: List[Tuple[int, int, int]]) -> List[int]:
+    """Generate all departure times based on frequency periods.
+
+    Args:
+        frequencies: List of (start_secs, end_secs, headway_secs)
+
+    Returns:
+        List of departure times in seconds since midnight
+    """
+    departures = []
+
+    for start_secs, end_secs, headway_secs in frequencies:
+        # Handle times past midnight (e.g., 25:30 = 25*3600+30*60)
+        if end_secs > 24 * 3600:
+            end_secs = 24 * 3600  # Cap at midnight for now
+
+        # Skip overnight periods (00:00-06:00 usually have very low frequency)
+        if start_secs < 6 * 3600:
+            start_secs = 6 * 3600
+
+        current = start_secs
+        while current < end_secs:
+            if current not in departures:  # Avoid duplicates
+                departures.append(current)
+            current += headway_secs
+
+    departures.sort()
+    return departures
+
+
 def create_trips_and_stop_times(db, dry_run: bool, use_crtm_times: bool = False) -> tuple:
     """Create trips and stop_times for all Metro Madrid routes.
 
@@ -283,6 +345,14 @@ def create_trips_and_stop_times(db, dry_run: bool, use_crtm_times: bool = False)
         else:
             logger.warning("Could not fetch CRTM times, using fallback")
 
+    # Map service types to day_type for frequency lookup
+    SERVICE_TO_DAYTYPE = {
+        'METRO_MAD_LABORABLE': 'weekday',
+        'METRO_MAD_VIERNES': 'friday',
+        'METRO_MAD_SABADO': 'saturday',
+        'METRO_MAD_DOMINGO': 'sunday',
+    }
+
     total_trips = 0
     total_stop_times = 0
 
@@ -297,86 +367,104 @@ def create_trips_and_stop_times(db, dry_run: bool, use_crtm_times: bool = False)
         # Get travel times for this route
         travel_times = get_travel_times_for_route(crtm_times, route_id, len(stops))
 
+        # Calculate journey duration for this route
+        journey_duration = sum(travel_times) + (len(stops) - 1) * DWELL_TIME
+
         # Shape ID for this route (CRTM format)
         line_num = route_id.replace('METRO_', '')
         shape_id = f"METRO_MAD_{line_num}_CRTM"
 
+        route_trips = 0
+        route_stop_times = 0
+
         for service in SERVICE_TYPES:
+            day_type = SERVICE_TO_DAYTYPE.get(service['id'], 'weekday')
+
+            # Get frequency data for this route/day
+            frequencies = get_frequencies_for_route(db, route_id, day_type)
+
+            if not frequencies:
+                # Fallback: generate trips every 5 minutes from 6:00 to 24:00
+                frequencies = [(6 * 3600, 24 * 3600, 300)]
+
+            # Generate departure times
+            departure_times = generate_departure_times(frequencies)
+
             for direction in [0, 1]:
-                # Create trip
-                trip_id = f"{route_id}_{service['id']}_{direction}"
                 headsign = headsign_0 if direction == 0 else headsign_1
-
-                trip_data = {
-                    'id': trip_id,
-                    'route_id': route_id,
-                    'service_id': service['id'],
-                    'headsign': headsign,
-                    'direction_id': direction,
-                    'shape_id': shape_id,
-                }
-
-                if not dry_run:
-                    db.execute(text("""
-                        INSERT INTO gtfs_trips (id, route_id, service_id, headsign, direction_id, shape_id)
-                        VALUES (:id, :route_id, :service_id, :headsign, :direction_id, :shape_id)
-                        ON CONFLICT (id) DO UPDATE SET
-                            route_id = EXCLUDED.route_id, service_id = EXCLUDED.service_id,
-                            headsign = EXCLUDED.headsign, direction_id = EXCLUDED.direction_id,
-                            shape_id = EXCLUDED.shape_id
-                    """), trip_data)
-
-                total_trips += 1
-
-                # Create stop_times
                 stop_list = stops if direction == 0 else list(reversed(stops))
                 times_list = travel_times if direction == 0 else list(reversed(travel_times))
 
-                base_time = 6 * 3600 + 5 * 60  # 06:05:00 (first train)
-                cumulative_time = 0
+                for trip_idx, base_time in enumerate(departure_times):
+                    # Create trip
+                    trip_id = f"{route_id}_{service['id']}_{direction}_{trip_idx}"
 
-                for seq, stop_id in enumerate(stop_list):
-                    # Add travel time to this stop
-                    cumulative_time += times_list[seq]
-
-                    arrival_seconds = int(base_time + cumulative_time)
-                    departure_seconds = arrival_seconds + DWELL_TIME
-
-                    arrival_time = f"{arrival_seconds // 3600}:{(arrival_seconds % 3600) // 60:02d}:{arrival_seconds % 60:02d}"
-                    departure_time = f"{departure_seconds // 3600}:{(departure_seconds % 3600) // 60:02d}:{departure_seconds % 60:02d}"
-
-                    stop_time_data = {
-                        'trip_id': trip_id,
-                        'stop_sequence': seq,
-                        'stop_id': stop_id,
-                        'arrival_time': arrival_time,
-                        'departure_time': departure_time,
-                        'arrival_seconds': arrival_seconds,
-                        'departure_seconds': departure_seconds,
+                    trip_data = {
+                        'id': trip_id,
+                        'route_id': route_id,
+                        'service_id': service['id'],
+                        'headsign': headsign,
+                        'direction_id': direction,
+                        'shape_id': shape_id,
                     }
 
                     if not dry_run:
                         db.execute(text("""
-                            INSERT INTO gtfs_stop_times
-                            (trip_id, stop_sequence, stop_id, arrival_time, departure_time, arrival_seconds, departure_seconds)
-                            VALUES (:trip_id, :stop_sequence, :stop_id, :arrival_time, :departure_time, :arrival_seconds, :departure_seconds)
-                            ON CONFLICT (trip_id, stop_sequence) DO UPDATE SET
-                                stop_id = EXCLUDED.stop_id, arrival_time = EXCLUDED.arrival_time,
-                                departure_time = EXCLUDED.departure_time, arrival_seconds = EXCLUDED.arrival_seconds,
-                                departure_seconds = EXCLUDED.departure_seconds
-                        """), stop_time_data)
+                            INSERT INTO gtfs_trips (id, route_id, service_id, headsign, direction_id, shape_id)
+                            VALUES (:id, :route_id, :service_id, :headsign, :direction_id, :shape_id)
+                            ON CONFLICT (id) DO UPDATE SET
+                                route_id = EXCLUDED.route_id, service_id = EXCLUDED.service_id,
+                                headsign = EXCLUDED.headsign, direction_id = EXCLUDED.direction_id,
+                                shape_id = EXCLUDED.shape_id
+                        """), trip_data)
 
-                    total_stop_times += 1
+                    total_trips += 1
+                    route_trips += 1
 
-                    # Add dwell time for next segment
-                    cumulative_time += DWELL_TIME
+                    # Create stop_times
+                    cumulative_time = 0
+
+                    for seq, stop_id in enumerate(stop_list):
+                        # Add travel time to this stop
+                        cumulative_time += times_list[seq]
+
+                        arrival_seconds = int(base_time + cumulative_time)
+                        departure_seconds = arrival_seconds + DWELL_TIME
+
+                        arrival_time = f"{arrival_seconds // 3600}:{(arrival_seconds % 3600) // 60:02d}:{arrival_seconds % 60:02d}"
+                        departure_time = f"{departure_seconds // 3600}:{(departure_seconds % 3600) // 60:02d}:{departure_seconds % 60:02d}"
+
+                        stop_time_data = {
+                            'trip_id': trip_id,
+                            'stop_sequence': seq,
+                            'stop_id': stop_id,
+                            'arrival_time': arrival_time,
+                            'departure_time': departure_time,
+                            'arrival_seconds': arrival_seconds,
+                            'departure_seconds': departure_seconds,
+                        }
+
+                        if not dry_run:
+                            db.execute(text("""
+                                INSERT INTO gtfs_stop_times
+                                (trip_id, stop_sequence, stop_id, arrival_time, departure_time, arrival_seconds, departure_seconds)
+                                VALUES (:trip_id, :stop_sequence, :stop_id, :arrival_time, :departure_time, :arrival_seconds, :departure_seconds)
+                                ON CONFLICT (trip_id, stop_sequence) DO UPDATE SET
+                                    stop_id = EXCLUDED.stop_id, arrival_time = EXCLUDED.arrival_time,
+                                    departure_time = EXCLUDED.departure_time, arrival_seconds = EXCLUDED.arrival_seconds,
+                                    departure_seconds = EXCLUDED.departure_seconds
+                            """), stop_time_data)
+
+                        total_stop_times += 1
+                        route_stop_times += 1
+
+                        # Add dwell time for next segment
+                        cumulative_time += DWELL_TIME
 
         if not dry_run:
             db.commit()
 
-        # Calculate total journey time for logging
-        total_journey = sum(travel_times) + (len(stops) - 1) * DWELL_TIME
-        logger.info(f"  {route_id}: {len(stops)} stops, {total_journey // 60:.0f} min journey")
+        logger.info(f"  {route_id}: {len(stops)} stops, {journey_duration // 60:.0f} min journey, {route_trips} trips, {route_stop_times} stop_times")
 
     return total_trips, total_stop_times
 
