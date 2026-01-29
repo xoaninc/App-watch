@@ -37,6 +37,20 @@ BASE_URL = "https://services5.arcgis.com/UxADft6QPcvFyDU1/arcgis/rest/services/R
 # Coordinate transformer: UTM Zone 30N (EPSG:25830) -> WGS84 (EPSG:4326)
 transformer = Transformer.from_crs("EPSG:25830", "EPSG:4326", always_xy=True)
 
+# CRTM CODIGOESTACION to GTFS stop_id mapping
+# Some CRTM codes don't match our GTFS IDs directly
+CRTM_TO_GTFS_STOP_ID = {
+    '10': 'ML_24',  # Colonia Jardín (CRTM uses 10, GTFS uses 24)
+}
+
+
+def get_stop_id(codigo: str) -> str:
+    """Convert CRTM CODIGOESTACION to GTFS stop_id."""
+    codigo_str = str(codigo).strip()
+    if codigo_str in CRTM_TO_GTFS_STOP_ID:
+        return CRTM_TO_GTFS_STOP_ID[codigo_str]
+    return f"ML_{codigo_str}"
+
 
 def fetch_layer(layer_id: int, fields: str = "*") -> List[Dict]:
     """Fetch all features from a CRTM layer."""
@@ -147,7 +161,7 @@ def import_accesos(db, dry_run: bool = False) -> int:
         if not codigo:
             continue
 
-        stop_id = f"ML_{codigo}"
+        stop_id = get_stop_id(codigo)
         name = attrs.get('DENOMINACION', f'Acceso {codigo}')
         street = attrs.get('NOMBREVIA')
         street_number = attrs.get('NUMEROPORTAL')
@@ -214,7 +228,7 @@ def import_vestibulos(db, dry_run: bool = False) -> int:
         if not codigo:
             continue
 
-        stop_id = f"ML_{codigo}"
+        stop_id = get_stop_id(codigo)
         name = attrs.get('DENOMINACION', f'Vestíbulo {codigo}')
         nivel = attrs.get('NIVEL')
         vestibule_type = attrs.get('TIPOVESTIBULO')
@@ -281,7 +295,7 @@ def import_andenes(db, dry_run: bool = False) -> int:
         if not codigo:
             continue
 
-        stop_id = f"ML_{codigo}"
+        stop_id = get_stop_id(codigo)
         description = attrs.get('DENOMINACION', '')
         anden_num = attrs.get('NUMANDEN', '')
         nivel = attrs.get('NIVEL')
