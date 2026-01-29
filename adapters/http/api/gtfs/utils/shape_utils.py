@@ -141,3 +141,55 @@ def normalize_shape(
                     new_sequence += 1
 
     return result
+
+
+def smooth_shape_chaikin(
+    points: List[Tuple[float, float]],
+    iterations: int = 2
+) -> List[Tuple[float, float]]:
+    """Smooth a polyline using Chaikin's corner-cutting algorithm.
+
+    Chaikin's algorithm iteratively cuts corners to create smooth curves
+    from angular polylines. Each iteration replaces each segment with two
+    new points at 25% and 75% of the segment, effectively rounding corners.
+
+    Args:
+        points: List of (lat, lon) tuples representing the polyline
+        iterations: Number of smoothing passes (1-2 for subtle, 3+ for very smooth)
+
+    Returns:
+        List of (lat, lon) tuples with smoothed corners.
+        First and last points are preserved to maintain route endpoints.
+
+    Example:
+        >>> points = [(40.0, -3.0), (40.1, -3.1), (40.2, -3.0)]
+        >>> smoothed = smooth_shape_chaikin(points, iterations=2)
+    """
+    if len(points) < 3:
+        return points
+
+    smoothed = list(points)
+
+    for _ in range(iterations):
+        new_points = [smoothed[0]]  # Keep first point fixed (station)
+
+        for i in range(len(smoothed) - 1):
+            p0 = smoothed[i]
+            p1 = smoothed[i + 1]
+
+            # Chaikin's corner cutting: create points at 25% and 75%
+            # Q = 0.75 * p0 + 0.25 * p1 (closer to p0)
+            # R = 0.25 * p0 + 0.75 * p1 (closer to p1)
+            q_lat = 0.75 * p0[0] + 0.25 * p1[0]
+            q_lon = 0.75 * p0[1] + 0.25 * p1[1]
+
+            r_lat = 0.25 * p0[0] + 0.75 * p1[0]
+            r_lon = 0.25 * p0[1] + 0.75 * p1[1]
+
+            new_points.append((q_lat, q_lon))
+            new_points.append((r_lat, r_lon))
+
+        new_points.append(smoothed[-1])  # Keep last point fixed
+        smoothed = new_points
+
+    return smoothed

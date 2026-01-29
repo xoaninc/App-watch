@@ -1,6 +1,6 @@
 # TODO - Tareas Pendientes
 
-**Última actualización:** 2026-01-28 21:15
+**Última actualización:** 2026-01-29 10:00
 
 ---
 
@@ -13,6 +13,7 @@
 | Platforms | ✅ | `GET /stops/{stop_id}/platforms` |
 | Correspondences | ✅ | `GET /stops/{stop_id}/correspondences` |
 | Shapes | ✅ COMPLETO | `GET /routes/{route_id}/shape` |
+| **Shape Smoothing** | ✅ NUEVO | `GET /routes/{route_id}/shape?smooth=2` |
 
 ### Shapes - Estado por Red
 
@@ -40,6 +41,47 @@
 **Total en producción:** 949 shapes, 650,332 puntos
 **Trips con shape:** 239,225
 **Trips sin shape:** 1,218 (trips huérfanos)
+
+---
+
+## Tareas Completadas (2026-01-29)
+
+### ✅ Chaikin Shape Smoothing
+
+**Nuevo parámetro `smooth` en endpoint `/routes/{route_id}/shape`**
+
+Implementado el algoritmo de Chaikin para suavizar esquinas angulosas en shapes.
+
+**Uso:**
+```bash
+# Suavizado sutil (1-2 iteraciones)
+curl "https://juanmacias.com/api/v1/gtfs/routes/METRO_GRANADA_L1/shape?smooth=2"
+
+# Combinado con densificación
+curl "https://juanmacias.com/api/v1/gtfs/routes/METRO_1/shape?smooth=2&max_gap=50"
+```
+
+**Parámetros:**
+| Parámetro | Tipo | Rango | Default | Descripción |
+|-----------|------|-------|---------|-------------|
+| `smooth` | int | 0-5 | **2** | Iteraciones de suavizado Chaikin (0=desactivado) |
+
+**Cómo funciona:**
+- El algoritmo de Chaikin "corta" las esquinas iterativamente
+- Cada iteración reemplaza cada segmento con 2 puntos nuevos al 25% y 75%
+- 1-2 iteraciones = suavizado sutil
+- 3+ iteraciones = curvas muy suaves
+
+**Shapes que más se benefician:**
+| Shape | Puntos | Esquinas <90° | Mejora |
+|-------|--------|---------------|--------|
+| METRO_GRANADA_L1 | 26 | 14 | Alta |
+| Cercanías 10_C1 | 82 | 2 | Media |
+| Euskotren varios | 41-81 | 3 | Media |
+
+**Archivos modificados:**
+- `adapters/http/api/gtfs/utils/shape_utils.py` - Nueva función `smooth_shape_chaikin()`
+- `adapters/http/api/gtfs/routers/query_router.py` - Nuevo parámetro `smooth`
 
 ---
 
