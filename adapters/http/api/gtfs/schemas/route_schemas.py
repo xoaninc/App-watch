@@ -60,8 +60,24 @@ class ShapePointResponse(BaseModel):
     sequence: int
 
 
+class CoordinateResponse(BaseModel):
+    """A simple lat/lon coordinate."""
+    lat: float
+    lon: float
+
+
+class StopOnShapeResponse(BaseModel):
+    """Stop position data for shape visualization."""
+    stop_id: str
+    name: str
+    sequence: int  # Stop sequence on the route
+    on_shape: CoordinateResponse  # Position projected onto the shape line
+    platform: Optional[CoordinateResponse] = None  # Real platform coordinates
+
+
 class RouteShapeResponse(BaseModel):
     """Shape (path) of a route for drawing on maps."""
     route_id: str
     route_short_name: str
     shape: List[ShapePointResponse]
+    stops: Optional[List[StopOnShapeResponse]] = None  # Stops with projected positions

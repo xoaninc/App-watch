@@ -10,6 +10,8 @@ from .route_schemas import (
     DayOperatingHours,
     RouteOperatingHoursResponse,
     ShapePointResponse,
+    CoordinateResponse,
+    StopOnShapeResponse,
     RouteShapeResponse,
 )
 
@@ -83,6 +85,8 @@ REQUIRED_SCHEMAS = [
     "DayOperatingHours",
     "RouteOperatingHoursResponse",
     "ShapePointResponse",
+    "CoordinateResponse",
+    "StopOnShapeResponse",
     "RouteShapeResponse",
     # Stop schemas
     "StopResponse",
