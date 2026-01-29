@@ -20,7 +20,7 @@ from adapters.http.api.gtfs.utils.occupancy_utils import (
     estimate_occupancy_by_time,
 )
 from adapters.http.api.gtfs.utils.civis_utils import detect_civis
-from adapters.http.api.gtfs.utils.text_utils import normalize_headsign
+from adapters.http.api.gtfs.utils.text_utils import normalize_headsign, normalize_route_long_name
 from adapters.http.api.gtfs.schemas import (
     RouteResponse,
     RouteFrequencyResponse,
@@ -39,6 +39,7 @@ from adapters.http.api.gtfs.schemas import (
     WalkingShapePoint,
     AccessResponse,
     StopAccessesResponse,
+    NearbyAccessResponse,
     VestibuleResponse,
     StopVestibulesResponse,
     TrainPositionSchema,
@@ -84,18 +85,18 @@ router = APIRouter(prefix="/gtfs", tags=["GTFS Query"])
 
 
 def resolve_stop_to_platforms(stop_id: str) -> List[str]:
-    """Resolve a parent station ID to its platform children.
+    """Resolve a parent station ID to its platform children AND the parent itself.
 
-    If the stop_id is a parent station, returns its child platforms.
-    If it has no children (is already a platform or simple stop), returns [stop_id].
+    Returns both the parent station AND its children because some GTFS feeds
+    (like Metro Bilbao) use parent station IDs directly in stop_times,
+    while others use platform/children IDs.
 
-    This is essential for networks like Metro Bilbao where stop_times
-    reference platform IDs (e.g., METRO_BILBAO_7.0) but users search
-    by station ID (e.g., METRO_BILBAO_7).
+    If the stop_id has no children, returns just [stop_id].
     """
     children = gtfs_store.get_children_stops(stop_id)
     if children:
-        return children
+        # Include BOTH parent and children - some GTFS use parent, some use children
+        return [stop_id] + children
     return [stop_id]
 
 
@@ -582,6 +583,79 @@ def get_stops_by_coordinates(
     return stops
 
 
+@router.get("/accesses/by-coordinates", response_model=List[NearbyAccessResponse])
+@limiter.limit(RateLimits.COORDINATES)
+def get_accesses_by_coordinates(
+    request: Request,
+    lat: float = Query(..., ge=-90, le=90, description="Latitude"),
+    lon: float = Query(..., ge=-180, le=180, description="Longitude"),
+    radius: int = Query(500, ge=50, le=2000, description="Search radius in meters"),
+    limit: int = Query(20, ge=1, le=100, description="Maximum results"),
+    db: Session = Depends(get_db),
+):
+    """Get metro/transit access points (entrances) near the given coordinates.
+
+    Returns access points sorted by distance with their RAPTOR routing ID (raptor_id)
+    which can be used directly in the /route-planner endpoint.
+
+    Example: lat=41.3508&lon=2.1108 (Barcelona, near Bellvitge)
+    """
+    # Haversine formula for distance calculation
+    lat_rad = func.radians(lat)
+    lon_rad = func.radians(lon)
+    access_lat_rad = func.radians(StopAccessModel.lat)
+    access_lon_rad = func.radians(StopAccessModel.lon)
+
+    dlat = access_lat_rad - lat_rad
+    dlon = access_lon_rad - lon_rad
+
+    a = func.power(func.sin(dlat / 2), 2) + \
+        func.cos(lat_rad) * func.cos(access_lat_rad) * func.power(func.sin(dlon / 2), 2)
+
+    distance = 2 * 6371000 * func.asin(func.sqrt(a))
+
+    # Bounding box filter for performance
+    lat_delta = radius / 111000
+    lon_delta = radius / (111000 * math.cos(math.radians(lat)))
+
+    # Query accesses with stop info
+    results = (
+        db.query(
+            StopAccessModel,
+            StopModel.name.label('stop_name'),
+            distance.label('distance_m')
+        )
+        .join(StopModel, StopAccessModel.stop_id == StopModel.id)
+        .filter(
+            StopAccessModel.lat.between(lat - lat_delta, lat + lat_delta),
+            StopAccessModel.lon.between(lon - lon_delta, lon + lon_delta),
+            distance <= radius,
+        )
+        .order_by(distance)
+        .limit(limit)
+        .all()
+    )
+
+    # Build response with RAPTOR IDs
+    accesses = []
+    for access, stop_name, dist in results:
+        is_elevator = 'ascensor' in access.name.lower() if access.name else False
+        accesses.append(NearbyAccessResponse(
+            id=access.id,
+            raptor_id=f"ACCESS_{access.id}",
+            stop_id=access.stop_id,
+            stop_name=stop_name,
+            name=access.name,
+            lat=access.lat,
+            lon=access.lon,
+            distance_m=int(dist),
+            wheelchair=access.wheelchair,
+            is_elevator=is_elevator,
+        ))
+
+    return accesses
+
+
 @router.get("/stops/{stop_id}", response_model=StopResponse)
 def get_stop(stop_id: str, db: Session = Depends(get_db)):
     """Get a specific stop by ID."""
@@ -787,7 +861,7 @@ def _get_frequency_based_departures(
                 directions.append((1, first_stop.name))
 
         if not directions:
-            directions = [(0, route.long_name or route.short_name)]
+            directions = [(0, normalize_route_long_name(route.long_name) or route.short_name)]
 
         # Generate estimated departures
         # If using a future frequency, start from when service begins
@@ -860,11 +934,12 @@ def get_stop_departures(
 
     # If this is a parent station, get all child stop IDs
     # Parent stations (location_type=1) don't have stop_times, their children do
+    # But some GTFS feeds (like Metro Bilbao) use the parent station ID in stop_times
     if stop.location_type == 1:
         child_stops = db.query(StopModel.id).filter(
             StopModel.parent_station_id == stop_id
         ).all()
-        stop_ids_to_query = [child.id for child in child_stops]
+        stop_ids_to_query = [stop_id] + [child.id for child in child_stops]
         if not stop_ids_to_query:
             # No direct children - try to find related stops by pattern
             # TMB_METRO_P.XXXXXXX -> TMB_METRO_1.XXX (platform stops use last 3 digits)
@@ -1080,9 +1155,13 @@ def get_stop_departures(
     stop_platforms = {}
     stop_occupancy = {}  # {trip_id: (occupancy_percent, occupancy_per_car)}
     if trip_ids:
+        # Query for exact stop_id OR platform variants (e.g., FGC_PE matches FGC_PE1, FGC_PE2, etc.)
         stop_time_updates = db.query(StopTimeUpdateModel).filter(
             StopTimeUpdateModel.trip_id.in_(trip_ids),
-            StopTimeUpdateModel.stop_id == stop_id,
+            or_(
+                StopTimeUpdateModel.stop_id == stop_id,
+                StopTimeUpdateModel.stop_id.like(f"{stop_id}%")  # Matches platform variants
+            ),
         ).all()
         for stu in stop_time_updates:
             stop_delays[stu.trip_id] = stu.departure_delay
@@ -1106,6 +1185,36 @@ def get_stop_departures(
         for stu in recent_platforms:
             if stu.stop_id not in stop_platforms_by_stop:
                 stop_platforms_by_stop[stu.stop_id] = stu.platform
+
+    # FGC Geotren: Get occupancy by line (GTFS-RT trip_ids don't match static GTFS)
+    fgc_occupancy_by_line = {}
+    if stop_id.startswith('FGC_'):
+        try:
+            from sqlalchemy import text as sql_text
+            geotren_data = db.execute(sql_text('''
+                SELECT line,
+                       AVG(COALESCE(occupancy_mi_percent, occupancy_ri_percent,
+                           occupancy_m1_percent, occupancy_m2_percent)) as avg_occ,
+                       json_build_array(
+                           MAX(occupancy_mi_percent),
+                           MAX(occupancy_ri_percent),
+                           MAX(occupancy_m1_percent),
+                           MAX(occupancy_m2_percent)
+                       )::text as per_car
+                FROM fgc_geotren_positions
+                WHERE occupancy_mi_percent IS NOT NULL
+                   OR occupancy_ri_percent IS NOT NULL
+                   OR occupancy_m1_percent IS NOT NULL
+                   OR occupancy_m2_percent IS NOT NULL
+                GROUP BY line
+            ''')).fetchall()
+            for row in geotren_data:
+                if row[1] is not None:  # avg_occ
+                    # Parse the JSON array string to List[int]
+                    per_car_list = parse_occupancy_per_car(row[2])
+                    fgc_occupancy_by_line[row[0]] = (float(row[1]), per_car_list)
+        except Exception as e:
+            logger.debug(f"FGC Geotren occupancy query failed: {e}")
 
     # Get train positions: first try GTFS-RT, then fall back to estimated
     train_positions = {}
@@ -1165,57 +1274,59 @@ def get_stop_departures(
             )
 
     # Helper function to get estimated platform from history
-    def get_estimated_platform(route_short: str, headsign: str) -> Optional[str]:
-        """Get most likely platform from historical data.
+    def get_estimated_platform(route_short: str, headsign: str) -> tuple[Optional[str], bool]:
+        """Get most likely platform from historical data with confidence calculation.
 
-        Looks at today's data first, then yesterday's if no data for today.
-        Uses the platform with highest count (most commonly used).
-        Falls back to searching without headsign if exact match not found.
+        Aggregates ALL historical data (up to 30 days) to calculate:
+        - Most commonly used platform for this route+headsign
+        - Confidence percentage (observations for top platform / total observations)
+
+        Returns:
+            Tuple of (platform, is_high_confidence) where is_high_confidence=True
+            if confidence > 80%, meaning it can be marked as "confirmada"
         """
-        from datetime import date, timedelta
-        today_date = date.today()
-        yesterday = today_date - timedelta(days=1)
+        from sqlalchemy import func
 
-        # Try today first with exact headsign
-        history = db.query(PlatformHistoryModel).filter(
+        # Aggregate all historical data with exact headsign match
+        platform_counts = db.query(
+            PlatformHistoryModel.platform,
+            func.sum(PlatformHistoryModel.count).label('total_count')
+        ).filter(
             PlatformHistoryModel.stop_id == queried_stop_numeric,
             PlatformHistoryModel.route_short_name == route_short,
             PlatformHistoryModel.headsign == headsign,
-            PlatformHistoryModel.observation_date == today_date,
-        ).order_by(PlatformHistoryModel.count.desc()).first()
+        ).group_by(
+            PlatformHistoryModel.platform
+        ).order_by(
+            func.sum(PlatformHistoryModel.count).desc()
+        ).all()
 
-        if history:
-            return history.platform
+        # If no exact headsign match, try without headsign filter
+        if not platform_counts:
+            platform_counts = db.query(
+                PlatformHistoryModel.platform,
+                func.sum(PlatformHistoryModel.count).label('total_count')
+            ).filter(
+                PlatformHistoryModel.stop_id == queried_stop_numeric,
+                PlatformHistoryModel.route_short_name == route_short,
+            ).group_by(
+                PlatformHistoryModel.platform
+            ).order_by(
+                func.sum(PlatformHistoryModel.count).desc()
+            ).all()
 
-        # Try today without headsign filter (for "Unknown" headsigns)
-        history = db.query(PlatformHistoryModel).filter(
-            PlatformHistoryModel.stop_id == queried_stop_numeric,
-            PlatformHistoryModel.route_short_name == route_short,
-            PlatformHistoryModel.observation_date == today_date,
-        ).order_by(PlatformHistoryModel.count.desc()).first()
+        if not platform_counts:
+            return None, False
 
-        if history:
-            return history.platform
+        # Calculate confidence: top platform count / total count
+        top_platform = platform_counts[0][0]
+        top_count = platform_counts[0][1]
+        total_count = sum(count for _, count in platform_counts)
 
-        # Fall back to yesterday with exact headsign
-        history = db.query(PlatformHistoryModel).filter(
-            PlatformHistoryModel.stop_id == queried_stop_numeric,
-            PlatformHistoryModel.route_short_name == route_short,
-            PlatformHistoryModel.headsign == headsign,
-            PlatformHistoryModel.observation_date == yesterday,
-        ).order_by(PlatformHistoryModel.count.desc()).first()
+        confidence = (top_count / total_count * 100) if total_count > 0 else 0
+        is_high_confidence = confidence >= 80.0
 
-        if history:
-            return history.platform
-
-        # Fall back to yesterday without headsign filter
-        history = db.query(PlatformHistoryModel).filter(
-            PlatformHistoryModel.stop_id == queried_stop_numeric,
-            PlatformHistoryModel.route_short_name == route_short,
-            PlatformHistoryModel.observation_date == yesterday,
-        ).order_by(PlatformHistoryModel.count.desc()).first()
-
-        return history.platform if history else None
+        return top_platform, is_high_confidence
 
     # Determine day type for operating hours check
     day_type = get_effective_day_type(now)
@@ -1263,10 +1374,11 @@ def get_stop_departures(
         # If no real platform, try to get estimated from history
         if not platform:
             route_short = route.short_name.strip() if route.short_name else ""
-            estimated = get_estimated_platform(route_short, headsign or "")
-            if estimated:
-                platform = estimated
-                platform_estimated = True
+            estimated_platform, is_high_confidence = get_estimated_platform(route_short, headsign or "")
+            if estimated_platform:
+                platform = estimated_platform
+                # High confidence (>80%) predictions are marked as confirmed, not estimated
+                platform_estimated = not is_high_confidence
 
         # Get occupancy data from GTFS-RT (available for TMB Metro Barcelona)
         occupancy_percent = None
@@ -1277,6 +1389,13 @@ def get_stop_departures(
             occupancy_percent = occ_pct
             occupancy_status = percentage_to_status(occ_pct)
             occupancy_per_car = parse_occupancy_per_car(occ_per_car_json)
+
+        # Fallback for FGC: check geotren table by route (GTFS-RT trip_ids don't match static)
+        if occupancy_percent is None and route.id.startswith('FGC_'):
+            fgc_line = route.short_name.strip() if route.short_name else ""
+            if fgc_line and fgc_line in fgc_occupancy_by_line:
+                occupancy_percent, occupancy_per_car = fgc_occupancy_by_line[fgc_line]
+                occupancy_status = percentage_to_status(occupancy_percent)
 
         # Detect CIVIS express service (Madrid Cercanías semi-direct trains)
         stop_count = trip_stop_counts.get(trip.id, 0)
@@ -1430,7 +1549,7 @@ def get_trip(trip_id: str, db: Session = Depends(get_db)):
         id=trip.id,
         route_id=trip.route_id,
         route_short_name=route.short_name.strip() if route and route.short_name else "",
-        route_long_name=route.long_name.strip() if route and route.long_name else "",
+        route_long_name=normalize_route_long_name(route.long_name.strip()) if route and route.long_name else "",
         route_color=route.color if route else None,
         headsign=headsign,
         direction_id=trip.direction_id,

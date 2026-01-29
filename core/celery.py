@@ -1,4 +1,5 @@
 from celery import Celery
+from celery.schedules import crontab
 
 from core.config import settings
 
@@ -40,6 +41,11 @@ celery_app.conf.update(
         "fetch-gtfs-realtime-every-30-seconds": {
             "task": "src.gtfs_bc.realtime.infrastructure.tasks.fetch_gtfs_realtime",
             "schedule": 30.0,  # Every 30 seconds
+            "options": {"queue": "gtfs_realtime"},
+        },
+        "cleanup-platform-history-daily": {
+            "task": "src.gtfs_bc.realtime.infrastructure.tasks.cleanup_platform_history",
+            "schedule": crontab(hour=4, minute=0),  # Every day at 4:00 AM
             "options": {"queue": "gtfs_realtime"},
         },
     },

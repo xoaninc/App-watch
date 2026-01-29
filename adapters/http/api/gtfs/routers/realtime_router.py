@@ -17,6 +17,7 @@ from src.gtfs_bc.realtime.infrastructure.models import AlertModel, AlertEntityMo
 
 # Centralized imports
 from adapters.http.api.gtfs.utils.holiday_utils import MADRID_TZ
+from adapters.http.api.gtfs.utils.text_utils import normalize_route_long_name
 from adapters.http.api.gtfs.schemas import (
     PositionSchema,
     VehiclePositionResponse,
@@ -445,7 +446,7 @@ def get_route_frequencies(
     return RealtimeRouteFrequencyResponse(
         route_id=route.id,
         route_short_name=route.short_name,
-        route_long_name=route.long_name,
+        route_long_name=normalize_route_long_name(route.long_name),
         route_color=route.color,
         day_type=day_type,
         periods=periods,

@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from core.database import get_db
 from src.gtfs_bc.network.infrastructure.models import NetworkModel
 from src.gtfs_bc.route.infrastructure.models import RouteModel
+from adapters.http.api.gtfs.utils.text_utils import normalize_route_long_name
 
 
 router = APIRouter(prefix="/gtfs/networks", tags=["networks"])
@@ -125,7 +126,7 @@ async def get_network(code: str, db: Session = Depends(get_db)):
         lines_dict[line_code]["routes"].append(
             {
                 "id": route.id,
-                "long_name": route.long_name,
+                "long_name": normalize_route_long_name(route.long_name),
                 "color": route.color,
             }
         )
@@ -204,7 +205,7 @@ async def get_network_lines(code: str, db: Session = Depends(get_db)):
         lines_dict[line_code]["routes"].append(
             {
                 "id": route.id,
-                "long_name": route.long_name,
+                "long_name": normalize_route_long_name(route.long_name),
                 "color": route.color,
             }
         )

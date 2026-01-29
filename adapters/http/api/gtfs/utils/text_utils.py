@@ -58,3 +58,32 @@ def normalize_headsign(text: Optional[str]) -> Optional[str]:
             result.append(word.capitalize())
 
     return ' '.join(result)
+
+
+def normalize_route_long_name(text: Optional[str]) -> Optional[str]:
+    """Normalize route long_name by removing operator suffixes.
+
+    Renfe GTFS data includes station names with "RENFE" suffix in route long_names,
+    which looks redundant when displayed. This function removes those suffixes.
+
+    Examples:
+        "Chamartín RENFE - Aeropuerto T4" -> "Chamartín - Aeropuerto T4"
+        "Alcalá de Henares - Príncipe Pío RENFE" -> "Alcalá de Henares - Príncipe Pío"
+        "Guadalajara - Chamartín RENFE" -> "Guadalajara - Chamartín"
+
+    Args:
+        text: The route long_name to normalize
+
+    Returns:
+        Normalized long_name without operator suffixes
+    """
+    if not text:
+        return text
+
+    import re
+
+    # Remove " RENFE" suffix (case insensitive)
+    # Pattern matches " RENFE" at end of string or before " - "
+    result = re.sub(r'\s+RENFE(?=\s*-|\s*$)', '', text, flags=re.IGNORECASE)
+
+    return result.strip()
