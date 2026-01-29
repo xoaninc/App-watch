@@ -272,7 +272,22 @@ def get_routes(
         if short_name.lower() not in base_routes_with_variants:
             filtered_routes.append(route)
 
-    return filtered_routes
+    # Apply long_name normalization (remove RENFE suffix, etc.)
+    return [
+        {
+            "id": r.id,
+            "short_name": r.short_name,
+            "long_name": normalize_route_long_name(r.long_name),
+            "route_type": r.route_type,
+            "color": r.color,
+            "text_color": r.text_color,
+            "agency_id": r.agency_id,
+            "network_id": r.network_id,
+            "description": r.description,
+            "is_circular": r.is_circular,
+        }
+        for r in filtered_routes
+    ]
 
 
 @router.get("/coordinates/routes", response_model=List[RouteResponse])
@@ -338,7 +353,22 @@ def get_routes_by_coordinates(
     if routes_to_exclude:
         routes = [r for r in routes if r.short_name not in routes_to_exclude]
 
-    return routes
+    # Apply long_name normalization (remove RENFE suffix, etc.)
+    return [
+        {
+            "id": r.id,
+            "short_name": r.short_name,
+            "long_name": normalize_route_long_name(r.long_name),
+            "route_type": r.route_type,
+            "color": r.color,
+            "text_color": r.text_color,
+            "agency_id": r.agency_id,
+            "network_id": r.network_id,
+            "description": r.description,
+            "is_circular": r.is_circular,
+        }
+        for r in routes
+    ]
 
 
 @router.get("/routes/{route_id}", response_model=RouteResponse)
@@ -353,7 +383,20 @@ def get_route(route_id: str, db: Session = Depends(get_db)):
     route = db.query(RouteModel).filter(RouteModel.id == route_id).first()
     if not route:
         raise HTTPException(status_code=404, detail=f"Route {route_id} not found")
-    return route
+
+    # Apply long_name normalization
+    return {
+        "id": route.id,
+        "short_name": route.short_name,
+        "long_name": normalize_route_long_name(route.long_name),
+        "route_type": route.route_type,
+        "color": route.color,
+        "text_color": route.text_color,
+        "agency_id": route.agency_id,
+        "network_id": route.network_id,
+        "description": route.description,
+        "is_circular": route.is_circular,
+    }
 
 
 @router.get("/stops", response_model=List[StopResponse])
