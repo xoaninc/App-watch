@@ -1,0 +1,7 @@
+pathway_id,from_stop_id,to_stop_id,pathway_mode,is_bidirectional,length,traversal_time,stair_count
+PCH_PC1_PC2,PC1,PC2,1,1,8,6,
+GDL_GD1_GD2,GD1,GD2,1,1,8,6,
+PCH_ENT_PC1,PCH_ENT,PC1,1,1,15,30,
+PCH_ENT_PC2,PCH_ENT,PC2,1,1,15,30,
+GDL_ENT_GD1,GDL_ENT,GD1,1,1,15,30,
+GDL_ENT_GD2,GDL_ENT,GD2,1,1,15,30,
