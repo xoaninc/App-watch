@@ -1,6 +1,6 @@
 # Estado de Operadores GTFS
 
-**Última actualización:** 2026-01-26
+**Última actualización:** 2026-01-29
 
 ---
 
@@ -59,10 +59,10 @@
 | TRAM Barcelona | ✅ | ❌ | ❌ | ✅ 5k pts (OSM 2026-01-26) |
 | TRAM Alicante | ✅ NAP | ❌ | ❌ | ✅ 7k pts (OSM 2026-01-26) |
 | Metro Tenerife | ✅ | ❌ | ✅ (2) | ✅ 132 pts |
-| Metro Málaga | ✅ NAP | ❌ | ✅ (4) | ✅ 260 pts |
+| Metro Málaga | ✅ Frecuencias | ❌ | ✅ (4) | ✅ 260 pts |
 | Metrovalencia | ✅ NAP | ❌ (API*) | ❌ | ✅ 11k pts (OSM 2026-01-26) |
-| Metro Granada | ✅ NAP | ❌ | ❌ | ✅ 52 pts (bidireccional) |
-| Metro Sevilla | ✅ NAP | ❌ | ❌ | ✅ 424 pts (OSM) |
+| Metro Granada | ✅ Frecuencias | ❌ | ❌ | ✅ 52 pts (bidireccional) |
+| Metro Sevilla | ✅ Frecuencias | ❌ | ❌ | ✅ 424 pts (OSM) |
 | Tranvía Zaragoza | ✅ NAP | ❌ | ❌ | ✅ 252 pts |
 | Tranvía Murcia | ✅ NAP | ❌ | ❌ | ✅ 989 pts (L1 circular + L1B bidir) |
 | SFM Mallorca | ✅ NAP | ❌ | ❌ | ✅ 258k pts |
@@ -73,6 +73,7 @@
 
 **Leyenda:**
 - ✅ = Funciona (shapes: incluye cantidad de puntos en producción)
+- ✅ Frecuencias = Trips generados desde frecuencias oficiales (ver sección "Importación basada en Frecuencias")
 - 🔧 NAP = Requiere descarga manual desde NAP (con login)
 - ⚠️ URL directa = Shapes disponibles en URL pública, pendiente de importar
 - ❌ (API*) = No hay GTFS-RT; existe API propietaria pero devuelve vacío (ver sección Metrovalencia)
@@ -245,6 +246,9 @@ Estos operadores requieren descarga desde el NAP con login web:
 |---------|-------------|
 | `scripts/operators_config.py` | Configuración de operadores |
 | `scripts/import_transfers.py` | Importador de transfers |
+| `scripts/import_metro_sevilla_frequencies.py` | Importador frecuencias Metro Sevilla |
+| `scripts/import_metro_granada_frequencies.py` | Importador frecuencias Metro Granada |
+| `scripts/import_metro_malaga_frequencies.py` | Importador frecuencias Metro Málaga |
 | `src/gtfs_bc/realtime/infrastructure/services/multi_operator_fetcher.py` | Fetcher multi-operador |
 
 ---
@@ -279,3 +283,66 @@ GET /api/v1/gtfs/stops/{stop_id}/transfers?direction={from|to}
 - 1 = Transbordo temporizado (vehículo espera)
 - 2 = Tiempo mínimo requerido
 - 3 = Transbordo no posible
+
+---
+
+## Importación basada en Frecuencias
+
+Algunos operadores tienen datos GTFS en el NAP con validez limitada o frecuencias incorrectas. Para estos casos, se han creado scripts que generan trips individuales a partir de las frecuencias oficiales publicadas en sus webs.
+
+### Metro Sevilla
+- **Script:** `scripts/import_metro_sevilla_frequencies.py`
+- **Fuente:** https://metrodesevilla.info/horarios
+- **Línea:** L1 (21 paradas)
+- **Validez:** Todo 2026
+- **Trips generados:** ~1,000
+- **Frecuencias:**
+  - L-J: 4-6 min (punta), 7.5 min (valle)
+  - Viernes: 4-6 min (punta), 7.5 min (valle), 10 min (noche)
+  - Sábado: 7.5 min (día), 10-15 min (noche)
+  - Domingo/Festivo: 10 min
+
+### Metro Granada
+- **Script:** `scripts/import_metro_granada_frequencies.py`
+- **Fuente:** https://metropolitanogranada.es/horarios
+- **Línea:** L1 (26 paradas: Albolote ↔ Armilla)
+- **Validez:** Todo 2026
+- **Trips generados:** 966
+- **Stop times generados:** 25,116
+- **Frecuencias:**
+  - L-J: 8'30" todo el día
+  - Viernes: 8'30" (día), 15' (noche 22:00-00:00)
+  - Sábado: 10' (día), 15' (noche)
+  - Domingo/Festivo: 15' todo el día
+- **Tiempo total de recorrido:** 50-51 minutos
+- **Festivos 2026:** Incluye festivos nacionales, autonómicos (Andalucía) y locales (Granada)
+
+### Metro Málaga
+- **Script:** `scripts/import_metro_malaga_frequencies.py`
+- **Fuente:** https://metromalaga.es/horarios/
+- **Líneas:**
+  - L1: El Perchel ↔ Andalucía Tech (13 paradas, ~20 min)
+  - L2: Palacio Deportes ↔ El Perchel (8 paradas, ~12 min)
+- **Validez:** Todo 2026
+- **Trips generados:** 2,104
+- **Stop times generados:** 22,092
+- **Frecuencias:**
+  - L-V: 9'30" todo el día
+  - Sábado: 12' todo el día
+  - Domingo/Festivo: 15' todo el día
+- **Festivos 2026:** Incluye festivos nacionales, autonómicos (Andalucía) y locales (Málaga, incluyendo Feria de Málaga y Virgen de la Victoria)
+
+### Cómo ejecutar los scripts
+
+```bash
+# Granada
+python scripts/import_metro_granada_frequencies.py
+
+# Málaga
+python scripts/import_metro_malaga_frequencies.py
+
+# Sevilla
+python scripts/import_metro_sevilla_frequencies.py
+```
+
+**Nota:** Los scripts borran los datos existentes del operador antes de insertar los nuevos. Ejecutar en producción con precaución.
