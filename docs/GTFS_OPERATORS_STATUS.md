@@ -63,7 +63,7 @@
 | Metrovalencia | ✅ NAP | ❌ (API*) | ❌ | ✅ 11k pts (OSM 2026-01-26) |
 | Metro Granada | ✅ Frecuencias | ❌ | ❌ | ✅ 52 pts (bidireccional) |
 | Metro Sevilla | ✅ Frecuencias | ❌ | ❌ | ✅ 424 pts (OSM) |
-| Tranvía Zaragoza | ✅ NAP | ❌ | ❌ | ✅ 252 pts |
+| Tranvía Zaragoza | ✅ Frecuencias | ❌ | ❌ | ✅ 252 pts |
 | Tranvía Murcia | ✅ NAP | ❌ | ❌ | ✅ 989 pts (L1 circular + L1B bidir) |
 | SFM Mallorca | ✅ NAP | ❌ | ❌ | ✅ 258k pts |
 | Tranvía Sevilla | ✅ manual | ❌ | ❌ | ✅ 552 pts (OSM 2026-01-27) |
@@ -249,6 +249,7 @@ Estos operadores requieren descarga desde el NAP con login web:
 | `scripts/import_metro_sevilla_frequencies.py` | Importador frecuencias Metro Sevilla |
 | `scripts/import_metro_granada_frequencies.py` | Importador frecuencias Metro Granada |
 | `scripts/import_metro_malaga_frequencies.py` | Importador frecuencias Metro Málaga |
+| `scripts/import_tranvia_zaragoza_frequencies.py` | Importador frecuencias Tranvía Zaragoza |
 | `src/gtfs_bc/realtime/infrastructure/services/multi_operator_fetcher.py` | Fetcher multi-operador |
 
 ---
@@ -332,6 +333,19 @@ Algunos operadores tienen datos GTFS en el NAP con validez limitada o frecuencia
   - Domingo/Festivo: 15' todo el día
 - **Festivos 2026:** Incluye festivos nacionales, autonómicos (Andalucía) y locales (Málaga, incluyendo Feria de Málaga y Virgen de la Victoria)
 
+### Tranvía Zaragoza
+- **Script:** `scripts/import_tranvia_zaragoza_frequencies.py`
+- **Fuente:** https://www.tranviasdezaragoza.es/el-tranvia-circulara-en-horario-de-invierno-desde-el-9-de-septiembre/
+- **Línea:** L1 Parque Goya ↔ Mago de Oz (25 paradas por dirección, ~39 min)
+- **Validez:** Todo 2026
+- **Trips generados:** 720
+- **Stop times generados:** 18,000
+- **Frecuencias (Horario Invierno):**
+  - Laborables: 5' (punta), 6-7' (valle), 20' (madrugada)
+  - Sábados: 8-10' (día), 20' (mañana temprano)
+  - Domingos/Festivos: 12-15' todo el día
+- **Festivos 2026:** Incluye festivos nacionales, autonómicos (Aragón) y locales (Zaragoza, incluyendo Fiestas del Pilar)
+
 ### Cómo ejecutar los scripts
 
 ```bash
@@ -343,6 +357,9 @@ python scripts/import_metro_malaga_frequencies.py
 
 # Sevilla
 python scripts/import_metro_sevilla_frequencies.py
+
+# Zaragoza
+python scripts/import_tranvia_zaragoza_frequencies.py
 ```
 
 **Nota:** Los scripts borran los datos existentes del operador antes de insertar los nuevos. Ejecutar en producción con precaución.
