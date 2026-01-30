@@ -70,6 +70,10 @@ GTFS_RT_OPERATORS = {
         'alerts': 'https://opendata.euskadi.eus/transport/moveuskadi/euskotren/gtfsrt_euskotren_alerts.pb',
         'stop_id_prefix': 'EUSKOTREN_',
         'trip_id_prefix': 'EUSKOTREN_',
+        # L3 moved to Metro Bilbao (uses Euskotren infrastructure but is part of Metro Bilbao network)
+        'route_id_map': {
+            'ES:Euskotren:Line:9:': 'METRO_BILBAO_L3',
+        },
     },
     'tmb_metro': {
         'name': 'TMB Metro Barcelona',
@@ -107,6 +111,30 @@ class MultiOperatorFetcher:
 
     def __init__(self, db: Session):
         self.db = db
+
+    @staticmethod
+    def _map_route_id(route_id: str, config: dict, prefix: str = '') -> str:
+        """Map route_id using operator-specific mapping if available.
+
+        This is used when a route has been moved to a different operator
+        (e.g., L3 from Euskotren to Metro Bilbao).
+        """
+        if not route_id:
+            return route_id
+
+        route_id_map = config.get('route_id_map', {})
+
+        # Check if the raw route_id (without prefix) is in the map
+        if route_id in route_id_map:
+            return route_id_map[route_id]
+
+        # Check with prefix
+        prefixed_route_id = f"{prefix}{route_id}"
+        if prefixed_route_id in route_id_map:
+            return route_id_map[prefixed_route_id]
+
+        # No mapping found, return with prefix
+        return prefixed_route_id if prefix else route_id
 
     @staticmethod
     def _extract_platform_from_stop_id(stop_id: str, operator: str = 'fgc', direction_id: Optional[int] = None) -> Optional[str]:
@@ -782,7 +810,8 @@ class MultiOperatorFetcher:
 
                 # Insert informed entities
                 for ie in alert.informed_entity:
-                    route_id = f"{prefix}{ie.route_id}" if ie.route_id else None
+                    # Apply route_id mapping (e.g., Euskotren L3 -> Metro Bilbao L3)
+                    route_id = self._map_route_id(ie.route_id, config, prefix) if ie.route_id else None
                     stop_id = f"{prefix}{ie.stop_id}" if ie.stop_id else None
                     trip_id = f"{prefix}{ie.trip.trip_id}" if ie.trip.trip_id else None
 
