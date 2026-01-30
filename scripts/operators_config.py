@@ -125,7 +125,8 @@ OPERATORS['metro_bilbao'] = OperatorConfig(
     city='Bilbao',
     region='País Vasco',
     color='E30613',
-    gtfs_url='https://opendata.euskadi.eus/transport/moveuskadi/metro_bilbao/gtfs_metro_bilbao.zip',
+    # Updated 2026-01-29: data.ctb.eus portal
+    gtfs_url='https://ctb-gtfs.s3.eu-south-2.amazonaws.com/metrobilbao.zip',
     auth_method=AuthMethod.NONE,
     route_type=1,
     agency_id='METRO_BILBAO',
@@ -135,9 +136,10 @@ OPERATORS['metro_bilbao'] = OperatorConfig(
     wikipedia_url='https://es.wikipedia.org/wiki/Metro_de_Bilbao',
     gtfs_rt=GTFSRTConfig(
         format=GTFSRTFormat.PROTOBUF,
-        vehicle_positions_url='https://opendata.euskadi.eus/transport/moveuskadi/metro_bilbao/gtfsrt_metro_bilbao_vehicle_positions.pb',
-        trip_updates_url='https://opendata.euskadi.eus/transport/moveuskadi/metro_bilbao/gtfsrt_metro_bilbao_trip_updates.pb',
-        alerts_url='https://opendata.euskadi.eus/transport/moveuskadi/metro_bilbao/gtfsrt_metro_bilbao_alerts.pb',
+        # Updated 2026-01-29: data.ctb.eus portal
+        vehicle_positions_url='https://ctb-gtfs-rt.s3.eu-south-2.amazonaws.com/metro-bilbao-vehicle-positions.pb',
+        trip_updates_url='https://ctb-gtfs-rt.s3.eu-south-2.amazonaws.com/metro-bilbao-trip-updates.pb',
+        alerts_url='https://ctb-gtfs-rt.s3.eu-south-2.amazonaws.com/metro-bilbao-service-alerts.pb',
     ),
 )
 

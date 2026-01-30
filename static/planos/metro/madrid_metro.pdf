@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html  lang="es" dir="ltr" prefix="content: http://purl.org/rss/1.0/modules/content/  dc: http://purl.org/dc/terms/  foaf: http://xmlns.com/foaf/0.1/  og: http://ogp.me/ns#  rdfs: http://www.w3.org/2000/01/rdf-schema#  schema: http://schema.org/  sioc: http://rdfs.org/sioc/ns#  sioct: http://rdfs.org/sioc/types#  skos: http://www.w3.org/2004/02/skos/core#  xsd: http://www.w3.org/2001/XMLSchema# " class="no-js">
+  <head>
+    <title>Página no encontrada | Metro de Madrid</title>
+    <meta charset="utf-8" />
+<script data-type="text/javascript" type="text/plain" data-name="matomo">var _paq = _paq || [];(function(){var u=(("https:" == document.location.protocol) ? "https://digitaldat.metromadrid.es/" : "http://digitaldat.metromadrid.es/");_paq.push(["setSiteId", "2"]);_paq.push(["setTrackerUrl", u+"matomo.php"]);_paq.push(["setDocumentTitle", "404/URL = " + encodeURIComponent(document.location.pathname+document.location.search) + "/From = " + encodeURIComponent(document.referrer)]);_paq.push(["setDoNotTrack", 1]);if (!window.matomo_search_results_active) {_paq.push(["trackPageView"]);}_paq.push(["setIgnoreClasses", ["no-tracking","colorbox"]]);_paq.push(["enableLinkTracking"]);var d=document,g=d.createElement("script"),s=d.getElementsByTagName("script")[0];g.type="text/javascript";g.defer=true;g.async=true;g.src=u+"matomo.js";s.parentNode.insertBefore(g,s);})();</script>
+<meta name="geo.placename" content="MADRID" />
+<meta name="geo.region" content="ES" />
+<link rel="canonical" href="http://www.metromadrid.es/es" />
+<meta name="robots" content="index, follow" />
+<link rel="shortlink" href="http://www.metromadrid.es/es" />
+<meta property="og:site_name" content="Metro de Madrid" />
+<meta property="og:type" content="website" />
+<meta property="og:url" content="http://www.metromadrid.es/es/nota-de-prensa/2019-03-18" />
+<meta property="og:title" content="Página no encontrada" />
+<meta property="og:description" content="Metro de Madrid" />
+<meta property="og:image" content="https://www.metromadrid.es/sites/default/files/web/imagenes/0334.jpg" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:description" content="Metro de Madrid" />
+<meta name="twitter:site" content="@metro_madrid" />
+<meta name="twitter:title" content="Página no encontrada" />
+<meta name="twitter:creator" content="@metro_madrid" />
+<meta name="twitter:image" content="https://www.metromadrid.es/sites/default/files/web/imagenes/0334.jpg" />
+<meta name="twitter:image:alt" content="Metro de Madrid" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<link rel="stylesheet" href="https://kdcaapi.metromadrid.es/Widget/widget.css" type="text/css" />
+<div id="bot-container" style="display:none;">
+  <div class="bot-icon">
+    <div class="avatar-image">
+      <button>
+        <img src="https://www.metromadrid.es/sites/default/files/logos/MetroMadridChatbotLogo.gif" style="border: none" class="avatar" alt="Metro de Madrid" />
+      </button>
+    </div>
+  </div>
+  <div id="chat-widget" style="display: none">
+    <div class="header" style="background: #0c4da2">
+      <div class="title-custom-container">
+        <h1 class="title-custom" style="color: #ffffff">Asistente virtual</h1>
+        <h2 class="subtitle-custom" style="color: #ffffff">Metro de Madrid</h2>
+      </div>
+      <button id="chat-submenu-button" class="header-button"><svg width="24" height="24">
+          <path fill="#ffffff" d="m16.5 11.995c0-1.242 1.008-2.25 2.25-2.25s2.25 1.008 2.25 2.25-1.008 2.25-2.25 2.25-2.25-1.008-2.25-2.25zm-6.75 0c0-1.242 1.008-2.25 2.25-2.25s2.25 1.008 2.25 2.25-1.008 2.25-2.25 2.25-2.25-1.008-2.25-2.25zm-6.75 0c0-1.242 1.008-2.25 2.25-2.25s2.25 1.008 2.25 2.25-1.008 2.25-2.25 2.25-2.25-1.008-2.25-2.25z" />
+        </svg></button>
+      <div class="chat-submenu" style="display: none">
+        <button id="fullscreen">Pantalla completa</button>
+        <span>Tamaño letra: <button id="fs-S">A</button> | <button id="fs-M">A</button> | <button id="fs-L">A</button></span>
+        <span>Alto contraste: <button id="darkmode-on">ON</button> | <button id="darkmode-off">OFF</button></span>
+        <button id="delete-chat">Eliminar conversación</button>
+      </div>
+      <button id="close-button" class="header-button"><svg width="24" viewBox="0 0 24 24">
+          <path fill="#ffffff" d="m12 10.93 5.719-5.72c.146-.146.339-.219.531-.219.404 0 .75.324.75.749 0 .193-.073.385-.219.532l-5.72 5.719 5.719 5.719c.147.147.22.339.22.531 0 .427-.349.75-.75.75-.192 0-.385-.073-.531-.219l-5.719-5.719-5.719 5.719c-.146.146-.339.219-.531.219-.401 0-.75-.323-.75-.75 0-.192.073-.384.22-.531l5.719-5.719-5.72-5.719c-.146-.147-.219-.339-.219-.532 0-.425.346-.749.75-.749.192 0 .385.073.531.219z" />
+        </svg></button>
+    </div>
+    <div class="messages" style="background: #ffffff">
+    </div>
+    <div class="widget-input" style="background: #ffffff">
+      <input aria-label="Escribir mensaje al asistente virtual" type="text" style="color: #000000; border-color: #114da2;" placeholder="Pregúntame algo..." />
+      <button class="send-button"><svg class="send-button" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+          <path fill="#114da2" d="M24 0l-6 22-8.129-7.239 7.802-8.234-10.458 7.227-7.215-1.754 24-12zm-15 16.668v7.332l3.258-4.431-3.258-2.901z" />
+        </svg></button>
+    </div>
+  </div>
+</div>
+<style>
+  #chat-widget .widget-input input::placeholder {
+    color: #000000
+  }
+</style>
+
+<script src="https://kdcaapi.metromadrid.es/Widget/widget.js"></script>
+<script>
+  document.addEventListener("DOMContentLoaded", function() { 
+    document.getElementById("bot-container").style.display = "block"; 
+  });
+
+  let botMessageColor = "";
+  let botLinkColor = "#0c4da2";
+  let userMessageColor = "";
+  let botBoxBackground = "#eff1f4";
+  let userBoxBackground = "#c1e3fc";
+  let borderAndTextColorButton = "#114da2";
+  let idClient = "0";
+  let idProject = "Mzpv0w4t71t";
+  setStartUserMessage("");
+  setStartBotMessage('Soy el asistente virtual de Metro de Madrid.<br> Escribe “Hola” para comenzar nuestra conversación.');
+</script>
+<meta name="Generator" content="Drupal 10 (https://www.drupal.org)" />
+<meta name="MobileOptimized" content="width" />
+<meta name="HandheldFriendly" content="true" />
+<meta http-equiv="ImageToolbar" content="false" />
+<link rel="icon" href="/favicon.ico" type="image/vnd.microsoft.icon" />
+<script>window.a2a_config=window.a2a_config||{};a2a_config.callbacks=[];a2a_config.overlays=[];a2a_config.templates={};a2a_config.exclude_services = [ 'twitter' ];
+a2a_config.prioritize = [ 'x' ];
+
+a2a_config.callbacks.push({
+    share: function(data) {
+      var old_url = data.url;
+      // Initialize new shared URL
+      var new_url = old_url.replace(/^http:/, 'https:');;
+      return {
+        url: new_url,
+      };
+    }
+});</script>
+<script async data-insuit-custom="true" data-insuit-id="insuitlaunch" src="https://www--metromadrid--es.insuit.net/i4tservice/insuit-app.js"></script>
+
+    <link rel="stylesheet" media="all" href="/sites/default/files/css/css_8lwpd4xDgcPOnunpFHhE9ag_Dnr08EiJJQLKdXg0rkU.css?delta=0&amp;language=es&amp;theme=buson8&amp;include=eJxNjlEOwkAIRC-E5dfbNOwu1U3pEoE1tqe30db4Qx4zmeRRKaHUVqQDhsm0BaTu2q6Y3UcuNdTOZNpbP5-baCKBTMKtkOEJQ9x5YcjzdzvWVrhFEs0z_jFkFbWkLyw8UZeAWcgUP_efL_pks1oYHr1u6LEKO3g2FaGF8EeXXRh89eAFEznD1i2Nk_bdKqq2w_gN39tfhA" />
+<link rel="stylesheet" media="all" href="/sites/default/files/css/css_DvbbuEmRLn1ajSv_edThEP9f-WyHCKRnI1j4QgtdQXU.css?delta=1&amp;language=es&amp;theme=buson8&amp;include=eJxNjlEOwkAIRC-E5dfbNOwu1U3pEoE1tqe30db4Qx4zmeRRKaHUVqQDhsm0BaTu2q6Y3UcuNdTOZNpbP5-baCKBTMKtkOEJQ9x5YcjzdzvWVrhFEs0z_jFkFbWkLyw8UZeAWcgUP_efL_pks1oYHr1u6LEKO3g2FaGF8EeXXRh89eAFEznD1i2Nk_bdKqq2w_gN39tfhA" />
+
+    <script src="/libraries/klaro/dist/klaro-no-translations-no-css.js?t9nitd" defer id="klaro-js"></script>
+
+    <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
+  </head>
+  <body class="lang-es section-es path-nota-de-prensa environment-prod node-basic-page-página-no-encontrada">
+  <a href="#main-content" class="visually-hidden focusable skip-link">
+    Pasar al contenido principal
+  </a>
+  
+    <div class="dialog-off-canvas-main-canvas" data-off-canvas-main-canvas>
+    
+<button type="button" id="insuitlaunch" tabindex="0" data-insuit-uuid="dfc8e4cd-0013-4990-8b5c-638ca0c3cd41" class="">
+				<div class="wrapper-img">
+					<img src="/themes/custom/buson8/images/logo_insuit1.png" width="50" alt="modo accesible">
+				</div>
+				<div class="wrapper-text noned" aria-hidden="true" tabindex="-1">
+					<p class="text">Modo accesible</p>
+				</div>
+</button>
+
+<div class="off-canvas-wrapper">
+  <div class="inner-wrap off-canvas-wrapper-inner" id="inner-wrap" data-off-canvas-wrapper>
+    <aside id="left-off-canvas-menu" class="off-canvas left-off-canvas-menu position-left" role="complementary" data-off-canvas>
+      
+    </aside>
+
+    <aside id="right-off-canvas-menu" class="off-canvas right-off-canvas-menu position-right" role="complementary" data-off-canvas>
+      <button class="close-button" aria-label="Close menu" type="button" data-close>
+        <span aria-hidden="true">&times;</span>
+      </button>
+        <section class="region region-right-off-canvas">
+    <nav role="navigation" aria-labelledby="block-system-menu-block-main-menu" id="block-system-menu-block-main" class="block-system-menu-block-main">
+            
+  <h2 class="block-title visually-hidden" id="block-system-menu-block-main-menu">Main navigation</h2>
+  
+
+        
+<div class="content__menu-main">
+  <ul class="row">
+                      	        <li class="small-12 medium-12 large-3 columns">
+          <ul class="menu-main--col">
+	  
+                  <li><a href="/es/quienes-somos/somos-centenarios" target="_self" class="megamenu-col-head" data-drupal-link-system-path="node/139">QUIÉNES SOMOS</a>
+        
+                              <ul class="sub_menu-main--col">
+                                    	    <li><a href="/es/quienes-somos/somos-centenarios" target="_self" data-drupal-link-system-path="node/139">Centenarios</a></li>
+                                                  	    <li><a href="/es/quienes-somos/somos-responsables" data-drupal-link-system-path="node/2057">Responsables</a></li>
+                                                  	    <li><a href="/es/quienes-somos/estaciones-emblematicas" target="_self" class="menu-preprocess-estaciones-emblematicas" data-drupal-link-system-path="quienes-somos/estaciones-emblematicas">Estaciones emblemáticas</a></li>
+                                                  	    <li><a href="/es/quienes-somos/visitas-virtuales" title="Visitas virtuales" data-drupal-link-system-path="node/2467">Visitas Virtuales</a></li>
+                                                  	    <li><a href="/es/quienes-somos/metro-de-madrid-en-cifras" target="_self" data-drupal-link-system-path="node/1158">Cifras</a></li>
+                                                  	    <li><a href="https://museosmetromadrid.es/" target="_blank">Museos de Metro</a></li>
+                                                  	    <li><a href="/es/quienes-somos/gestion-y-calidad" target="_self" data-drupal-link-system-path="node/3431">Gestión y Calidad</a></li>
+                                                  	    <li><a href="https://andencentral.metromadrid.net" target="_blank" class="external-url">Portal del empleado</a></li>
+                                    </ul></li>
+        
+                
+                  <li><a href="/es/empleo-metro" target="_self" data-drupal-link-system-path="node/129">EMPLEO</a>
+        
+        
+                
+                  <li><a href="/es/internacional" target="_self" data-drupal-link-system-path="node/5686">INTERNACIONAL</a>
+        
+        
+                
+                  <li><a href="/es/perfil-del-contratante/inicio" target="_self" data-drupal-link-system-path="node/372">PERFIL DEL CONTRATANTE</a>
+        
+        
+                      	      		      		  </li>
+      	    </ul>
+      	        <li class="small-12 medium-12 large-3 columns">
+          <ul class="menu-main--col">
+	  
+                  <li><a href="/es/linea/linea-1" target="_self" class="megamenu-col-head" data-drupal-link-system-path="node/327">VIAJA EN METRO</a>
+        
+                              <ul class="sub_menu-main--col">
+                                    	    <li><a href="https://ctmulti.metromadrid.es/ctmulti-visor/" target="_blank">Cálculo de trayectos</a></li>
+                                                  	    <li><a href="/es/linea/linea-1" target="_self" class="menu-preprocess-lineas-horarios" data-drupal-link-system-path="node/327">Líneas y horarios</a></li>
+                                                  	    <li><a href="/es/viaja-en-metro/apps" target="_self" data-drupal-link-system-path="node/346">Apps</a></li>
+                                                  	    <li><a href="/es/viaja-en-metro/plano-de-metro-de-madrid" target="_self" data-drupal-link-system-path="node/361">Planos</a></li>
+                                                  	    <li><a href="/es/viaja-en-metro/titulos-y-tarifas/tipos-de-tarjeta" target="_self" class="menu-preprocess-tarifas" data-drupal-link-system-path="node/7089">Títulos y tarifas</a></li>
+                                                  	    <li><a href="/es/viaja-en-metro/bibliometros" target="_self" data-drupal-link-system-path="node/354">Bibliometros</a></li>
+                                                  	    <li><a href="/es/viaja-en-metro/metrotecas" data-drupal-link-system-path="node/6528">Metrotecas</a></li>
+                                                  	    <li><a href="/es/viaja-en-metro/reglamento-de-viajeros-del-ferrocarril-metropolitano-de-madrid" target="_self" data-drupal-link-system-path="node/349">Reglamentos</a></li>
+                                                  	    <li><a href="/es/viaja-en-metro/lara-linea-de-apoyo-para-el-refuerzo-de-la-autonomia" data-drupal-link-system-path="node/4615">Refuerzo de la autonomía</a></li>
+                                                  	    <li><a href="/es/viaja-en-metro/como-actuar-en-caso-de-emergencia" data-drupal-link-system-path="node/3380">Plan de emergencia</a></li>
+                                    </ul></li>
+        
+                
+                  <li><a href="/es/aulametro" data-drupal-link-system-path="node/4965">AULAMETRO</a>
+        
+        
+                
+                  <li><a href="/es/guiacultural" target="_self" title="Guía cultural de Metro de Madridl" data-drupal-link-system-path="guiacultural">GUÍA CULTURAL</a>
+        
+        
+                
+                  <li><a href="https://www.madrid.org/filmmadrid/ruta-metro/metro-cine/index.html" target="_blank">SE RODÓ EN METRO</a>
+        
+        
+                      	      		      		  </li>
+      	    </ul>
+      	        <li class="small-12 medium-12 large-3 columns">
+          <ul class="menu-main--col">
+	  
+                  <li><a href="/es/buscar" target="_self" class="megamenu-col-head" data-drupal-link-system-path="buscar">COMUNICACIÓN</a>
+        
+                              <ul class="sub_menu-main--col">
+                                    	    <li><a href="/es/buscar?type=2" target="_self" data-drupal-link-query="{&quot;type&quot;:&quot;2&quot;}" data-drupal-link-system-path="buscar">Notas de prensa</a></li>
+                                                  	    <li><a href="/es/podcast" data-drupal-link-system-path="node/6898">Pódcast</a></li>
+                                                  	    <li><a href="/es/comunicacion/identidad-corporativa" target="_self" data-drupal-link-system-path="node/1445">Identidad corporativa</a></li>
+                                                  	    <li><a href="/es/comunicacion/metro-en-imagenes" target="_self" data-drupal-link-system-path="comunicacion/metro-en-imagenes">Metro en imágenes</a></li>
+                                    </ul></li>
+        
+                
+                  <li><a href="/es/locos_x_el_metro" target="_self" data-drupal-link-system-path="locos_x_el_metro">LOCOS X EL METRO</a>
+        
+        
+                
+                  <li><a href="https://www.latiendademetrodemadrid.com/es/" target="_blank">LA TIENDA DE METRO</a>
+        
+        
+                      	      		      		  </li>
+      	    </ul>
+      	        <li class="small-12 medium-12 large-3 columns">
+          <ul class="menu-main--col">
+	  
+                  <li><a href="/es/transparencia/agenda-y-transparencia" target="_self" class="megamenu-col-head" data-drupal-link-system-path="node/2504">TRANSPARENCIA</a>
+        
+                              <ul class="sub_menu-main--col">
+                                    	    <li><a href="/es/transparencia/agenda-y-transparencia" target="_self" data-drupal-link-system-path="node/2504">Agenda y Transparencia</a></li>
+                                                  	    <li><a href="/es/transparencia/contratacion-y-convenios" target="_self" data-drupal-link-system-path="node/2505">Contratación y Convenios</a></li>
+                                                  	    <li><a href="/es/transparencia/subvenciones-y-ayudas-publicas" target="_self" data-drupal-link-system-path="node/5997">Marco Económico</a></li>
+                                                  	    <li><a href="/es/transparencia/marco-juridico/informacion-juridica" target="_self" data-drupal-link-system-path="node/702">Marco Jurídico</a></li>
+                                                  	    <li><a href="/es/transparencia/consejo-de-administracion-de-metro-de-madrid-s-a" target="_self" data-drupal-link-system-path="node/2530">Personas y Estructura</a></li>
+                                                  	    <li><a href="/es/transparencia/proyectos-y-datos" target="_self" data-drupal-link-system-path="node/2523">Proyectos y Datos</a></li>
+                                                  	    <li><a href="/es/transparencia/solicitud-de-acceso-a-informacion-publica" target="_self" data-drupal-link-system-path="node/402">Solicitud de Información</a></li>
+                                    </ul></li>
+        
+                
+                  <li><a href="/es/accesibilidad" target="_self" data-drupal-link-system-path="node/380">ACCESIBILIDAD</a>
+        
+        
+                
+                  <li><a href="/es/atencion-al-cliente" target="_self" data-drupal-link-system-path="node/125">CONTACTO</a>
+        
+        
+                
+                  <li><a href="/es/preguntas-frecuentes" target="_self" data-drupal-link-system-path="node/377">Preguntas frecuentes</a>
+        
+        
+      </ul>
+</div>
+
+  </nav>
+
+  </section>
+
+    </aside>
+
+    <div class="off-canvas-content" data-off-canvas-content>
+      
+            
+
+
+            
+
+            
+
+      <div id="sticky-region" class="sticky-container" data-sticky-container>
+        <div class="sticky" data-sticky data-sticky-on="small" data-margin-top="0" >
+          <header class="row" role="banner" aria-label="Cabecera de sitio">
+                          <div class="row collapse">
+                  <section class="region region-top-menu">
+    
+<div class="wrapper-block-menu-top large-12 medium-12 small-12 columns">
+  <section id="block-system-menu-block-menu-top" class="block-system-menu-block-menu-top block block-system">
+
+    <nav role="navigation" class="menu-top menu" aria-labelledby="menu-top" role="navigation">
+                                
+      <h2 class="block-title visually-hidden" id="menu-top">Menú superior</h2>
+      
+
+                    
+      
+  <div class="list__menu-left large-6 medium-9 small-8 columns">
+    <ul class="list__verticalAlign">
+      <li class="left__menu">
+        <a href="/es/accesibilidad" target="_self" data-drupal-link-system-path="node/380">ACCESIBILIDAD</a>
+      </li>
+                  <li class="language-switcher left__menu">
+        
+      </li>
+          </ul>
+  </div>
+
+  <div class="list__menu-right large-6 medium-3 small-4 columns">
+    <ul>
+      <li class="list-social__header show-for-large">
+        <ul class="ul-social-link">
+                              <li class="social-link"><a href="https://www.facebook.com/metrodemadrid" target="_blank"><span class="text_iconAA">Facebook</span><img class="ic1" src="/themes/custom/buson8/images/facebook.svg" alt="logo facebook" /><img class="ic2" src="/themes/custom/buson8/images/facebook_h.svg" alt="logo facebook" /></a></li>
+          <li class="social-link"><a href="https://x.com/metro_madrid" target="_blank"><span class="text_iconAA">Twitter</span><img class="ic1" src="/themes/custom/buson8/images/x-twitter.svg" alt="logo twitter" /><img class="ic2" src="/themes/custom/buson8/images/x-twitter_h.svg" alt="logo twitter" /></a></li>
+          <li class="social-link"><a href="https://www.tiktok.com/@metro_madrid" target="_blank"><span class="text_iconAA">TikTok</span><img class="ic1" src="/themes/custom/buson8/images/tiktok.svg" alt="logo TikTok" /><img class="ic2" src="/themes/custom/buson8/images/tiktok_h.svg" alt="logo TikTok" /></a></a></li>
+          <li class="social-link"><a href="https://www.youtube.com/user/MetroMadridTV" target="_blank"><span class="text_iconAA">Youtube</span><img class="ic1" src="/themes/custom/buson8/images/youtube.svg" alt="logo youtube" /><img class="ic2" src="/themes/custom/buson8/images/youtube_h.svg" alt="logo youtube" /></a></a></li>
+          <li class="social-link"><a href="https://www.instagram.com/metro_madrid/" target="_blank"><span class="text_iconAA">Instagram</span><img class="ic1" src="/themes/custom/buson8/images/instagram.svg" alt="logo instagram" /><img class="ic2" src="/themes/custom/buson8/images/instagram_h.svg" alt="logo instagram" /></a></a></li>
+          <li class="social-link"><a href="https://es.linkedin.com/company/metro-de-madrid" target="_blank"><span class="text_iconAA">Linkedin</span><img class="ic1" src="/themes/custom/buson8/images/linkedin.svg" alt="logo linkedin" /><img class="ic2" src="/themes/custom/buson8/images/linkedin_h.svg" alt="logo linkedin" /></a></a></li>
+          <li class="social-link"><a href="https://open.spotify.com/user/metrodemadrid?si=2eKvNrDfQECIcAlKmbZWYw" target="_blank"><span class="text_iconAA">Spotify</span><img class="ic1" src="/themes/custom/buson8/images/spotify.svg" alt="logo spotify" /><img class="ic2" src="/themes/custom/buson8/images/spotify_h.svg" alt="logo spotify" /></a></a></li>
+          <li class="social-link"><a href="https://wa.me/34900444404?text=Hola" target="_blank"><span class="text_iconAA">Whatsapp</span><img class="ic1" src="/themes/custom/buson8/images/whatsapp.svg" alt="logo whatsapp" /><img class="ic2" src="/themes/custom/buson8/images/whatsapp_h.svg" alt="logo whatsapp" /></a></a></li>
+        </ul>
+      </li>
+      
+      <li class="show-for-large">
+        <a href="/es/atencion-al-cliente" target="_self" data-drupal-link-system-path="node/125">CONTACTO</a>
+      </li>
+
+      <li>
+                      <a class="lupa-menu" alt="Abrir buscador principal" href="/es/buscador">Buscar</a>
+                </li>
+
+      <li>
+        <button type="button" class="button hambur" data-toggle="right-off-canvas-menu" aria-expanded="false" aria-controls="right-off-canvas-menu">
+            <span class="text_iconAA">Menú desplegable</span>
+            <img class="fa fa-bars burger" src="/themes/custom/buson8/images/burger.svg" alt="icono abrir menú desplegable" />
+            <img class="fa fa-bars burger_h" src="/themes/custom/buson8/images/burger_h.svg" alt="icono abrir menú desplegable" />
+        </button>
+      </li>
+
+            <li class="show-for-large">
+        <a href="http://www.comunidad.madrid/" target="_blank"><img class="img__bandera-mad" src="/themes/custom/buson8/images/header/Logo-Comunidad.svg" alt="Bandera de la Comunidad de Madrid"></a>
+      </li>
+    </ul>
+  </div>
+
+
+
+
+
+          </nav>
+
+  </section>
+</div>
+
+  </section>
+
+              </div>
+            
+                          <div class="row collapse">
+                  <section class="region region-secondary-menu">
+    
+<div class="wrapper-block-secondary-menu large-12 medium-12 small-12 columns">
+  <section id="block-system-menu-block-secondary-menu" class="block-system-menu-block-secondary-menu block block-system">
+
+    <nav role="navigation" class="secondary-menu" aria-labelledby="secondary-menu" role="navigation">
+                                
+      <h2 class="block-title visually-hidden" id="secondary-menu">Secondary navigation</h2>
+      
+
+                    
+
+<ul class="menu align-center">
+  
+    
+      <li class="large-5 columns secondary__menu-left show-for-large">
+        <ul class="list__menu-secondary">
+          <li><a href="/es/linea/linea-1" target="_self" data-drupal-link-system-path="node/327">VIAJA EN METRO</a></li>
+
+      
+            <li><a href="/es/locos_x_el_metro" target="_self" data-drupal-link-system-path="locos_x_el_metro"> LOCOS X EL METRO</a></li>
+
+      
+    
+          <li><a href="https://museosmetromadrid.es/" target="_blank">MUSEOS METRO</a></li>
+        </ul>
+      </li>
+      <li class="large-2 medium-12 small-12 columns logo-metro">
+        <a href="/es"><img alt="Logo Metro de Madrid" src="/sites/default/files/logos/MetroMadridLogo_9_0.svg"></a>
+      </li>
+
+      
+    
+      <li class="large-5 columns secondary__menu-right show-for-large">
+        <ul class="list__menu-secondary">
+ 
+                      <li><a href="/es/transparencia/agenda-y-transparencia" target="_self" data-drupal-link-system-path="node/2504">TRANSPARENCIA</a></li>
+           
+
+      
+          <li><a href="/es/buscar?type=2" target="_self" data-drupal-link-query="{&quot;type&quot;:&quot;2&quot;}" data-drupal-link-system-path="buscar">COMUNICACIÓN</a></li>
+
+      
+    
+         <li><a href="https://www.latiendademetrodemadrid.com/es/" target="_blank">TIENDA DE METRO</a></li>
+
+                                                                                                               
+        </ul>
+      </li>
+      </ul>
+
+          </nav>
+
+  </section>
+</div>
+
+  </section>
+
+              </div>
+            
+                      </header>
+        </div>
+      </div>
+
+                      
+
+      
+            <div class="l-help row">
+        <div class="large-12 columns">
+            <section class="region region-help">
+    <div data-drupal-messages-fallback class="hidden"></div>
+
+  </section>
+
+        </div>
+      </div>
+      
+      
+            
+      <div class="row content-and-sidebars-wrapper">
+
+        
+        <main id="main" class="large-12 columns" role="main">
+
+          
+          <a id="main-content"></a>
+
+          
+          <section>
+              <section class="region region-content">
+    
+
+  <section id="block-system-main-block" class="block-system-main-block block block-system block-main-page-content" tabindex="0">
+    
+        
+
+    
+                  No se ha encontrado la página solicitada.
+        
+    
+  </section>
+
+  </section>
+
+          </section>
+        </main>
+
+              </div>
+
+      
+              
+  <footer class="row footer-global">
+          <div id="footer-left" class="large-3 medium-6 small-12 columns">
+          <section class="region region-footer-left">
+    
+
+  <section id="block-block-logo-cm-pie" class="block-block-logo-cm-pie block block-block-content block-block-content6210e2a0-2670-4968-8886-8db7b7ef4a64 block--type-image-block block--view-mode-full block-in-node--type-line">
+    
+        
+
+    
+                  <a target="_blank" href="https://www.comunidad.madrid/">
+            <div class="field field-block-content--field-block-image field-name-field-block-image field-type-image field-label-hidden">
+    <div class="field-items">
+          <div class="field-item">  <img loading="lazy" width="64" height="64" src="/sites/default/files/web/imagenes/logo_madrid_positivoInstitucional_0.svg" alt="Logo Comunidad Madrid" typeof="foaf:Image" />
+
+</div>
+      </div>
+</div>
+
+          </a>
+        
+    
+  </section>
+
+  </section>
+
+      </div>
+    
+          <div id="footer-right" class="large-3 large-push-6 medium-6 small-12 columns">
+          <section class="region region-footer-right">
+    
+
+  <section id="block-block-logo-excelente" class="block-block-logo-excelente block block-block-content block-block-contentb01cf36b-08b5-4455-b201-af72e077e2aa block--type-image-block block--view-mode-full block-in-node--type-line">
+    
+        
+
+    
+                  <a target="_blank" href="https://madridexcelente.com/empresas-certificadas-madrid-excelente/">
+            <div class="field field-block-content--field-block-image field-name-field-block-image field-type-image field-label-hidden">
+    <div class="field-items">
+          <div class="field-item">  <img loading="lazy" width="64" height="64" src="/sites/default/files/web/imagenes/sello-madridExcelente.svg" alt="Madrid Excelente" typeof="foaf:Image" />
+
+</div>
+      </div>
+</div>
+
+          </a>
+        
+    
+  </section>
+
+  </section>
+
+      </div>
+    
+          <div id="footer-middle" class="large-6 large-pull-3 medium-12 small-12 columns">
+          <section class="region region-footer-middle">
+    
+<div class="wrapper-block-footer-menu large-12 medium-12 small-12 columns">
+  <section id="block-system-menu-block-footer" class="block-system-menu-block-footer block block-system">
+
+    <nav role="navigation" class="footer-menu" aria-labelledby="footer-menu" role="navigation">
+                                
+      <h2 class="block-title visually-hidden" id="footer-menu">Pie de página</h2>
+      
+
+                    
+<ul class="menu menu__footer">
+  
+    
+      <li class="large-3 medium-12 small-12 columns item1">
+        <a href="/es/aviso-legal" target="_self" data-drupal-link-system-path="node/115">AVISO LEGAL</a>
+      </li>
+
+    
+  
+    
+      <li class="large-3 medium-12 small-12 columns item1">
+        <a href="/es/sitemap" data-drupal-link-system-path="sitemap">MAPA WEB</a>
+      </li>
+
+    
+  
+    
+      <li class="large-3 large-push-6 medium-12 small-12 columns item2">
+        <a href="/es/politica-de-cookies" target="_self" data-drupal-link-system-path="node/116">POLÍTICA DE COOKIES</a>
+      </li>
+
+      <li class="large-6 large-pull-3 medium-12 small-12 columns list-social__footer">
+        <ul class="rrss-footer">
+                              <li class="social-link"><a href="https://www.facebook.com/metrodemadrid" target="_blank"><span class="text_iconAA">Facebook</span><img class="ic1" src="/themes/custom/buson8/images/facebook_p.svg" alt="logo facebook" /><img class="ic2" src="/themes/custom/buson8/images/facebook_h.svg" alt="logo facebook" /></a></li>
+          <li class="social-link"><a href="https://x.com/metro_madrid" target="_blank"><span class="text_iconAA">Twitter</span><img class="ic1" src="/themes/custom/buson8/images/x-twitter.svg" alt="logo twitter" /><img class="ic2" src="/themes/custom/buson8/images/x-twitter_h.svg" alt="logo twitter" /></a></li>
+          <li class="social-link"><a href="https://www.tiktok.com/@metro_madrid" target="_blank"><span class="text_iconAA">TikTok</span><img class="ic1" src="/themes/custom/buson8/images/tiktok_p.svg" alt="logo tiktok" /><img class="ic2" src="/themes/custom/buson8/images/tiktok_h.svg" alt="logo tiktok" /></a></li>
+          <li class="social-link"><a href="https://www.youtube.com/user/MetroMadridTV" target="_blank"><span class="text_iconAA">Youtube</span><img class="ic1" src="/themes/custom/buson8/images/youtube_p.svg" alt="logo youtube" /><img class="ic2" src="/themes/custom/buson8/images/youtube_h.svg" alt="logo youtube" /></a></li>
+          <li class="social-link"><a href="https://www.instagram.com/metro_madrid/" target="_blank"><span class="text_iconAA">Instagram</span><img class="ic1" src="/themes/custom/buson8/images/instagram_p.svg" alt="logo instagram" /><img class="ic2" src="/themes/custom/buson8/images/instagram_h.svg" alt="logo instagram" /></a></li>
+          <li class="social-link"><a href="https://es.linkedin.com/company/metro-de-madrid" target="_blank"><span class="text_iconAA">Linkedin</span><img class="ic1" src="/themes/custom/buson8/images/linkedin_p.svg" alt="logo linkedin" /><img class="ic2" src="/themes/custom/buson8/images/linkedin_h.svg" alt="logo linkedin" /></a></li>
+          <li class="social-link"><a href="https://open.spotify.com/user/metrodemadrid?si=2eKvNrDfQECIcAlKmbZWYw" target="_blank"><span class="text_iconAA">Spotify</span><img class="ic1" src="/themes/custom/buson8/images/spotify_p.svg" alt="logo spotify" /><img class="ic2" src="/themes/custom/buson8/images/spotify_h.svg" alt="logo spotify" /></a></li>
+          <li class="social-link"><a href="https://wa.me/34900444404?text=Hola" target="_blank"><span class="text_iconAA">Whatsapp</span><img class="ic1" src="/themes/custom/buson8/images/whatsapp_p.svg" alt="logo whatsapp" /><img class="ic2" src="/themes/custom/buson8/images/whatsapp_h.svg" alt="logo whatsapp" /></a></li>
+        </ul>
+      </li>
+
+      <li class="logo-metro logo__footer">
+        <a href="/">
+          <img alt="Logo Metro de Madrid" src="/sites/default/files/logos/MetroMadridLogo_9.svg">
+        </a>
+      </li>
+
+    
+  </ul>
+
+          </nav>
+
+  </section>
+</div>
+
+  </section>
+
+      </div>
+    
+  </footer>
+          </div>
+  </div>
+</div>
+
+  </div>
+
+  
+  <script type="application/json" data-drupal-selector="drupal-settings-json">{"path":{"baseUrl":"\/","pathPrefix":"es\/","currentPath":"","currentPathIsAdmin":false,"isFront":false,"currentLanguage":"es"},"pluralDelimiter":"\u0003","suppressDeprecationErrors":true,"clientside_validation_jquery":{"validate_all_ajax_forms":2,"force_validate_on_blur":false,"messages":{"required":"Este campo es obligatorio. ","remote":"Please fix this field.","email":"Please enter a valid email address.","url":"Please enter a valid URL.","date":"Please enter a valid date.","dateISO":"Please enter a valid date (ISO).","number":"Por favor, introduzca un n\u00famero v\u00e1lido.","digits":"Please enter only digits.","equalTo":"Please enter the same value again.","maxlength":"Please enter no more than {0} characters.","minlength":"Por favor, introduzca al menos {0} caracteres.","rangelength":"Please enter a value between {0} and {1} characters long.","range":"Please enter a value between {0} and {1}.","max":"Please enter a value less than or equal to {0}.","min":"Please enter a value greater than or equal to {0}.","step":"Please enter a multiple of {0}."}},"colorbox":{"opacity":"0.85","current":"{current} de {total}","previous":"\u00ab Anterior","next":"Siguiente \u00bb","close":"Cerrar","maxWidth":"98%","maxHeight":"98%","fixed":true,"mobiledetect":false,"mobiledevicewidth":"480px"},"klaro":{"config":{"elementId":"klaro","storageMethod":"cookie","cookieName":"KlaroConsentDecisions","cookieExpiresAfterDays":180,"cookieDomain":"","groupByPurpose":false,"acceptAll":true,"hideDeclineAll":false,"hideLearnMore":false,"learnMoreAsButton":true,"additionalClass":"klarocustom learn-more-as-button klaro-theme-buson8","disablePoweredBy":true,"htmlTexts":false,"autoFocus":true,"privacyPolicy":"\/es\/politica-de-cookies","lang":"es","services":[{"name":"cms","default":true,"title":"Cookies t\u00e9cnicas","description":"Permiten al usuario la navegaci\u00f3n a trav\u00e9s de nuestro sitio web y la utilizaci\u00f3n de las diferentes opciones o servicios que existen en ella. Al ser estrictamente necesarias para proporcionar los servicios del portal web y para su correcto funcionamiento, se encuentran activas siempre y no es posible rechazar su uso.","purposes":["cms","security"],"callbackCode":"","cookies":[["SESS9d512f8530c72451233bd91618a77ce3","",""],["SESSfc3c3175a2cbaef2ec89d4cdfb513a52","",""],["SESS737342fe984663f563aebd5de05cf735","",""],["AGS_ROLES","",""],["f5_cspm","",""],["f5avrbbbbbbbbbbbbbbbb","",""],["f5avraaaaaaaaaaaaaaaa_session","",""],["BIGipServerwww.metromadrid.es.app~www.metromadrid.es_pool","",""],["BIGipServermapas.metromadrid.es.app~mapas.metromadrid.es_pool","",""],["BIGipServerctmulti.app~ctmulti_pool","",""],["TS9bc9eb1c027","",""],["TS01a4633e","",""],["TS01db9ad4","",""],["TS0c9404b3027","",""],["TS9bc9eb1c027","",""],["TS01b0759d","",""],["TS01b39642","",""],["TS46ede1c8027","",""],["TSf989fd02027","",""],["KlaroConsentDecisions","",""]],"required":true,"optOut":false,"onlyOnce":false,"contextualConsentOnly":false,"contextualConsentText":"","wrapperIdentifier":[],"translations":{"es":{"title":"Cookies t\u00e9cnicas"}}},{"name":"matomo","default":false,"title":"Cookies anal\u00edticas","description":"Permiten al responsable de las mismas el seguimiento y an\u00e1lisis del comportamiento de los usuarios de los sitios web a los que est\u00e1n vinculadas, incluida la cuantificaci\u00f3n de los impactos de los anuncios. Las cookies anal\u00edticas utilizadas incluyen las siguientes: _pk_id, _pk_ses.","purposes":["analytics"],"callbackCode":"","cookies":[["^_pk_.*$","",""],["^matomo.*$","",""],["^mtm_.*$","",""],["piwik_ignore","",""]],"required":false,"optOut":false,"onlyOnce":false,"contextualConsentOnly":false,"contextualConsentText":"","wrapperIdentifier":[],"translations":{"es":{"title":"Cookies anal\u00edticas"}}}],"translations":{"es":{"consentModal":{"title":"CONFIGURAR COOKIES","description":"Utilizamos cookies propias para analizar el uso del sitio web. ","privacyPolicy":{"name":"\u0022M\u00e1s informaci\u00f3n\u0022","text":"Clica en {privacyPolicy} para leer nuestra pol\u00edtica de cookies.\r\n"}},"consentNotice":{"title":"CONFIGURAR COOKIES","changeDescription":"There were changes since your last visit, please update your consent.","description":"Utilizamos cookies propias para analizar el uso del sitio web. Clica en {privacyPolicy} para leer nuestra pol\u00edtica de cookies.\r\n","learnMore":"Configurar cookies","privacyPolicy":{"name":"\u0022M\u00e1s informaci\u00f3n\u0022"}},"ok":"Aceptar todas y continuar","save":"Guardar","decline":"Rechazar cookies opcionales","close":"Cerrar","acceptAll":"Aceptar todas y continuar","acceptSelected":"Aceptar seleccionadas","service":{"disableAll":{"title":"Toggle all services","description":"Use this switch to enable\/disable all services."},"optOut":{"title":"(opt-out)","description":"This service is loaded by default (opt-out possible)."},"required":{"title":"Obligatorias","description":"This service is always required."},"purposes":"Prop\u00f3sitos","purpose":"Prop\u00f3sito"},"contextualConsent":{"acceptAlways":"Siempre","acceptOnce":"Yes (this time)","description":"Load external content supplied by {title}?"},"poweredBy":"Powered by Klaro!","purposeItem":{"service":"Service","services":"Services"},"privacyPolicy":{"name":"\u0022M\u00e1s informaci\u00f3n\u0022","text":"Clica en {privacyPolicy} para leer nuestra pol\u00edtica de cookies.\r\n"},"purposes":{"cms":{"title":"Cookies t\u00e9cnicas","description":""},"analytics":{"title":"Cookies anal\u00edticas","description":""},"security":{"title":"Cookies de seguridad","description":""}}}},"showNoticeTitle":true,"styling":{"theme":["dark2"]}},"dialog_mode":"notice","show_toggle_button":false,"toggle_button_icon":null,"show_close_button":false,"exclude_urls":[],"disable_urls":[]},"matomo":{"disableCookies":false,"trackMailto":true,"trackColorbox":true},"scrollama":{"offset":0,"debug":false,"order":true,"once":true},"metro_international_map":{"endpoint_international_map":"https:\/\/www.metromadrid.es\/es\/api\/international-projects"},"metro_international_map_spain":{"endpoint_international_map_spain":"https:\/\/www.metromadrid.es\/es\/api\/international-projects-spain"},"billing":{"billing_kinds_api":"https:\/\/www.metromadrid.es\/es\/api\/billing\/ticket_kind\/","billing_prices_api":"https:\/\/www.metromadrid.es\/es\/api\/billing\/ticket_prices\/"},"user":{"uid":0,"permissionsHash":"e95d853e5e9437bc9b1c3b87fc7ebea5545214f810b20701fe2aa2795e3be32c"}}</script>
+<script src="/sites/default/files/js/js_FelJmHPT7rMpFZ2mvNKhrBXWMPUO0zZsMxBSEBUGV9o.js?scope=footer&amp;delta=0&amp;language=es&amp;theme=buson8&amp;include=eJxdjksOAjEMQy8UkS23qdLpRxVpjNJWfE4PgtEIsbHf88qS0oTYg2WHU3HYpLgG7MxVEUVpg8Ij7pxykaXzGEIzbZb5z-mi4uBPUpeJDv4W9TwdYVvjbfwrITmuCTcLKlaX1Exjc6hKFz6InstjKFiWZDbY_vAFotlO8w"></script>
+<script src="https://static.addtoany.com/menu/page.js" async></script>
+<script src="/sites/default/files/js/js_FU8VPvCKp5-ylVJ1-JtNDNiKBDEbZNmk7cEqXKJZwlg.js?scope=footer&amp;delta=2&amp;language=es&amp;theme=buson8&amp;include=eJxdjksOAjEMQy8UkS23qdLpRxVpjNJWfE4PgtEIsbHf88qS0oTYg2WHU3HYpLgG7MxVEUVpg8Ij7pxykaXzGEIzbZb5z-mi4uBPUpeJDv4W9TwdYVvjbfwrITmuCTcLKlaX1Exjc6hKFz6InstjKFiWZDbY_vAFotlO8w"></script>
+<script src="/modules/contrib/klaro/js/klaro_placeholder.js" data-type="text/javascript" type="text/plain" data-name="matomo" data-src="/modules/contrib/matomo/js/matomo.js?v=10.6.2"></script>
+<script src="/sites/default/files/js/js_KBObSzaUZCxJSHiV9tLlnjwpUp5PWtoOTidbB5IIf4Y.js?scope=footer&amp;delta=4&amp;language=es&amp;theme=buson8&amp;include=eJxdjksOAjEMQy8UkS23qdLpRxVpjNJWfE4PgtEIsbHf88qS0oTYg2WHU3HYpLgG7MxVEUVpg8Ij7pxykaXzGEIzbZb5z-mi4uBPUpeJDv4W9TwdYVvjbfwrITmuCTcLKlaX1Exjc6hKFz6InstjKFiWZDbY_vAFotlO8w"></script>
+<script src="https://cdn.jsdelivr.net/npm/intersection-observer@0.12.2/intersection-observer.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/scrollama/2.2.1/scrollama.min.js"></script>
+<script src="/sites/default/files/js/js_COAwsYH1LjEQ92B2tEkBPnwx19XzrH48HecXEn0Z5O0.js?scope=footer&amp;delta=7&amp;language=es&amp;theme=buson8&amp;include=eJxdjksOAjEMQy8UkS23qdLpRxVpjNJWfE4PgtEIsbHf88qS0oTYg2WHU3HYpLgG7MxVEUVpg8Ij7pxykaXzGEIzbZb5z-mi4uBPUpeJDv4W9TwdYVvjbfwrITmuCTcLKlaX1Exjc6hKFz6InstjKFiWZDbY_vAFotlO8w"></script>
+
+  </body>
+</html>

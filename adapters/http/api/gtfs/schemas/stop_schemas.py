@@ -131,6 +131,23 @@ class StopAccessesResponse(BaseModel):
     accesses: List[AccessResponse]
 
 
+class NearbyAccessResponse(BaseModel):
+    """Access point with distance and RAPTOR routing ID."""
+    id: int
+    raptor_id: str  # ACCESS_{id} for use in route-planner
+    stop_id: str  # Platform stop ID
+    stop_name: str  # Platform name
+    name: str  # Access name
+    lat: float
+    lon: float
+    distance_m: int  # Distance from search point
+    wheelchair: Optional[bool] = None
+    is_elevator: bool = False
+
+    class Config:
+        from_attributes = True
+
+
 class VestibuleResponse(BaseModel):
     """Station vestibule (internal lobby) with underground location."""
     id: int

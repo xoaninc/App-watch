@@ -25,6 +25,7 @@ from .stop_schemas import (
     WalkingShapePoint,
     AccessResponse,
     StopAccessesResponse,
+    NearbyAccessResponse,
     VestibuleResponse,
     StopVestibulesResponse,
 )
@@ -97,6 +98,7 @@ REQUIRED_SCHEMAS = [
     "StopCorrespondencesResponse",
     "AccessResponse",
     "StopAccessesResponse",
+    "NearbyAccessResponse",
     "VestibuleResponse",
     "StopVestibulesResponse",
     # Departure schemas

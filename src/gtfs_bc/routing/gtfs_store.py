@@ -401,14 +401,18 @@ class GTFSStore:
         self.stats['transfers'] = transfer_count
         print(f"    ✓ {transfer_count:,} transbordos (tras expansión)")
 
-        # 9. Cargar accesos de Metro Madrid y Metro Ligero como puntos de entrada virtuales
-        print("  🚪 Cargando accesos de Metro Madrid y Metro Ligero...")
+        # 9. Cargar accesos de Metro/Tren como puntos de entrada virtuales
+        print("  🚪 Cargando accesos (Metro Madrid, Ligero, Barcelona, Bilbao, Euskotren)...")
         from adapters.http.api.gtfs.utils.shape_utils import haversine_distance
 
         access_result = db_session.execute(text("""
             SELECT id, stop_id, name, lat, lon
             FROM stop_access
-            WHERE stop_id LIKE 'METRO\\_%' OR stop_id LIKE 'ML\\_%'
+            WHERE stop_id LIKE 'METRO\\_%'
+               OR stop_id LIKE 'ML\\_%'
+               OR stop_id LIKE 'TMB\\_METRO\\_%'
+               OR stop_id LIKE 'METRO\\_BILBAO\\_%'
+               OR stop_id LIKE 'EUSKOTREN\\_%'
         """))
 
         access_count = 0
@@ -429,12 +433,17 @@ class GTFSStore:
             access_count += 1
 
             # Buscar plataformas de esta estación
-            # Primero intentar hijos directos
-            platform_ids = self.children_by_parent.get(station_id, [])
+            # Incluir TANTO el parent como los hijos porque algunos GTFS (como Metro Bilbao)
+            # usan el parent station ID directamente en stop_times
+            platform_ids = []
 
-            # Si no hay hijos, la estación es la plataforma
-            if not platform_ids:
-                platform_ids = [station_id] if station_id in self.stops_info else []
+            # Incluir el parent station si existe en stops_info
+            if station_id in self.stops_info:
+                platform_ids.append(station_id)
+
+            # Añadir los hijos (plataformas) si existen
+            children = self.children_by_parent.get(station_id, [])
+            platform_ids.extend(children)
 
             # Crear transfers bidireccionales acceso <-> plataformas
             for platform_id in platform_ids:

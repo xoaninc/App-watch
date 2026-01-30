@@ -195,7 +195,7 @@ def seconds_to_time(secs: int) -> str:
     hours = secs // 3600
     minutes = (secs % 3600) // 60
     seconds = secs % 60
-    return f"{hours}:{minutes:02d}:{seconds:02d}"
+    return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
 
 
 def get_day_of_week(date_str: str) -> str:

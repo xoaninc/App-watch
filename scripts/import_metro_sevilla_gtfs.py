@@ -39,9 +39,9 @@ BATCH_SIZE = 5000
 METRO_SEV_ROUTE_ID = 'METRO_SEV_L1_CE_OQ'
 METRO_SEV_NETWORK_ID = 'METRO_SEV'
 
-# Shape IDs for directions
-SHAPE_ID_CE_OQ = 'METRO_SEV_L1_CE_OQ'  # Ciudad Expo -> Olivar de Quintos
-SHAPE_ID_OQ_CE = 'METRO_SEV_L1_OQ_CE'  # Olivar de Quintos -> Ciudad Expo
+# Shape IDs for directions (must match shapes in gtfs_shapes table)
+SHAPE_ID_CE_OQ = 'METRO_SEV_L1_255088'   # Ciudad Expo -> Olivar de Quintos
+SHAPE_ID_OQ_CE = 'METRO_SEV_L1_7781388'  # Olivar de Quintos -> Ciudad Expo
 
 
 def time_to_seconds(time_str: str) -> int:
@@ -62,7 +62,7 @@ def seconds_to_time(secs: int) -> str:
     hours = secs // 3600
     minutes = (secs % 3600) // 60
     seconds = secs % 60
-    return f"{hours}:{minutes:02d}:{seconds:02d}"
+    return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
 
 
 def parse_date(date_str: str) -> str:

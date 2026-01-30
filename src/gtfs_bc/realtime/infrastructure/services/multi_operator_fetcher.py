@@ -55,9 +55,10 @@ GTFS_RT_OPERATORS = {
     'metro_bilbao': {
         'name': 'Metro Bilbao',
         'format': 'protobuf',
-        'vehicle_positions': 'https://opendata.euskadi.eus/transport/moveuskadi/metro_bilbao/gtfsrt_metro_bilbao_vehicle_positions.pb',
-        'trip_updates': 'https://opendata.euskadi.eus/transport/moveuskadi/metro_bilbao/gtfsrt_metro_bilbao_trip_updates.pb',
-        'alerts': 'https://opendata.euskadi.eus/transport/moveuskadi/metro_bilbao/gtfsrt_metro_bilbao_alerts.pb',
+        # New URLs from data.ctb.eus (2026-01-29)
+        'vehicle_positions': 'https://ctb-gtfs-rt.s3.eu-south-2.amazonaws.com/metro-bilbao-vehicle-positions.pb',
+        'trip_updates': 'https://ctb-gtfs-rt.s3.eu-south-2.amazonaws.com/metro-bilbao-trip-updates.pb',
+        'alerts': 'https://ctb-gtfs-rt.s3.eu-south-2.amazonaws.com/metro-bilbao-service-alerts.pb',
         'stop_id_prefix': 'METRO_BILBAO_',
         'trip_id_prefix': 'METRO_BILBAO_',
     },
@@ -83,6 +84,7 @@ GTFS_RT_OPERATORS = {
         'vehicle_positions': 'https://dadesobertes.fgc.cat/api/explore/v2.1/catalog/datasets/vehicle-positions-gtfs_realtime/files/d286964db2d107ecdb1344bf02f7b27b',
         'trip_updates': 'https://dadesobertes.fgc.cat/api/explore/v2.1/catalog/datasets/trip-updates-gtfs_realtime/files/735985017f62fd33b2fe46e31ce53829',
         'alerts': 'https://dadesobertes.fgc.cat/api/explore/v2.1/catalog/datasets/alerts-gtfs_realtime/files/02f92ddc6d2712788903e54468542936',
+        'geotren': 'https://dadesobertes.fgc.cat/api/explore/v2.1/catalog/datasets/posicionament-dels-trens/records?limit=100',
         'stop_id_prefix': 'FGC_',
         'trip_id_prefix': 'FGC_',
     },
@@ -557,6 +559,102 @@ class MultiOperatorFetcher:
                 logger.warning(f"Error inserting trip update: {e}")
 
         self.db.commit()
+
+        # Enrich FGC with Geotren occupancy data
+        if config.get('geotren'):
+            self._enrich_fgc_with_geotren_occupancy(config)
+
+        return count
+
+    def _enrich_fgc_with_geotren_occupancy(self, config: dict) -> int:
+        """Fetch Geotren data and update FGC stop_time_updates with occupancy.
+
+        Geotren provides occupancy data per car (mi, ri, m1, m2) that is not
+        available in the standard GTFS-RT feed. We match by vehicle_id.
+
+        Returns number of records enriched.
+        """
+        geotren_url = config.get('geotren')
+        if not geotren_url:
+            return 0
+
+        try:
+            response = httpx.get(geotren_url, timeout=30.0)
+            response.raise_for_status()
+            data = response.json()
+        except Exception as e:
+            logger.warning(f"Error fetching Geotren occupancy: {e}")
+            return 0
+
+        records = data.get('results', [])
+        if not records:
+            return 0
+
+        # Build vehicle_id -> occupancy map
+        # Geotren uses 'ut' as vehicle ID
+        occupancy_map = {}
+        for record in records:
+            vehicle_id = record.get('ut')
+            if not vehicle_id:
+                continue
+
+            # Calculate average occupancy from available car data
+            occupancies = []
+            for field in ['ocupacio_mi_percent', 'ocupacio_ri_percent',
+                         'ocupacio_m1_percent', 'ocupacio_m2_percent']:
+                val = record.get(field)
+                if val is not None:
+                    try:
+                        occupancies.append(float(val))
+                    except (ValueError, TypeError):
+                        pass
+
+            if occupancies:
+                avg_occupancy = sum(occupancies) / len(occupancies)
+                # Build per-car JSON
+                per_car = json.dumps({
+                    'mi': record.get('ocupacio_mi_percent'),
+                    'ri': record.get('ocupacio_ri_percent'),
+                    'm1': record.get('ocupacio_m1_percent'),
+                    'm2': record.get('ocupacio_m2_percent'),
+                })
+                occupancy_map[vehicle_id] = (avg_occupancy, per_car)
+
+        if not occupancy_map:
+            logger.debug("No Geotren occupancy data available")
+            return 0
+
+        # Get FGC vehicle_positions to find vehicle_id -> trip_id mapping
+        # (trip_updates don't have vehicle_id, but vehicle_positions do)
+        prefix = config.get('stop_id_prefix', 'FGC_')
+        vehicle_positions = self.db.query(VehiclePositionModel).filter(
+            VehiclePositionModel.trip_id.like(f'{prefix}%')
+        ).all()
+
+        count = 0
+        for vp in vehicle_positions:
+            if not vp.vehicle_id:
+                continue
+            # Extract raw vehicle_id (remove prefix like 'FGC_')
+            raw_vehicle_id = vp.vehicle_id.replace(prefix, '')
+
+            if raw_vehicle_id in occupancy_map:
+                avg_occ, per_car_json = occupancy_map[raw_vehicle_id]
+
+                # Update all stop_time_updates for this trip
+                updated = self.db.query(StopTimeUpdateModel).filter(
+                    StopTimeUpdateModel.trip_id == vp.trip_id
+                ).update({
+                    'occupancy_percent': avg_occ,
+                    'occupancy_per_car': per_car_json,
+                })
+                if updated > 0:
+                    count += 1
+
+        if count > 0:
+            self.db.commit()
+            logger.info(f"Enriched {count} FGC trips with Geotren occupancy")
+
         return count
 
     async def _fetch_protobuf_alerts(self, config: dict) -> int:
