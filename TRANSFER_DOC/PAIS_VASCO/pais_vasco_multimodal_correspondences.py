@@ -55,7 +55,7 @@ CORRESPONDENCES = [
 
     # ----- EUSKOTREN ↔ RENFE (GIPUZKOA C1) -----
     # Donostia/Amara (675m) - Hub principal San Sebastián, conecta LD/Cercanías con Topo
-    ("EUSKOTREN_ES:Euskotren:StopPlace:2570:", "RENFE_11511", 675, 600, "Donostia - Amara ↔ RENFE San Sebastián"),
+    ("EUSKOTREN_ES:Euskotren:StopPlace:2581:", "RENFE_11511", 675, 600, "Donostia - Amara ↔ RENFE San Sebastián"),
 
     # Irun (900m) - Hub frontera Francia, conecta interior Gipuzkoa
     ("EUSKOTREN_ES:Euskotren:StopPlace:2605:", "RENFE_11600", 900, 720, "Irun - Euskotren Colón ↔ RENFE Irun"),
