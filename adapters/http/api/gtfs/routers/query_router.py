@@ -309,7 +309,9 @@ def _get_renfe_rt_by_line(
 
     Returns a dict: {line_name: [(arrival_seconds, rt_trip_id, platform, stu), ...]}
     """
-    now = datetime.now(MADRID_TZ)
+    # Use naive datetime for DB comparison (arrival_time is timestamp without timezone)
+    # The DB stores times in local Madrid time
+    now_naive = datetime.now(MADRID_TZ).replace(tzinfo=None)
     rt_by_line = {}
 
     try:
@@ -319,8 +321,8 @@ def _get_renfe_rt_by_line(
             .filter(
                 StopTimeUpdateModel.stop_id.in_(stop_ids),
                 StopTimeUpdateModel.arrival_time.isnot(None),
-                StopTimeUpdateModel.arrival_time > now,
-                StopTimeUpdateModel.arrival_time < now + timedelta(hours=2)
+                StopTimeUpdateModel.arrival_time > now_naive,
+                StopTimeUpdateModel.arrival_time < now_naive + timedelta(hours=2)
             )
             .order_by(StopTimeUpdateModel.arrival_time)
             .all()
@@ -1412,7 +1414,9 @@ def get_stop_departures(
         )
         .filter(
             StopTimeModel.stop_id.in_(stop_ids_to_query),
-            StopTimeModel.departure_seconds >= current_seconds,
+            # For Renfe: include departures from 5 min ago to catch RT updates for trains
+            # that are running late (RT data often comes after scheduled departure)
+            StopTimeModel.departure_seconds >= (current_seconds - 300 if is_renfe and renfe_rt_data else current_seconds),
             TripModel.service_id.in_(active_service_ids),
             # Exclude trips where this stop is the last stop (train arrives, doesn't depart)
             StopTimeModel.stop_sequence < max_sequence_subquery.c.max_seq,
@@ -1885,6 +1889,13 @@ def get_stop_departures(
             last_departure_by_route_headsign[key] = effective_seconds
 
     departures = deduplicated
+
+    # Filter out past departures that don't have RT data
+    # (these were included to potentially match with RT but didn't get a match)
+    departures = [
+        d for d in departures
+        if (d.realtime_minutes_until is not None and d.realtime_minutes_until >= 0) or d.minutes_until >= 0
+    ]
 
     # Sort by realtime departure (use realtime_minutes_until if available, else minutes_until)
     departures.sort(key=lambda d: d.realtime_minutes_until if d.realtime_minutes_until is not None else d.minutes_until)

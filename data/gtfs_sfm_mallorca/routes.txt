@@ -1,0 +1,63 @@
+route_id,agency_id,route_short_name,route_long_name,route_desc,route_type,route_url,route_color,route_text_color
+234,52,101,Port d'Andratx - Palma,,3,https://www.tib.org/web/ctm/autobus/linia/101,ea2423,ffffff
+237,52,102,Peguera - Palma,,3,https://www.tib.org/web/ctm/autobus/linia/102,ea2423,ffffff
+3145,52,103,Santa Ponça - Palma,,3,https://www.tib.org/web/ctm/autobus/linia/103,ea2423,ffffff
+241,52,104,Magaluf - Palma,,3,https://www.tib.org/web/ctm/autobus/linia/104,ea2423,ffffff
+242,52,105,Sol de Mallorca -  Palma,,3,https://www.tib.org/web/ctm/autobus/linia/105,ea2423,ffffff
+240,52,106,El Toro - Palma,,3,https://www.tib.org/web/ctm/autobus/linia/106,ea2423,ffffff
+239,52,107,Es Capdellà - Palma,,3,https://www.tib.org/web/ctm/autobus/linia/107,ea2423,ffffff
+244,52,108,Son Caliu - Palma,,3,https://www.tib.org/web/ctm/autobus/linia/108,ea2423,ffffff
+233,52,121,Sant Elm - Andratx,,3,https://www.tib.org/web/ctm/autobus/linia/121,ea2423,ffffff
+235,52,122,Port d'Andratx - Santa Ponça,,3,https://www.tib.org/web/ctm/autobus/linia/122,ea2423,ffffff
+236,52,123,Santa Ponça - Cas Català,,3,https://www.tib.org/web/ctm/autobus/linia/123,ea2423,ffffff
+222,51,201,Galilea - Palma,,3,https://www.tib.org/web/ctm/autobus/linia/201,ea2423,ffffff
+243,52,202,Estellencs - Palma,,3,https://www.tib.org/web/ctm/autobus/linia/202,ea2423,ffffff
+3013,51,203,Valldemossa / Deià,,3,https://www.tib.org/web/ctm/autobus/linia/203,ea2423,ffffff
+3014,51,204,Port de Sóller - Palma,,3,https://www.tib.org/web/ctm/autobus/linia/204,ea2423,ffffff
+223,51,205,Bunyola - Palma,,3,https://www.tib.org/web/ctm/autobus/linia/205,ea2423,ffffff
+3015,51,232,Port de Sóller - Fornalutx,,3,https://www.tib.org/web/ctm/autobus/linia/232,ea2423,ffffff
+3016,51,301,Port de Pollença - Palma,,3,https://www.tib.org/web/ctm/autobus/linia/301,ea2423,ffffff
+3017,51,302,Can Picafort - Palma,,3,https://www.tib.org/web/ctm/autobus/linia/302,ea2423,ffffff
+224,51,303,Bunyola - H. Joan March - Palma,,3,https://www.tib.org/web/ctm/autobus/linia/303,ea2423,ffffff
+3018,51,304,Inca - Sencelles - Palma,,3,https://www.tib.org/web/ctm/autobus/linia/304,ea2423,ffffff
+3019,51,311,Mancor de la Vall - Inca,,3,https://www.tib.org/web/ctm/autobus/linia/311,ea2423,ffffff
+3020,51,312,Lluc - Inca - Muro,,3,https://www.tib.org/web/ctm/autobus/linia/312,ea2423,ffffff
+3154,51,313,Selva - Inca,,3,https://www.tib.org/web/ctm/autobus/linia/313,ea2423,ffffff
+3021,51,314,Campanet / Búger,,3,https://www.tib.org/web/ctm/autobus/linia/314,ea2423,ffffff
+3022,51,316,Son Serra - Inca,,3,https://www.tib.org/web/ctm/autobus/linia/316,ea2423,ffffff
+3023,51,321,Cala de Sant Vicenç,,3,https://www.tib.org/web/ctm/autobus/linia/321,ea2423,ffffff
+3024,51,322,Pollença - Port d'Alcúdia,,3,https://www.tib.org/web/ctm/autobus/linia/322,ea2423,ffffff
+3026,51,331,Alaró - Orient,,3,https://www.tib.org/web/ctm/autobus/linia/331,ea2423,ffffff
+225,51,341,Pòrtol - Son Llàtzer - FAN,,3,https://www.tib.org/web/ctm/autobus/linia/341,ea2423,ffffff
+3027,51,342,Alaró - Estació - Consell,,3,https://www.tib.org/web/ctm/autobus/linia/342,ea2423,ffffff
+3227,51,343d,Santa Eugènia - Santa Maria,,715,https://www.tib.org/web/ctm/autobus/linia/343d,ea2423,ffffff
+3066,50,401,Cala Millor - Palma,,3,https://www.tib.org/web/ctm/autobus/linia/401,ea2423,ffffff
+3068,50,403,Campos - Algaida - Palma,,3,https://www.tib.org/web/ctm/autobus/linia/403,ea2423,ffffff
+3129,50,411,Cala Rajada - Manacor,,3,https://www.tib.org/web/ctm/autobus/linia/411,ea2423,ffffff
+3126,50,412,Costa dels Pins - Manacor,,3,https://www.tib.org/web/ctm/autobus/linia/412,ea2423,ffffff
+3071,50,416,Cales de Mallorca - Manacor,,3,https://www.tib.org/web/ctm/autobus/linia/416,ea2423,ffffff
+3072,50,417,Porreres - Manacor - Son Carrió,,3,https://www.tib.org/web/ctm/autobus/linia/417,ea2423,ffffff
+3028,51,421,Colònia de Sant Pere - Artà,,3,https://www.tib.org/web/ctm/autobus/linia/421,ea2423,ffffff
+3147,50,431d,Algaida - Llucmajor,,715,https://www.tib.org/web/ctm/autobus/linia/431d,ea2423,ffffff
+3150,50,432,Sineu - Algaida,,3,https://www.tib.org/web/ctm/autobus/linia/432,ea2423,ffffff
+3073,50,441,Ariany - Maria - Sineu,,3,https://www.tib.org/web/ctm/autobus/linia/441,ea2423,ffffff
+3074,50,442,Sant Joan,,3,https://www.tib.org/web/ctm/autobus/linia/442,ea2423,ffffff
+3075,50,501,Manacor - Campos - Palma,,3,https://www.tib.org/web/ctm/autobus/linia/501,ea2423,ffffff
+3127,50,501e,"Campos - Palma, exprés",,3,https://www.tib.org/web/ctm/autobus/linia/501e,ea2423,ffffff
+3078,50,504,Tolleric - Palma,,3,https://www.tib.org/web/ctm/autobus/linia/504,ea2423,ffffff
+3135,50,508,Sa Ràpita - Palma,,3,https://www.tib.org/web/ctm/autobus/linia/508,ea2423,ffffff
+3080,50,512,Portocolom - Felanitx,,3,https://www.tib.org/web/ctm/autobus/linia/512,ea2423,ffffff
+3081,50,514,Cala d'Or - Felanitx - Porreres,,3,https://www.tib.org/web/ctm/autobus/linia/514,ea2423,ffffff
+3082,50,515,Cala d'Or - Campos,,3,https://www.tib.org/web/ctm/autobus/linia/515,ea2423,ffffff
+3083,50,516,Cala Figuera - Campos,,3,https://www.tib.org/web/ctm/autobus/linia/516,ea2423,ffffff
+3084,50,517,Santanyí - Colònia de Sant Jordi - Campos,,3,https://www.tib.org/web/ctm/autobus/linia/517,ea2423,ffffff
+3146,50,518,Sa Ràpita - Campos,,3,https://www.tib.org/web/ctm/autobus/linia/518,ea2423,ffffff
+3086,50,519d,Cala Pi - Llucmajor,,715,https://www.tib.org/web/ctm/autobus/linia/519d,ea2423,ffffff
+3111,52,A11,Peguera - Aeroport,,3,https://www.tib.org/web/ctm/autobus/linia/A11,ea2423,ffffff
+3226,51,A33,Port d'Alcúdia - Aeroport,,3,https://www.tib.org/web/ctm/autobus/linia/A33,ea2423,ffffff
+3225,50,A43,Manacor - Aeroport,,3,https://www.tib.org/web/ctm/autobus/linia/A43,ea2423,ffffff
+3121,50,A51,Campos - Aeroport,,3,https://www.tib.org/web/ctm/autobus/linia/A51,ea2423,ffffff
+216,55,M1,Palma - UIB - ParcBit,,1,https://www.tib.org/web/ctm/metro/linia/M1,ffdd00,000000
+218,55,T1,Palma - Inca,,2,https://www.tib.org/web/ctm/tren/linia/T1,005192,ffffff
+219,55,T2,Palma - sa Pobla,,2,https://www.tib.org/web/ctm/tren/linia/T2,005192,ffffff
+220,55,T3,Palma - Manacor,,2,https://www.tib.org/web/ctm/tren/linia/T3,005192,ffffff

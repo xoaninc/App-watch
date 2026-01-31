@@ -1,0 +1,10 @@
+agency_id,agency_name,agency_url,agency_timezone,agency_lang,agency_phone
+CTMR4,CONSORCI DE TRANSPORTS DE MALLORCA,http://www.tib.org,Europe/Madrid,ca,Tel. +34 971 177 777
+50,Sagalés-Caldentey,http://www.tib.org,Europe/Madrid,ca,Tel. +34 971 177 777
+51,Grupo Ruiz,http://www.tib.org,Europe/Madrid,ca,Tel. +34 971 177 777
+52,Moventis,http://www.tib.org,Europe/Madrid,ca,Tel. +34 971 177 777
+54,CTM R4,http://www.tib.org,Europe/Madrid,ca,Tel. +34 971 177 777
+55,SFM R4,http://www.tib.org,Europe/Madrid,ca,Tel. +34 971 177 777
+58,AJUNTAMENT DE CALVIA R4,http://www.tib.org,Europe/Madrid,ca,Tel. +34 971 177 777
+59,EMT,http://www.tib.org,Europe/Madrid,ca,Tel. +34 971 177 777
+60,AJUNTAMENT DE BUNYOLA R4,http://www.tib.org,Europe/Madrid,ca,Tel. +34 971 177 777
