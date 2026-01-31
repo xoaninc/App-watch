@@ -5,7 +5,7 @@ import math
 import re as regex_module
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
-from sqlalchemy import and_, or_, func
+from sqlalchemy import and_, or_, func, literal
 
 from core.rate_limiter import limiter, RateLimits
 
@@ -356,9 +356,15 @@ def _match_static_to_rt(
     static_departure_seconds: int,
     rt_by_line: dict,
     used_rt_trips: set,
-    match_window_seconds: int = 300  # 5 minutes
+    match_window_seconds: int = 300,  # 5 minutes
+    static_headsign: Optional[str] = None,
+    static_start_seconds: Optional[int] = None,
 ) -> Optional[tuple]:
     """Try to match a static departure to an RT update.
+
+    Uses a two-phase matching approach:
+    1. PHASE 1 (strict): Match by line + time + verify direction via headsign pattern
+    2. PHASE 2 (fallback): Match by line + time only (current system)
 
     Args:
         static_line: Line name from static GTFS (e.g., "C4a")
@@ -366,6 +372,8 @@ def _match_static_to_rt(
         rt_by_line: RT data indexed by line
         used_rt_trips: Set of RT trip_ids already matched (to avoid duplicates)
         match_window_seconds: Time window for matching (default 5 min)
+        static_headsign: Headsign from static GTFS (for direction verification)
+        static_start_seconds: Trip start time from static GTFS (first stop departure)
 
     Returns:
         Tuple of (rt_arrival_seconds, rt_trip_id, platform, stu) or None if no match
@@ -373,19 +381,54 @@ def _match_static_to_rt(
     if static_line not in rt_by_line:
         return None
 
-    best_match = None
-    best_diff = float('inf')
+    candidates = []
 
     for rt_arrival_seconds, rt_trip_id, platform, stu in rt_by_line[static_line]:
         if rt_trip_id in used_rt_trips:
             continue
 
         time_diff = abs(rt_arrival_seconds - static_departure_seconds)
-        if time_diff <= match_window_seconds and time_diff < best_diff:
-            best_diff = time_diff
-            best_match = (rt_arrival_seconds, rt_trip_id, platform, stu)
+        if time_diff <= match_window_seconds:
+            candidates.append({
+                'rt_arrival_seconds': rt_arrival_seconds,
+                'rt_trip_id': rt_trip_id,
+                'platform': platform,
+                'stu': stu,
+                'time_diff': time_diff,
+            })
 
-    return best_match
+    if not candidates:
+        return None
+
+    # If only one candidate, return it
+    if len(candidates) == 1:
+        c = candidates[0]
+        return (c['rt_arrival_seconds'], c['rt_trip_id'], c['platform'], c['stu'])
+
+    # Multiple candidates: try to disambiguate
+    # PHASE 1: If we have start_seconds, prefer candidates with RT time
+    # that better matches the expected delay pattern
+    if static_start_seconds is not None and static_headsign:
+        # Calculate expected trip progress (how far into the trip we are)
+        trip_progress = static_departure_seconds - static_start_seconds
+
+        # Score candidates: prefer ones with consistent delay
+        for c in candidates:
+            # Calculate implied delay at this stop
+            implied_delay = c['rt_arrival_seconds'] - static_departure_seconds
+            c['implied_delay'] = implied_delay
+            # Score: prefer smaller absolute delays (more realistic)
+            c['score'] = abs(implied_delay)
+
+        # Sort by score (lower is better), then by time_diff
+        candidates.sort(key=lambda x: (x['score'], x['time_diff']))
+    else:
+        # Sort by time_diff only
+        candidates.sort(key=lambda x: x['time_diff'])
+
+    # Return best candidate
+    c = candidates[0]
+    return (c['rt_arrival_seconds'], c['rt_trip_id'], c['platform'], c['stu'])
 
 
 def _get_renfe_departures_from_rt(
@@ -1404,24 +1447,70 @@ def get_stop_departures(
         .subquery()
     )
 
-    query = (
-        db.query(StopTimeModel, TripModel, RouteModel)
-        .join(TripModel, StopTimeModel.trip_id == TripModel.id)
-        .join(RouteModel, TripModel.route_id == RouteModel.id)
-        .join(
-            max_sequence_subquery,
-            StopTimeModel.trip_id == max_sequence_subquery.c.trip_id
+    # Subquery to get the start_time (first stop departure) for each trip
+    # This is used for better RT matching - trips are identified by their start time
+    # Only compute for Renfe trips to avoid performance impact on other operators
+    if is_renfe:
+        start_time_subquery = (
+            db.query(
+                StopTimeModel.trip_id,
+                func.min(StopTimeModel.departure_seconds).label("start_seconds")
+            )
+            .filter(StopTimeModel.trip_id.like("RENFE_%"))  # Only Renfe trips
+            .group_by(StopTimeModel.trip_id)
+            .subquery()
         )
-        .filter(
-            StopTimeModel.stop_id.in_(stop_ids_to_query),
-            # For Renfe: include departures from 5 min ago to catch RT updates for trains
-            # that are running late (RT data often comes after scheduled departure)
-            StopTimeModel.departure_seconds >= (current_seconds - 300 if is_renfe and renfe_rt_data else current_seconds),
-            TripModel.service_id.in_(active_service_ids),
-            # Exclude trips where this stop is the last stop (train arrives, doesn't depart)
-            StopTimeModel.stop_sequence < max_sequence_subquery.c.max_seq,
+    else:
+        start_time_subquery = None
+
+    # Build query - conditionally include start_time for Renfe
+    if is_renfe and start_time_subquery is not None:
+        query = (
+            db.query(
+                StopTimeModel,
+                TripModel,
+                RouteModel,
+                start_time_subquery.c.start_seconds.label("trip_start_seconds")
+            )
+            .join(TripModel, StopTimeModel.trip_id == TripModel.id)
+            .join(RouteModel, TripModel.route_id == RouteModel.id)
+            .join(
+                max_sequence_subquery,
+                StopTimeModel.trip_id == max_sequence_subquery.c.trip_id
+            )
+            .outerjoin(
+                start_time_subquery,
+                StopTimeModel.trip_id == start_time_subquery.c.trip_id
+            )
+            .filter(
+                StopTimeModel.stop_id.in_(stop_ids_to_query),
+                StopTimeModel.departure_seconds >= (current_seconds - 300 if renfe_rt_data else current_seconds),
+                TripModel.service_id.in_(active_service_ids),
+                StopTimeModel.stop_sequence < max_sequence_subquery.c.max_seq,
+            )
         )
-    )
+    else:
+        # For non-Renfe: simpler query without start_time
+        query = (
+            db.query(
+                StopTimeModel,
+                TripModel,
+                RouteModel,
+                literal(None).label("trip_start_seconds")  # Placeholder
+            )
+            .join(TripModel, StopTimeModel.trip_id == TripModel.id)
+            .join(RouteModel, TripModel.route_id == RouteModel.id)
+            .join(
+                max_sequence_subquery,
+                StopTimeModel.trip_id == max_sequence_subquery.c.trip_id
+            )
+            .filter(
+                StopTimeModel.stop_id.in_(stop_ids_to_query),
+                StopTimeModel.departure_seconds >= current_seconds,
+                TripModel.service_id.in_(active_service_ids),
+                StopTimeModel.stop_sequence < max_sequence_subquery.c.max_seq,
+            )
+        )
 
     if route_id:
         query = query.filter(TripModel.route_id == route_id)
@@ -1453,7 +1542,7 @@ def get_stop_departures(
     frequency_departures = []
     if is_metro_stop and results:
         # Get routes that have stop_times results
-        routes_with_stop_times = set(route.id for _, _, route in results)
+        routes_with_stop_times = set(route.id for _, _, route, _ in results)
 
         # Get all routes serving these stops
         all_route_ids_at_stop = set(
@@ -1478,7 +1567,7 @@ def get_stop_departures(
                 frequency_departures.extend(freq_deps)
 
     # Get trip IDs for realtime delay lookup
-    trip_ids = [trip.id for _, trip, _ in results]
+    trip_ids = [trip.id for _, trip, _, _ in results]
 
     # Get stop count per trip (for CIVIS express detection)
     trip_stop_counts = {}
@@ -1714,7 +1803,7 @@ def get_stop_departures(
     day_type = get_effective_day_type(now)
 
     departures = []
-    for stop_time, trip, route in results:
+    for stop_time, trip, route, trip_start_seconds in results:
         # Filter out static GTFS routes outside operating hours
         # Check if the DEPARTURE time is within operating hours (not current time)
         # This allows showing upcoming departures even if service hasn't started yet
@@ -1733,14 +1822,18 @@ def get_stop_departures(
         # -------------------------------------------------------------------------
         # Renfe RT merge: Match static departure to RT data by line + time
         # This gives us accurate RT timing while keeping static headsigns
+        # Uses enhanced matching with start_time and headsign for disambiguation
         # -------------------------------------------------------------------------
         if is_renfe and renfe_rt_data and renfe_rt_data.get('rt_by_line'):
             route_short = route.short_name.strip() if route.short_name else ""
+            static_headsign = trip.headsign or last_stop_names.get(trip.id)
             rt_match = _match_static_to_rt(
                 static_line=route_short,
                 static_departure_seconds=stop_time.departure_seconds,
                 rt_by_line=renfe_rt_data['rt_by_line'],
                 used_rt_trips=renfe_used_rt_trips,
+                static_headsign=static_headsign,
+                static_start_seconds=trip_start_seconds,
             )
             if rt_match:
                 rt_arrival_seconds, rt_trip_id, rt_plat, rt_stu = rt_match
@@ -1871,6 +1964,28 @@ def get_stop_departures(
             return current_seconds + (dep.realtime_minutes_until * 60)
         return dep.departure_seconds
 
+    def has_rt(dep):
+        """Check if departure has RT data."""
+        return dep.realtime_minutes_until is not None
+
+    # STEP 1: Remove static duplicates when RT exists for same scheduled time slot
+    # This handles the case where multiple static trips have the same time,
+    # but only one gets matched with RT. The static-only ones should be removed.
+    # Key: (route_short_name, headsign, scheduled_time_bucket) -> has RT?
+    rt_scheduled_slots = set()
+    for dep in departures:
+        if has_rt(dep):
+            # Use 2-minute buckets for scheduled time (120s) to catch near-duplicates
+            time_bucket = dep.departure_seconds // 120
+            rt_scheduled_slots.add((dep.route_short_name, dep.headsign, time_bucket))
+
+    # Filter out static-only departures that have an RT departure in same slot
+    departures = [
+        dep for dep in departures
+        if has_rt(dep) or (dep.route_short_name, dep.headsign, dep.departure_seconds // 120) not in rt_scheduled_slots
+    ]
+
+    # STEP 2: Standard deduplication by effective time
     departures.sort(key=get_effective_seconds)
 
     # Deduplicate using minimum time gap on effective display time

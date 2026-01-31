@@ -4,9 +4,13 @@
 This script imports the complete GTFS data for Metro Málaga:
 - 5 calendar services (LABORABLE, VIERNES, SABADO, DOMINGO, FESTIVO)
 - 44 calendar_dates (13 festivos + 9 vísperas × 2 operations each)
-- 4,682 trips
-- 48,945 stop_times
+- ~2,400 trips (only current version)
+- ~25,000 stop_times
 - 4 shapes (L1 and L2, both directions)
+
+IMPORTANT: The GTFS source contains multiple temporal versions of trips
+(e.g., _25_02_ogt and _26_01_ogt). We only import the CURRENT version
+to avoid duplicate departures.
 
 Usage:
     python scripts/import_metro_malaga_gtfs.py [--dry-run]
@@ -49,6 +53,11 @@ SHAPE_MAPPING = {
     'L2V1': 'METRO_MALAGA_L2_DIR1',
     'L2V2': 'METRO_MALAGA_L2_DIR2',
 }
+
+# Current version pattern - only import trips from this version
+# The GTFS contains multiple versions (e.g., _25_02_ogt, _26_01_ogt)
+# We only want the most recent one to avoid duplicates
+CURRENT_VERSION = '_26_01_'
 
 # Festivos de Málaga 2026
 FESTIVOS = [
@@ -167,8 +176,13 @@ def create_calendar_dates(db, dry_run: bool) -> int:
     return count
 
 
-def import_trips(db, dry_run: bool) -> int:
-    """Import trips from GTFS."""
+def import_trips(db, dry_run: bool) -> tuple[int, set]:
+    """Import trips from GTFS.
+
+    Returns:
+        Tuple of (count, imported_trip_ids) where imported_trip_ids contains
+        the original GTFS trip_ids that were imported (for filtering stop_times).
+    """
     logger.info("Paso 3: Importando trips...")
 
     trips_file = os.path.join(GTFS_DIR, 'trips.txt')
@@ -179,11 +193,20 @@ def import_trips(db, dry_run: bool) -> int:
         db.execute(text("DELETE FROM gtfs_trips WHERE route_id LIKE 'METRO_MALAGA_%'"))
 
     count = 0
+    skipped = 0
+    imported_trip_ids = set()  # Track which trips we import
+
     with open(trips_file, 'r', encoding='utf-8') as f:
         reader = csv.DictReader(f)
         for row in reader:
             # Map IDs
             gtfs_service = row['service_id']
+
+            # Filter: only import current version trips
+            if CURRENT_VERSION not in gtfs_service:
+                skipped += 1
+                continue
+
             service_prefix = gtfs_service.split('_')[0]  # M01, M02, etc.
 
             our_service = SERVICE_MAPPING.get(service_prefix)
@@ -193,6 +216,9 @@ def import_trips(db, dry_run: bool) -> int:
 
             our_route = f"METRO_MALAGA_{row['route_id']}"
             our_trip_id = f"METRO_MALAGA_{row['trip_id']}"
+
+            # Track original trip_id for stop_times filtering
+            imported_trip_ids.add(row['trip_id'])
 
             # Map shape
             gtfs_shape = row.get('shape_id', '')
@@ -220,12 +246,18 @@ def import_trips(db, dry_run: bool) -> int:
             if count % 1000 == 0:
                 logger.info(f"  Procesados {count} trips...")
 
-    logger.info(f"  Total trips: {count}")
-    return count
+    logger.info(f"  Total trips importados: {count} (saltados {skipped} de versión antigua)")
+    return count, imported_trip_ids
 
 
-def import_stop_times(db, dry_run: bool) -> int:
-    """Import stop_times from GTFS."""
+def import_stop_times(db, dry_run: bool, imported_trip_ids: set = None) -> int:
+    """Import stop_times from GTFS.
+
+    Args:
+        db: Database session
+        dry_run: If True, don't make changes
+        imported_trip_ids: Set of trip_ids to import. If None, imports all.
+    """
     logger.info("Paso 4: Importando stop_times...")
 
     stop_times_file = os.path.join(GTFS_DIR, 'stop_times.txt')
@@ -238,12 +270,18 @@ def import_stop_times(db, dry_run: bool) -> int:
         '''))
 
     count = 0
+    skipped = 0
     batch = []
     batch_size = 5000
 
     with open(stop_times_file, 'r', encoding='utf-8') as f:
         reader = csv.DictReader(f)
         for row in reader:
+            # Filter: only import stop_times for imported trips
+            if imported_trip_ids and row['trip_id'] not in imported_trip_ids:
+                skipped += 1
+                continue
+
             our_trip_id = f"METRO_MALAGA_{row['trip_id']}"
             our_stop_id = f"METRO_MALAGA_{row['stop_id']}"
 
@@ -288,7 +326,7 @@ def import_stop_times(db, dry_run: bool) -> int:
                 VALUES (:trip_id, :stop_id, :arrival_time, :departure_time, :arrival_seconds, :departure_seconds, :stop_sequence)
             '''), item)
 
-    logger.info(f"  Total stop_times: {count}")
+    logger.info(f"  Total stop_times importados: {count} (saltados {skipped} de versión antigua)")
     return count
 
 
@@ -358,41 +396,63 @@ def import_stop_sequences(db, dry_run: bool) -> int:
 
     This ensures each route only has the stops that actually appear in its trips,
     preventing incorrect associations (e.g., La Unión appearing in L2).
+
+    Uses direction_id=1 trips to get consistent stop order (toward terminal).
     """
     logger.info("Paso 6: Generando gtfs_stop_route_sequence desde stop_times...")
 
     stop_times_file = os.path.join(GTFS_DIR, 'stop_times.txt')
     trips_file = os.path.join(GTFS_DIR, 'trips.txt')
 
-    # Read trips to get trip_id -> route_id mapping
-    trip_to_route = {}
+    # Read trips to get trip_id -> (route_id, direction_id) mapping
+    # Also find a representative trip for each route (direction_id=1)
+    trip_info = {}
+    route_representative_trip = {}  # route_id -> first trip_id with direction_id=1
+
     with open(trips_file, 'r', encoding='utf-8') as f:
         reader = csv.DictReader(f)
         for row in reader:
-            trip_to_route[row['trip_id']] = row['route_id']
+            # Filter: only process current version trips
+            if CURRENT_VERSION not in row['service_id']:
+                continue
 
-    # Read stop_times and group by route
-    route_stops = {}  # route_id -> list of (stop_id, min_sequence)
+            trip_id = row['trip_id']
+            route_id = row['route_id']
+            direction_id = int(row.get('direction_id', 0))
+            trip_info[trip_id] = {'route_id': route_id, 'direction_id': direction_id}
+
+            # Keep first trip with direction_id=1 for each route
+            if direction_id == 1 and route_id not in route_representative_trip:
+                route_representative_trip[route_id] = trip_id
+
+    # Read stop_times for representative trips only (to get correct order)
+    route_stops = {}  # route_id -> list of (stop_id, sequence)
+
+    # Get the set of representative trip_ids
+    representative_trips = set(route_representative_trip.values())
 
     with open(stop_times_file, 'r', encoding='utf-8') as f:
         reader = csv.DictReader(f)
         for row in reader:
             trip_id = row['trip_id']
-            route_id = trip_to_route.get(trip_id)
-            if not route_id:
+
+            # Only process representative trips
+            if trip_id not in representative_trips:
                 continue
 
+            info = trip_info.get(trip_id)
+            if not info:
+                continue
+
+            route_id = info['route_id']
             stop_id = row['stop_id']
             sequence = int(row['stop_sequence'])
 
             if route_id not in route_stops:
                 route_stops[route_id] = {}
 
-            # Keep the minimum sequence for each stop (first occurrence)
-            if stop_id not in route_stops[route_id]:
-                route_stops[route_id][stop_id] = sequence
-            else:
-                route_stops[route_id][stop_id] = min(route_stops[route_id][stop_id], sequence)
+            # Store sequence from this representative trip
+            route_stops[route_id][stop_id] = sequence
 
     if dry_run:
         for route_id, stops in route_stops.items():
@@ -505,8 +565,8 @@ def main():
         # Execute all steps
         calendars = create_calendars(db, args.dry_run)
         calendar_dates = create_calendar_dates(db, args.dry_run)
-        trips = import_trips(db, args.dry_run)
-        stop_times = import_stop_times(db, args.dry_run)
+        trips, imported_trip_ids = import_trips(db, args.dry_run)
+        stop_times = import_stop_times(db, args.dry_run, imported_trip_ids)
         shapes = import_shapes(db, args.dry_run)
         sequences = import_stop_sequences(db, args.dry_run)
 
