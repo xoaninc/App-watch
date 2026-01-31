@@ -7,7 +7,7 @@
 
 | Operador | Líneas | Estaciones | Accesos | Correspondencias |
 |----------|--------|------------|---------|------------------|
-| Metro Sevilla | L1 | 21 | 8 | 6 pares |
+| Metro Sevilla | L1 | 21 | 9 (2♿) | 6 pares |
 | Tranvía Sevilla | T1 | 7 | - | 6 pares |
 | RENFE Cercanías | C1-C5 | 52 | - | 2 pares |
 
@@ -82,15 +82,19 @@ Intercambiador principal con Metro L1, Tranvía T1 y RENFE Cercanías.
 
 ## Accesos (Entradas OSM)
 
-| Estación | Accesos | Coordenadas |
-|----------|---------|-------------|
-| Prado San Sebastián | 1 | 37.381, -5.987 |
-| La Plata | 2 | Norte/Sur |
-| Parque de los Príncipes | 1 | 37.376, -6.005 |
-| Puerta de Jerez | 1 | 37.382, -5.994 |
-| San Bernardo | 1 | 37.378, -5.979 |
-| Cocheras | 1 | 37.368, -5.950 |
-| Pablo de Olavide | 1 | 37.354, -5.943 |
+| Estación | Accesos | Ascensor |
+|----------|---------|----------|
+| E6 Parque de los Príncipes | 1 | - |
+| E8 Puerta de Jerez | 1 | - |
+| E9 Prado San Sebastián | 1 | ♿ |
+| E10 San Bernardo | 2 | ♿ (Calle Enramadilla) |
+| E15 La Plata | 2 (Norte/Sur) | - |
+| E16 Cocheras | 1 | - |
+| E17 Pablo de Olavide | 1 | - |
+
+**Total:** 9 accesos, 2 con ascensor
+
+**Sin datos OSM:** E1-E5, E7, E11-E14, E18-E21 (14 estaciones)
 
 ## Scripts
 

@@ -19,29 +19,30 @@ load_dotenv()
 # ACCESOS METRO SEVILLA (desde OSM 2026-01-31)
 # =============================================================================
 
-# Formato: (stop_id, access_name, lat, lon, osm_id)
+# Formato: (stop_id, access_name, lat, lon, wheelchair)
 METRO_ACCESSES = [
-    # Prado San Sebastián - 1 acceso
-    ("METRO_SEV_L1_E9", "Prado San Sebastián", 37.380677, -5.987358, 1234567),
+    # Prado San Sebastián - 1 ascensor
+    ("METRO_SEV_L1_E9", "Ascensor Prado", 37.380677, -5.987358, True),
+
+    # San Bernardo - 2 accesos (entrada + ascensor)
+    ("METRO_SEV_L1_E10", "San Bernardo", 37.378198, -5.979034, None),
+    ("METRO_SEV_L1_E10", "Ascensor Calle Enramadilla", 37.378347, -5.979138, True),
 
     # La Plata - 2 accesos
-    ("METRO_SEV_L1_E15", "La Plata Norte", 37.371613, -5.951870, 1234568),
-    ("METRO_SEV_L1_E15", "La Plata Sur", 37.371539, -5.951610, 1234569),
+    ("METRO_SEV_L1_E15", "La Plata Norte", 37.371613, -5.951870, None),
+    ("METRO_SEV_L1_E15", "La Plata Sur", 37.371539, -5.951610, None),
 
     # Parque de los Príncipes - 1 acceso
-    ("METRO_SEV_L1_E6", "Parque de los Príncipes", 37.376395, -6.004669, 1234570),
+    ("METRO_SEV_L1_E6", "Parque de los Príncipes", 37.376395, -6.004669, None),
 
     # Puerta de Jerez - 1 acceso
-    ("METRO_SEV_L1_E8", "Puerta de Jerez", 37.381859, -5.994462, 1234571),
-
-    # San Bernardo - 1 acceso
-    ("METRO_SEV_L1_E10", "San Bernardo", 37.378198, -5.979034, 1234572),
+    ("METRO_SEV_L1_E8", "Puerta de Jerez", 37.381859, -5.994462, None),
 
     # Cocheras - 1 acceso
-    ("METRO_SEV_L1_E16", "Cocheras", 37.367935, -5.950275, 1234573),
+    ("METRO_SEV_L1_E16", "Cocheras", 37.367935, -5.950275, None),
 
     # Pablo de Olavide - 1 acceso
-    ("METRO_SEV_L1_E17", "Pablo de Olavide", 37.354112, -5.943295, 1234574),
+    ("METRO_SEV_L1_E17", "Pablo de Olavide", 37.354112, -5.943295, None),
 ]
 
 
@@ -66,7 +67,7 @@ def update_accesses():
     errors = 0
 
     with engine.connect() as conn:
-        for stop_id, name, lat, lon, osm_id in METRO_ACCESSES:
+        for stop_id, name, lat, lon, wheelchair in METRO_ACCESSES:
             try:
                 # Check if exists
                 result = conn.execute(text("""
@@ -86,10 +87,10 @@ def update_accesses():
                 else:
                     # Insert
                     conn.execute(text("""
-                        INSERT INTO stop_access (stop_id, name, lat, lon, source)
-                        VALUES (:stop_id, :name, :lat, :lon, 'osm')
-                    """), {"stop_id": stop_id, "name": name, "lat": lat, "lon": lon})
-                    print(f"  ✅ Creado: {stop_id} - {name}")
+                        INSERT INTO stop_access (stop_id, name, lat, lon, wheelchair, source)
+                        VALUES (:stop_id, :name, :lat, :lon, :wheelchair, 'osm')
+                    """), {"stop_id": stop_id, "name": name, "lat": lat, "lon": lon, "wheelchair": wheelchair})
+                    print(f"  ✅ Creado: {stop_id} - {name}" + (" (♿)" if wheelchair else ""))
                     created += 1
 
             except Exception as e:
