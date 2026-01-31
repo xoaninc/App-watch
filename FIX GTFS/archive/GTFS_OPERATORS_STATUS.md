@@ -1,6 +1,6 @@
 # Estado de Operadores GTFS
 
-**Última actualización:** 2026-01-29
+**Última actualización:** 2026-01-31
 
 ---
 
@@ -58,7 +58,7 @@
 | TMB Metro | ✅ (API key) | ✅ API | ✅ (60) | ✅ 103k pts |
 | TRAM Barcelona | ✅ | ❌ | ❌ | ✅ 5k pts (OSM 2026-01-26) |
 | TRAM Alicante | ✅ NAP | ❌ | ❌ | ✅ 7k pts (OSM 2026-01-26) |
-| Metro Tenerife | ✅ | ❌ | ✅ (2) | ✅ 132 pts |
+| Metro Tenerife | ✅ NAP | ❌ | ✅ (2) | ✅ 132 pts |
 | Metro Málaga | ✅ Frecuencias | ❌ | ✅ (4) | ✅ 260 pts |
 | Metrovalencia | ✅ NAP | ❌ (API*) | ❌ | ✅ 11k pts (OSM 2026-01-26) |
 | Metro Granada | ✅ Frecuencias | ❌ | ❌ | ✅ 52 pts (bidireccional) |
@@ -119,9 +119,9 @@
 - **transfers.txt:** NO
 
 ### Metro Tenerife
-- **GTFS Estático:** `https://metrotenerife.com/transit/google_transit.zip`
+- **GTFS Estático:** NAP ID 1395 (https://nap.transportes.gob.es/Files/Detail/1395)
 - **GTFS-RT:** No disponible
-- **Fuente:** Portal datos abiertos Canarias
+- **Fuente:** NAP (requiere login)
 - **transfers.txt:** ✅ SÍ (2 registros)
 
 ### Renfe Cercanías (todas las regiones)
@@ -151,14 +151,36 @@
 
 ## Metrovalencia (FGV)
 
+**Última investigación:** 2026-01-30
+
 ### Resumen de APIs
 
 | Tipo | API | Estado |
 |------|-----|--------|
+| **GTFS Estático** | `metrovalencia.es` | ✅ Funciona (actualizado 27/01/2026) |
 | **Datos Estáticos** | `valencia.opendatasoft.com` | ✅ Funciona |
-| **Tiempo Real** | `geoportal.valencia.es` | ❌ Devuelve vacío |
-| **GTFS Estático** | NAP (ID 967) | 🔧 Descarga manual |
-| **GTFS-RT** | No existe | ❌ |
+| **Tiempo Real JSON** | `geoportal.valencia.es` | ⚠️ Responde pero vacío |
+| **GTFS-RT (Protobuf)** | No existe | ❌ |
+
+### GTFS Estático ✅
+
+```bash
+# URL directa - funciona sin autenticación
+https://www.metrovalencia.es/google_transit_feed/google_transit.zip
+```
+
+| Archivo | Tamaño | Última actualización |
+|---------|--------|---------------------|
+| agency.txt | 146 B | 27/01/2026 |
+| calendar.txt | 418 B | 27/01/2026 |
+| calendar_dates.txt | 593 B | 27/01/2026 |
+| routes.txt | 11.8 KB | 27/01/2026 |
+| stops.txt | 6.7 KB | 27/01/2026 |
+| stop_times.txt | 6.3 MB | 27/01/2026 |
+| trips.txt | 413 KB | 27/01/2026 |
+| shapes.txt | 30 KB | 27/01/2026 |
+
+**Contenido:** 142 paradas, líneas 1-10, datos válidos hasta febrero 2026.
 
 ### Datos Estáticos ✅ (OpenDataSoft)
 
@@ -182,15 +204,55 @@ GET https://valencia.opendatasoft.com/api/explore/v2.1/catalog/datasets/fgv-esta
 GET https://valencia.opendatasoft.com/api/explore/v2.1/catalog/datasets/fgv-estacions-estaciones/exports/geojson
 ```
 
-### Tiempo Real ❌ (Geoportal)
+### Tiempo Real ❌ (Geoportal) - INVESTIGACIÓN 2026-01-30
 
-```
+**Hallazgos:**
+
+1. **URL sin parámetro** → HTTP 400 Bad Request
+2. **URL con `?estacion=X`** → HTTP 200 pero `{"salidasMetro":[]}`
+3. **Probadas múltiples estaciones** (1, 5, 10, 50, 100, 150, 191) → todas vacías
+4. **Horario de prueba:** 22:00 CET (metro debería estar operativo)
+5. **HTML muestra:** "No hay paradas"
+
+```bash
+# La API requiere el parámetro estacion (antes no lo usábamos)
 GET https://geoportal.valencia.es/geoportal-services/api/v1/salidas-metro.json?estacion={codigo}
 
-Respuesta: {"salidasMetro":[]}
+# Respuesta actual (incluso en horario de servicio):
+{"salidasMetro":[]}
 ```
 
-**Nota:** El campo `proximas_llegadas` en `fgv-estacions-estaciones` apunta a esta API, pero actualmente no devuelve datos de próximas llegadas.
+**Conclusión:** FGV Valencia NO tiene GTFS-RT estándar. Su API JSON de tiempo real existe pero no devuelve datos. Posibles causas:
+- Han dejado de publicar datos en tiempo real
+- Problemas internos en su sistema
+- Cambio de API no documentado
+
+### GTFS-RT ❌ - No existe
+
+Se verificaron los siguientes endpoints - **ninguno existe**:
+- `https://www.metrovalencia.es/google_transit_feed/vehicle_positions.pb` → 404
+- `https://www.metrovalencia.es/google_transit_feed/trip_updates.pb` → 404
+- `https://www.metrovalencia.es/gtfs-rt/*` → 404
+- `https://www.metrovalencia.es/api/gtfs-rt` → 404
+- `https://www.metrovalencia.es/api/realtime` → 404
+
+### Estado en el código
+
+**Archivo:** `src/gtfs_bc/realtime/infrastructure/services/multi_operator_fetcher.py`
+
+Metrovalencia está **deshabilitado** desde 2026-01-28. El código está comentado pero preservado para futura implementación si FGV reactiva el servicio.
+
+### Fuentes alternativas investigadas
+
+| Fuente | Resultado |
+|--------|-----------|
+| datos.gob.es | Solo dataset de estaciones (estático) |
+| dadesobertes.gva.es | No tiene datos FGV |
+| Transitland | No tiene feeds de FGV Valencia |
+| Mobility Database | Solo GTFS estático (mismo que metrovalencia.es) |
+| NAP transportes.gob.es | GTFS estático (requiere API key) |
+
+**Nota:** El campo `proximas_llegadas` en `fgv-estacions-estaciones` apunta a la API de geoportal, pero esta no devuelve datos.
 
 ---
 
@@ -209,6 +271,7 @@ Estos operadores requieren descarga desde el NAP con login web:
 | Tranvía Murcia | 1371 | https://nap.transportes.gob.es/Files/Detail/1371 |
 | SFM Mallorca | 1071 | https://nap.transportes.gob.es/Files/Detail/1071 |
 | Metro Sevilla | 1385 | https://nap.transportes.gob.es/Files/Detail/1385 |
+| Metro Tenerife | 1395 | https://nap.transportes.gob.es/Files/Detail/1395 |
 
 **Nota:** La API key del NAP no permite descargas directas. Se requiere login web.
 
@@ -222,7 +285,7 @@ Estos operadores requieren descarga desde el NAP con login web:
 | Renfe Cercanías | 19 | GTFS URL (distribuidos por network: 40T, 10T, etc.) |
 | Euskotren | 13 | GTFS URL |
 | Metro Málaga | 4 | NAP (manual) |
-| Metro Tenerife | 2 | GTFS URL |
+| Metro Tenerife | 2 | NAP |
 | **Total** | **98** | |
 
 ### Operadores verificados SIN transfers.txt
@@ -346,20 +409,103 @@ Algunos operadores tienen datos GTFS en el NAP con validez limitada o frecuencia
   - Domingos/Festivos: 12-15' todo el día
 - **Festivos 2026:** Incluye festivos nacionales, autonómicos (Aragón) y locales (Zaragoza, incluyendo Fiestas del Pilar)
 
+### Tranvía Murcia
+- **Script:** `scripts/import_tranvia_murcia_gtfs.py`
+- **Fuente:** NAP (Fichero ID 1569)
+- **Líneas:**
+  - L1: Circular Nueva Condomina → Plaza Circular → UCAM (28 paradas)
+  - L1B: Ramal Espinardo ↔ Campus (5 paradas adicionales)
+- **Validez:** 2025-2026
+- **Trips:** ~200
+- **Stop times:** ~2,800
+- **Shapes:** 989 puntos (L1 circular + L1B bidireccional)
+- **Tipo:** stop_times directo (no frecuencias)
+
+### TRAM Alicante
+- **Script:** `scripts/import_tram_alicante_gtfs.py`
+- **Fuente:** NAP (Fichero ID 1167)
+- **Líneas:** 1, 2, 3, 4, 5, 9 (48 variantes de ruta)
+- **Paradas:** 70
+- **Trips:** ~2,214
+- **Stop times:** ~38,024
+- **Shapes:** 12 (7k puntos desde OSM 2026-01-26)
+- **Tipo:** stop_times directo (no frecuencias)
+
+### SFM Mallorca (Trenes)
+- **Script:** `scripts/import_sfm_mallorca_gtfs.py`
+- **Fuente:** NAP (Fichero ID 1272) - GTFS mixto bus+tren, se filtran solo trenes
+- **Líneas:**
+  - M1: Metro Palma ↔ UIB/ParcBit (L-V + Sáb, NO dom/festivos)
+  - T1: Tren Palma ↔ Inca (solo L-V, NO sáb/dom/festivos)
+  - T2: Tren Palma ↔ Sa Pobla (todos los días)
+  - T3: Tren Palma ↔ Manacor (todos los días)
+- **Paradas:** 31
+- **Trips:** ~344 (filtrados de ~3,000 del GTFS completo)
+- **Stop times:** ~5,400
+- **Shapes:** 8 shapes (4,450 puntos) - se mantienen de BD (mejor calidad)
+- **Tipo:** stop_times directo (no frecuencias)
+- **Festivos 2026 Baleares/Palma:**
+  - 01-01: Año Nuevo
+  - 06-01: Reyes
+  - 20-01: Sant Sebastià (Palma)
+  - 02-03: Día de Baleares
+  - 02-04: Jueves Santo
+  - 03-04: Viernes Santo
+  - 01-05: Día del Trabajo
+  - 29-06: San Pere (Palma)
+  - 12-10: Fiesta Nacional
+  - 08-12: Inmaculada
+  - 25-12: Navidad
+- **Servicio en festivos:**
+  - M1: No opera (quita L-V y Sáb)
+  - T1: No opera (quita L-V)
+  - T2/T3: Usa horario S-D
+
+### Metro Tenerife
+- **Script:** `scripts/import_metro_tenerife_gtfs.py`
+- **Fuente:** URL directa `https://metrotenerife.com/transit/google_transit.zip`
+- **Líneas:**
+  - L1: Intercambiador ↔ La Trinidad (21 paradas, ~37 min)
+  - L2: La Cuesta ↔ Tíncer (6 paradas, ~10 min)
+- **Paradas:** 25
+- **Trips:** ~980 (expandidos desde frequencies)
+- **Stop times:** ~31,260
+- **Shapes:** 4 (134 puntos)
+- **Transfers:** 2 (Hospital Universitario y El Cardonal L1↔L2)
+- **Tipo:** frequencies expandido a trips individuales
+- **Servicios:**
+  - S1: Laborables (L-V)
+  - S2: Sábados
+  - S3: Domingos/Festivos
+- **Festivos 2026 Canarias:** Incluye Día de Canarias (30/05) y Candelaria (02/02)
+- **Plan detallado:** `FIX GTFS/PLAN_METRO_TENERIFE_IMPORT.md`
+
 ### Cómo ejecutar los scripts
 
 ```bash
-# Granada
+# Granada (frecuencias)
 python scripts/import_metro_granada_frequencies.py
 
-# Málaga
+# Málaga (frecuencias)
 python scripts/import_metro_malaga_frequencies.py
 
-# Sevilla
+# Sevilla (frecuencias)
 python scripts/import_metro_sevilla_frequencies.py
 
-# Zaragoza
+# Zaragoza (frecuencias)
 python scripts/import_tranvia_zaragoza_frequencies.py
+
+# Tenerife (frequencies expandido)
+python scripts/import_metro_tenerife_gtfs.py
+
+# Murcia (NAP stop_times)
+python scripts/import_tranvia_murcia_gtfs.py
+
+# Alicante (NAP stop_times)
+python scripts/import_tram_alicante_gtfs.py
+
+# Mallorca (NAP stop_times, solo trenes)
+python scripts/import_sfm_mallorca_gtfs.py
 ```
 
 **Nota:** Los scripts borran los datos existentes del operador antes de insertar los nuevos. Ejecutar en producción con precaución.

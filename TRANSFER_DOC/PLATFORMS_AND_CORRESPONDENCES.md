@@ -1,6 +1,6 @@
 # Plataformas y Correspondencias - Documentación Completa
 
-**Última actualización:** 2026-01-26
+**Última actualización:** 2026-01-31
 
 ---
 
@@ -221,12 +221,12 @@ Correspondencias verificadas manualmente que no están en OSM.
 | Renfe Cercanías | 797 | 791 | GTFS | ✅ Completo |
 | Euskotren | 746 | 740 | GTFS | ✅ Completo (incluye Vitoria) |
 | Metro Madrid | 281 | 233 | OSM | ✅ Coords por línea |
-| TMB Metro BCN | 173 | 145 | OSM | ✅ Coords por línea |
+| TMB Metro BCN | 165 | 139 | GTFS+API | ✅ Coords por línea (API TMB) |
 | TRAM Barcelona | 172 | 172 | GTFS | ✅ Completo |
 | Metro Valencia | 219 | 144 | OSM+GTFS | ✅ Coords por línea |
 | Metro Ligero Madrid | 56 | 56 | GTFS | ✅ Completo |
 | Metro Bilbao | 55 | 42 | OSM | ✅ Coords por línea |
-| FGC | 54 | 34 | OSM | ✅ Coords por línea |
+| FGC | 190 | 104 | GTFS+OSM | ✅ Coords actualizadas OSM |
 | Tranvía Zaragoza | 29 | 32 | OSM | ✅ Coords por estación |
 | Metro Granada | 38 | 26 | OSM | ✅ Coords por línea |
 | Metro Málaga | 44 | 25 | OSM | ✅ Coords por línea |
@@ -238,7 +238,9 @@ Correspondencias verificadas manualmente que no están en OSM.
 
 | Ciudad | Pares | Fuente | Ejemplos |
 |--------|-------|--------|----------|
-| Barcelona | 25 | OSM | Catalunya, Passeig de Gràcia, Sants |
+| **Barcelona TMB** | **212** | GTFS+manual | 50 GTFS internos + 162 multimodales |
+| **Barcelona FGC** | **112** | manual | FGC↔TMB (78), FGC↔RENFE (30) |
+| **Barcelona TRAM** | **32** | GTFS+manual | TMB↔TRAM (32), GTFS (2) |
 | Madrid Metro | 17 | proximity+manual | Atocha, Nuevos Ministerios, Sol |
 | Cercanías | 20 | proximity+OSM | Metro↔Cercanías en intercambiadores |
 | Sevilla | 6 | manual | San Bernardo, Nervión↔Eduardo Dato, Prado, Puerta Jerez |
@@ -247,7 +249,7 @@ Correspondencias verificadas manualmente que no están en OSM.
 | Valencia | 1 | OSM | Sant Isidre |
 | Málaga | 5 | manual | El Perchel↔María Zambrano, El Perchel L1↔L2, Guadalmedina L1↔L2 |
 | Metro Ligero | 3 | proximity | Colonia Jardín, Pinar de Chamartín |
-| **TOTAL** | **91** | | |
+| **TOTAL** | **~418** | | |
 
 ### 5.3 stop_area_group Conocidos en OSM
 
@@ -414,6 +416,7 @@ Estas no están en OSM y se añadieron manualmente:
 
 | Ciudad | Estaciones | Estado |
 |--------|------------|--------|
+| **Barcelona** | TMB↔FGC↔RENFE↔TRAM (324+ correspondencias) | ✅ **Completado 2026-01-31** |
 | Sevilla | Nervión↔Eduardo Dato, Puerta Jerez, Prado San Sebastián | ✅ Completado |
 | Bilbao | Abando (Metro↔Euskotren↔Cercanías), San Mamés, Casco Viejo | ✅ Completado |
 | Valencia | Sant Isidre | ✅ Completado |
@@ -425,6 +428,8 @@ Estas no están en OSM y se añadieron manualmente:
 
 | Red | Paradas | Estado |
 |-----|---------|--------|
+| **TMB Metro Barcelona** | 165 andenes | ✅ OSM + API TMB |
+| **FGC Barcelona** | 190 andenes | ✅ OSM import |
 | Metro Valencia | 75 plataformas | ✅ OSM import |
 | Metro Sevilla | 13 plataformas | ✅ OSM import |
 | Metro Málaga | 19 plataformas | ✅ OSM import |
@@ -444,7 +449,7 @@ Estaciones grandes que requieren revisión manual:
 - Atocha (Metro + Cercanías + AVE)
 - Chamartín
 - Sol
-- Sants, Passeig de Gràcia, Catalunya (Barcelona)
+- ~~Sants, Passeig de Gràcia, Catalunya (Barcelona)~~ ✅ Completado
 
 ### 10.5 Notas sobre Tranvías
 

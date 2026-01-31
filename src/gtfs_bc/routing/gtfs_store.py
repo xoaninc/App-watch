@@ -379,16 +379,14 @@ class GTFSStore:
                 continue
 
             # 1. Expandir ORIGEN
-            # Si 'raw_from' es un padre, obtenemos sus hijos. Si no, usamos 'raw_from' tal cual.
-            from_stops = self.children_by_parent.get(raw_from)
-            if not from_stops:
-                from_stops = [raw_from]
+            # Incluir el padre Y sus hijos para cubrir ambos casos:
+            # - Trips que usan la estación padre directamente (ej. METRO_BILBAO_6)
+            # - Trips que usan los andenes (ej. METRO_BILBAO_6.0)
+            from_stops = [raw_from] + self.children_by_parent.get(raw_from, [])
 
             # 2. Expandir DESTINO
-            # Si 'raw_to' es un padre (ej. METRO_BILBAO_7), obtenemos sus andenes (7.0, 7.1).
-            to_stops = self.children_by_parent.get(raw_to)
-            if not to_stops:
-                to_stops = [raw_to]
+            # Igual que origen: incluir padre e hijos
+            to_stops = [raw_to] + self.children_by_parent.get(raw_to, [])
 
             # 3. Producto Cartesiano: Conectar TODOS con TODOS
             # Esto asegura que si llego al Andén 1, puedo transbordar al Andén 2 de la otra línea
@@ -402,7 +400,7 @@ class GTFSStore:
         print(f"    ✓ {transfer_count:,} transbordos (tras expansión)")
 
         # 9. Cargar accesos de Metro/Tren como puntos de entrada virtuales
-        print("  🚪 Cargando accesos (Metro Madrid, Ligero, Barcelona, Bilbao, Euskotren)...")
+        print("  🚪 Cargando accesos (Metro Madrid, Ligero, Barcelona, Bilbao, Euskotren, FGC)...")
         from adapters.http.api.gtfs.utils.shape_utils import haversine_distance
 
         access_result = db_session.execute(text("""
@@ -413,6 +411,8 @@ class GTFSStore:
                OR stop_id LIKE 'TMB\\_METRO\\_%'
                OR stop_id LIKE 'METRO\\_BILBAO\\_%'
                OR stop_id LIKE 'EUSKOTREN\\_%'
+               OR stop_id LIKE 'FGC\\_%'
+               OR stop_id LIKE 'BCN\\_%'
         """))
 
         access_count = 0

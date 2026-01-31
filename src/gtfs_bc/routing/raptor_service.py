@@ -11,6 +11,20 @@ Date: 2026-01-27
 """
 
 import math
+
+# =============================================================================
+# Station Aliases for Interchange Stations
+# =============================================================================
+# NOTA (2026-01-31): Los aliases FGC_* → BCN_* fueron ELIMINADOS.
+# Los intercambiadores BCN_* ya no existen en la BD (fueron limpiados).
+#
+# Ahora las estaciones FGC tienen sus propios andenes (FGC_GR1, FGC_GR2, etc.)
+# y las correspondencias multimodales están en stop_correspondence para
+# permitir transbordos TMB ↔ FGC ↔ RENFE ↔ TRAM.
+# =============================================================================
+STATION_ALIASES = {
+    # Diccionario vacío - los IDs de estación se usan directamente
+}
 from datetime import datetime, date, time, timedelta
 from typing import Dict, List, Optional, Tuple, Union
 
@@ -70,6 +84,52 @@ class RaptorService:
         self.db = db  # Solo para alertas
         self._raptor = RaptorAlgorithm()
         self._store = gtfs_store
+
+    def _resolve_station_alias(self, stop_id: Union[str, List[str]]) -> Union[str, List[str]]:
+        """Resolve station aliases for interchange stations.
+
+        Translates logical station IDs (e.g., FGC_PC) to their physical
+        interchange parent (e.g., BCN_PL_CATALUNYA) where platforms are located.
+
+        Args:
+            stop_id: Single stop ID or list of stop IDs
+
+        Returns:
+            Resolved stop ID(s) with aliases applied
+        """
+        if isinstance(stop_id, list):
+            return [STATION_ALIASES.get(sid, sid) for sid in stop_id]
+        return STATION_ALIASES.get(stop_id, stop_id)
+
+    def _expand_to_platforms(self, stop_id: Union[str, List[str]]) -> List[str]:
+        """Expand station IDs to their platform IDs.
+
+        GTFS trips stop at platforms (FGC_GR1, TMB_METRO_1.329), not at parent
+        stations (FGC_GR, TMB_METRO_P.6660329). This method expands a station
+        to its child platforms so RAPTOR can find routes.
+
+        Args:
+            stop_id: Single stop ID or list of stop IDs
+
+        Returns:
+            List of platform IDs (children) or the original ID if no children
+        """
+        if isinstance(stop_id, list):
+            result = []
+            for sid in stop_id:
+                children = self._store.get_children_stops(sid)
+                # Filter to only include actual platforms (not accesses)
+                # Platforms are location_type=0, accesses are location_type=2
+                platforms = [c for c in children if not c.endswith('_ACC_') and '_ACC_' not in c and '_E.' not in c]
+                if platforms:
+                    result.extend(platforms)
+                else:
+                    result.append(sid)
+            return result
+        else:
+            children = self._store.get_children_stops(stop_id)
+            platforms = [c for c in children if not c.endswith('_ACC_') and '_ACC_' not in c and '_E.' not in c]
+            return platforms if platforms else [stop_id]
 
     def _get_stop_info(self, stop_id: str) -> Optional[Tuple[str, float, float]]:
         """Get stop info from GTFSStore (name, lat, lon)."""
@@ -326,11 +386,20 @@ class RaptorService:
         if departure_time is None:
             departure_time = datetime.now().time()
 
+        # Resolve station aliases (legacy, now empty)
+        resolved_origin = self._resolve_station_alias(origin_stop_id)
+        resolved_destination = self._resolve_station_alias(destination_stop_id)
+
+        # Expand stations to platforms (FGC_GR → [FGC_GR1, FGC_GR2])
+        # RAPTOR needs platform IDs because trips stop at platforms, not stations
+        expanded_origin = self._expand_to_platforms(resolved_origin)
+        expanded_destination = self._expand_to_platforms(resolved_destination)
+
         # Run RAPTOR
         try:
             journeys = self._raptor.plan(
-                origin_stop_id=origin_stop_id,
-                destination_stop_id=destination_stop_id,
+                origin_stop_id=expanded_origin,
+                destination_stop_id=expanded_destination,
                 departure_time=departure_time,
                 travel_date=travel_date,
                 max_transfers=max_transfers

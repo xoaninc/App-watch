@@ -915,9 +915,16 @@ ON CONFLICT (service_id) DO NOTHING;
 
 | Red | Script | Trips Estimados | Estado |
 |-----|--------|-----------------|--------|
-| **Metro Sevilla** | `scripts/generate_metro_sevilla_trips.py` | ~3,340 | ✅ Script listo |
-| **Metro Madrid** | `scripts/generate_metro_madrid_from_gtfs.py` | ~21,574 | ✅ Script listo |
+| **Metro Sevilla** | `scripts/import_metro_sevilla_gtfs.py` | ~9,862 | ✅ Ejecutado |
+| **Metro Madrid** | `scripts/generate_metro_madrid_from_gtfs.py` | ~21,574 | ✅ Ejecutado |
 | **Metro Ligero MAD** | N/A (GTFS completo) | 3,001 | ✅ Funciona |
+| **Metro Málaga** | `scripts/import_metro_malaga_gtfs.py` | 2,104 | ✅ Ejecutado |
+| **Metro Tenerife** | `scripts/import_metro_tenerife_gtfs.py` | 1,168 | ✅ Ejecutado |
+| **Metro Granada** | `scripts/import_metro_granada_gtfs.py` | ~5,693 | ✅ Ejecutado |
+| **Tranvía Zaragoza** | `scripts/import_tranvia_zaragoza_frequencies.py` | ~720 | ✅ Ejecutado |
+| **Tranvía Murcia** | `scripts/import_tranvia_murcia_gtfs.py` | ~200 | ✅ Ejecutado |
+| **TRAM Alicante** | `scripts/import_tram_alicante_gtfs.py` | ~2,214 | ✅ Ejecutado |
+| **SFM Mallorca** | `scripts/import_sfm_mallorca_gtfs.py` | ~344 | ✅ Ejecutado |
 
 #### Metro Sevilla - Uso del Script
 

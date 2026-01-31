@@ -72,7 +72,7 @@ También existe configuración para Celery Beat como alternativa:
 |----------|--------------|------------|-------|
 | **Metro Madrid** | `11T` | `METRO_` | No publican feed GTFS-RT |
 | **Metro Ligero Madrid** | `12T` | `ML_` | No publican feed GTFS-RT |
-| **Metro Valencia** | `METRO_VALENCIA` | `METRO_VALENCIA_` | No publican feed GTFS-RT |
+| **Metro Valencia** | `METRO_VALENCIA` | `METRO_VALENCIA_` | No hay GTFS-RT; API JSON vacía (investigado 2026-01-30) |
 | **Metro Granada** | `METRO_GRANADA` | `METRO_GRANADA_` | No publican feed GTFS-RT |
 | **Metro Málaga** | `METRO_MALAGA` | `METRO_MALAGA_` | No publican feed GTFS-RT |
 | **Metro Sevilla** | `32T` | `METRO_SEVILLA_` | No publican feed GTFS-RT |

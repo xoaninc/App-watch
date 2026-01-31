@@ -79,9 +79,9 @@
 | Operadores | 18 |
 | Redes (networks) | 31 |
 | Paradas | ~6,700 |
-| Rutas | 325 |
-| Trips | 139,820 |
-| Stop Times | 1,988,956 |
+| Rutas | ~400 |
+| Trips | ~150,000 |
+| Stop Times | ~2,170,000 |
 | Shapes | 949 |
 | Shape Points | 650,332 |
 | Platforms | 2,989 |
@@ -97,7 +97,7 @@
 | Euskotren | ✅ | ✅ Protobuf | ✅ 61k pts | ✅ |
 | TMB Metro Barcelona | ✅ | ✅ API | ✅ 103k pts | ✅ |
 | FGC | ✅ | ✅ Protobuf | ✅ 12k pts | ✅ |
-| Metrovalencia | ✅ | - | ✅ 11k pts (OSM) | ✅ |
+| Metrovalencia | ✅ | - | ✅ 900 pts | ✅ 181,995 |
 | Metro Sevilla | ✅ | - | ✅ 424 pts (OSM) | ✅ 2,088 |
 | Metro Granada | ✅ | - | ✅ 52 pts | ✅ 143,098 |
 | Metro Málaga | ✅ | - | ✅ 260 pts | ✅ |
@@ -347,6 +347,20 @@ python scripts/import_metro_granada_gtfs.py
 
 **Requiere:** Archivo GTFS en `/var/www/renfeserver/data/metro_granada.zip`
 
+### Metrovalencia
+
+```bash
+# Descargar desde NAP (requiere NAP_API_KEY en .env.local)
+curl -s "https://nap.transportes.gob.es/api/Fichero/download/1168" \
+    -H "ApiKey: $NAP_API_KEY" -o /tmp/metrovalencia.zip
+unzip /tmp/metrovalencia.zip -d /tmp/metrovalencia_gtfs
+
+# Importar
+python scripts/import_metrovalencia_gtfs.py --gtfs-dir /tmp/metrovalencia_gtfs
+```
+
+**NAP:** conjuntoDatoId=967, ficheroId=1168
+
 ### Correspondencias desde OSM
 
 ```bash
@@ -503,6 +517,14 @@ protocol=https
 ---
 
 ## Historial de Cambios
+
+### 2026-01-31
+
+- **Metrovalencia:** Importados 10,348 trips y 181,995 stop_times desde NAP
+- Añadidas 75 rutas nuevas (variantes L4, L6, L8)
+- Configurados 4 calendarios (L-J, V, S, D) y 14 festivos Valencia 2026
+- Creado script `import_metrovalencia_gtfs.py`
+- Documentación NAP actualizada con instrucciones de API
 
 ### 2026-01-27
 

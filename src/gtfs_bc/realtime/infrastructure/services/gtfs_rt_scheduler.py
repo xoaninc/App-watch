@@ -81,12 +81,20 @@ class GTFSRTScheduler:
         while self._running:
             try:
                 await self._do_fetch()
+            except asyncio.CancelledError:
+                # Task was cancelled (shutdown) - re-raise to exit cleanly
+                logger.info("GTFS-RT scheduler task cancelled")
+                raise
             except asyncio.TimeoutError:
                 self._error_count += 1
-                logger.error(f"GTFS-RT fetch timeout after {self.FETCH_TIMEOUT}s")
+                logger.error(f"GTFS-RT fetch timeout after {self.FETCH_TIMEOUT}s - will retry in {self.FETCH_INTERVAL}s")
             except Exception as e:
                 self._error_count += 1
-                logger.error(f"GTFS-RT fetch error: {e}")
+                logger.error(f"GTFS-RT fetch error: {e} - will retry in {self.FETCH_INTERVAL}s")
+            except BaseException as e:
+                # Catch absolutely everything else (except CancelledError which we re-raised)
+                self._error_count += 1
+                logger.error(f"GTFS-RT unexpected error: {type(e).__name__}: {e} - will retry in {self.FETCH_INTERVAL}s")
 
             # Wait for next interval
             await asyncio.sleep(self.FETCH_INTERVAL)
@@ -114,16 +122,33 @@ class GTFSRTScheduler:
             )
 
     def _fetch_sync(self) -> dict:
-        """Synchronous fetch operation for all operators."""
+        """Synchronous fetch operation for all operators.
+
+        Each fetcher runs independently - if one fails, the others still run.
+        This ensures that a single operator failure doesn't stop all data collection.
+        """
         db = SessionLocal()
         try:
-            # Fetch Renfe GTFS-RT
-            renfe_fetcher = GTFSRealtimeFetcher(db)
-            renfe_result = renfe_fetcher.fetch_all_sync()
+            # Initialize results
+            renfe_result = {'vehicle_positions': 0, 'trip_updates': 0, 'alerts': 0}
+            multi_results = []
+
+            # Fetch Renfe GTFS-RT (wrapped in try/except to not block others)
+            try:
+                renfe_fetcher = GTFSRealtimeFetcher(db)
+                renfe_result = renfe_fetcher.fetch_all_sync()
+            except Exception as e:
+                logger.error(f"Renfe GTFS-RT fetch failed: {e}")
+                renfe_result['error'] = str(e)
 
             # Fetch other operators (TMB, FGC, Metro Bilbao, Euskotren)
-            multi_fetcher = MultiOperatorFetcher(db)
-            multi_results = multi_fetcher.fetch_all_operators_sync()
+            # Each operator is fetched independently within fetch_all_operators_sync
+            try:
+                multi_fetcher = MultiOperatorFetcher(db)
+                multi_results = multi_fetcher.fetch_all_operators_sync()
+            except Exception as e:
+                logger.error(f"Multi-operator GTFS-RT fetch failed: {e}")
+                multi_results = [{'error': str(e)}]
 
             # Aggregate results
             total_positions = renfe_result.get('vehicle_positions', 0)

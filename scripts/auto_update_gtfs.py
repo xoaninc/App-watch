@@ -380,7 +380,7 @@ def update_tussam(dry_run: bool = False, skip_validation: bool = False) -> bool:
         zip_path = Path(tmpdir) / 'tussam.zip'
         extract_path = Path(tmpdir) / 'tussam_gtfs'
 
-        headers = {'apikey': api_key}
+        headers = {'ApiKey': api_key}
         success, _ = download_and_validate(
             source['url'], zip_path, 'TUSSAM',
             skip_validation=skip_validation,

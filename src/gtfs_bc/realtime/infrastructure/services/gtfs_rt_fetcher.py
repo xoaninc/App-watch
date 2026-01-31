@@ -33,8 +33,23 @@ class GTFSRealtimeFetcher:
     TRIP_UPDATES_URL = "https://gtfsrt.renfe.com/trip_updates.json"
     ALERTS_URL = "https://gtfsrt.renfe.com/alerts.json"
 
+    # Prefix for Renfe stop IDs to match static GTFS data in BD
+    RENFE_PREFIX = "RENFE_"
+
     def __init__(self, db: Session):
         self.db = db
+
+    def _add_prefix(self, id_value: str) -> str:
+        """Add RENFE_ prefix to any ID to match static GTFS data in BD."""
+        if not id_value:
+            return id_value
+        if id_value.startswith(self.RENFE_PREFIX):
+            return id_value
+        return f"{self.RENFE_PREFIX}{id_value}"
+
+    def _add_stop_prefix(self, stop_id: str) -> str:
+        """Add RENFE_ prefix to stop_id (alias for _add_prefix)."""
+        return self._add_prefix(stop_id)
 
     # Madrid Cercanías routes that need variant detection based on destination
     # C4 and C8 don't exist as services - only C4a/C4b and C8a/C8b do
@@ -158,13 +173,18 @@ class GTFSRealtimeFetcher:
         """Insert or update a vehicle position."""
         status_enum = VehicleStatusEnum(vp.current_status.value)
 
+        # Add RENFE_ prefix to IDs to match static GTFS data and other operators
+        stop_id = self._add_prefix(vp.stop_id)
+        vehicle_id = self._add_prefix(vp.vehicle_id)
+        trip_id = self._add_prefix(vp.trip_id)
+
         stmt = insert(VehiclePositionModel).values(
-            vehicle_id=vp.vehicle_id,
-            trip_id=vp.trip_id,
+            vehicle_id=vehicle_id,
+            trip_id=trip_id,
             latitude=vp.latitude,
             longitude=vp.longitude,
             current_status=status_enum,
-            stop_id=vp.stop_id,
+            stop_id=stop_id,
             label=vp.label,
             platform=vp.platform,
             timestamp=vp.timestamp,
@@ -208,14 +228,16 @@ class GTFSRealtimeFetcher:
                 return
 
             # Get headsign from trip (ensure never None)
-            trip = self.db.query(TripModel).filter(TripModel.id == vp.trip_id).first()
+            # Add RENFE_ prefix to match static GTFS data in BD
+            trip_id = self._add_prefix(vp.trip_id)
+            trip = self.db.query(TripModel).filter(TripModel.id == trip_id).first()
             headsign = (trip.headsign if trip and trip.headsign else None) or "Unknown"
 
             # Determine variant for C4/C8 based on headsign
             route_short_name = self._determine_route_variant(route_short_name, headsign)
 
-            # Normalize stop_id
-            stop_id = vp.stop_id
+            # Add RENFE_ prefix to stop_id to match static GTFS data
+            stop_id = self._add_stop_prefix(vp.stop_id)
             today = date.today()
             now = datetime.utcnow()
 
@@ -299,16 +321,20 @@ class GTFSRealtimeFetcher:
 
     def _upsert_trip_update(self, tu: TripUpdate) -> None:
         """Insert or update a trip update and its stop time updates."""
+        # Add RENFE_ prefix to IDs to match static GTFS data and other operators
+        trip_id = self._add_prefix(tu.trip_id)
+        vehicle_id = self._add_prefix(tu.vehicle_id)
+
         # First, delete existing stop time updates for this trip
         self.db.query(StopTimeUpdateModel).filter(
-            StopTimeUpdateModel.trip_id == tu.trip_id
+            StopTimeUpdateModel.trip_id == trip_id
         ).delete()
 
         # Upsert the trip update
         stmt = insert(TripUpdateModel).values(
-            trip_id=tu.trip_id,
+            trip_id=trip_id,
             delay=tu.delay,
-            vehicle_id=tu.vehicle_id,
+            vehicle_id=vehicle_id,
             wheelchair_accessible=tu.wheelchair_accessible,
             timestamp=tu.timestamp,
             updated_at=datetime.utcnow(),
@@ -328,8 +354,8 @@ class GTFSRealtimeFetcher:
         # Insert stop time updates
         for stu in tu.stop_time_updates:
             stop_time_model = StopTimeUpdateModel(
-                trip_id=tu.trip_id,
-                stop_id=stu.stop_id,
+                trip_id=trip_id,
+                stop_id=self._add_stop_prefix(stu.stop_id),  # Add RENFE_ prefix
                 arrival_delay=stu.arrival_delay,
                 arrival_time=stu.arrival_time,
                 departure_delay=stu.departure_delay,
@@ -368,9 +394,12 @@ class GTFSRealtimeFetcher:
 
     def _upsert_alert(self, alert: Alert) -> None:
         """Insert or update an alert."""
+        # Add RENFE_ prefix to alert_id for consistency with other operators
+        alert_id = self._add_prefix(alert.alert_id)
+
         # Delete existing alert entities for this alert
         self.db.query(AlertEntityModel).filter(
-            AlertEntityModel.alert_id == alert.alert_id
+            AlertEntityModel.alert_id == alert_id
         ).delete()
 
         # Map domain enums to DB enums
@@ -379,7 +408,7 @@ class GTFSRealtimeFetcher:
 
         # Upsert the alert
         stmt = insert(AlertModel).values(
-            alert_id=alert.alert_id,
+            alert_id=alert_id,
             cause=cause_enum,
             effect=effect_enum,
             header_text=alert.header_text,
@@ -406,14 +435,17 @@ class GTFSRealtimeFetcher:
         )
         self.db.execute(stmt)
 
-        # Insert informed entities
+        # Insert informed entities with RENFE_ prefix for consistency
         for ie in alert.informed_entities:
+            route_id = self._add_prefix(ie.route_id)
+            trip_id = self._add_prefix(ie.trip_id)
+
             entity_model = AlertEntityModel(
-                alert_id=alert.alert_id,
-                route_id=ie.route_id,
-                route_short_name=self._extract_route_short_name(ie.route_id),
-                stop_id=ie.stop_id,
-                trip_id=ie.trip_id,
+                alert_id=alert_id,
+                route_id=route_id,
+                route_short_name=self._extract_route_short_name(ie.route_id),  # Use original for parsing
+                stop_id=self._add_stop_prefix(ie.stop_id) if ie.stop_id else None,
+                trip_id=trip_id,
                 agency_id=ie.agency_id,
                 route_type=ie.route_type,
             )

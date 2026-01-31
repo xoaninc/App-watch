@@ -19,7 +19,7 @@ API de información de transporte ferroviario en España. Proporciona datos de l
 | Metro de Madrid | `METRO_` |
 | Metro Ligero Madrid | `ML_` |
 | Metro Sevilla | `METRO_SEV_` |
-| Metro Valencia | `METRO_VAL_` |
+| Metrovalencia | `METRO_VALENCIA_` |
 | Metro Málaga | `METRO_MAL_` |
 | Metro Granada | `METRO_GRA_` |
 | Metro Tenerife | `METRO_TEN_` |

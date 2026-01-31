@@ -1,5 +1,5 @@
 from typing import List, Optional, Tuple
-from datetime import datetime, time
+from datetime import datetime, time, timedelta
 from zoneinfo import ZoneInfo
 import math
 import re as regex_module
@@ -115,6 +115,299 @@ def _calculate_is_hub(stop: StopModel) -> bool:
     if stop.cor_tranvia:
         transport_count += 1
     return transport_count >= 2
+
+
+# TMB Metro line colors (official colors from TMB)
+TMB_LINE_COLORS = {
+    "L1": "CE1126",  # Red
+    "L2": "993183",  # Purple
+    "L3": "00934A",  # Green
+    "L4": "FFCD00",  # Yellow
+    "L5": "0064A6",  # Blue
+    "L9N": "F58220",  # Orange
+    "L9S": "F58220",  # Orange
+    "L10N": "00A1E4",  # Light blue
+    "L10S": "00A1E4",  # Light blue
+    "L11": "90C962",  # Light green
+}
+
+
+def _extract_line_from_tmb_trip_id(trip_id: str) -> Optional[str]:
+    """Extract line name from TMB synthetic trip_id.
+
+    TMB_METRO_1.118_L1_0011 -> L1
+    """
+    if not trip_id:
+        return None
+    try:
+        parts = trip_id.split('_')
+        for part in parts:
+            if part.startswith('L') and len(part) >= 2:
+                # L1, L2, L9N, L10S, etc.
+                return part
+        return None
+    except Exception:
+        return None
+
+
+def _extract_line_from_renfe_trip_id(trip_id: str) -> Optional[str]:
+    """Extract line name from Renfe GTFS-RT trip_id.
+
+    RENFE_3027S23513C1 -> C1
+    RENFE_1027S78902C4b -> C4b
+    RENFE_5127S28412R2N -> R2N
+    RENFE_6027S26511C3 -> C3
+
+    Format: RENFE_{nucleo}{direction}S{vehicle}{type}{line}
+    The line is at the end after C, R, or T (Cercanías, Rodalies, Tranvía)
+    """
+    if not trip_id:
+        return None
+    try:
+        import re
+        # Match C, R, or T followed by the line number/name at the end
+        match = re.search(r'([CRT]\d+[a-zA-Z]?)$', trip_id)
+        if match:
+            return match.group(1)
+        return None
+    except Exception:
+        return None
+
+
+def _get_tmb_metro_departures_from_rt(
+    db: Session,
+    stop_ids: List[str],
+    limit: int,
+    compact: bool = False
+) -> List[DepartureResponse]:
+    """Get TMB Metro departures directly from RT data.
+
+    TMB Metro uses iMetro API which provides real-time arrival predictions
+    but with trip_ids that don't match GTFS static data. Instead of trying
+    to map trip_ids, we query RT data directly by stop_id.
+
+    Args:
+        db: Database session
+        stop_ids: List of stop IDs to query (including parent and children)
+        limit: Maximum number of results
+        compact: Whether to return compact response
+
+    Returns:
+        List of DepartureResponse with RT data, or empty list if no RT data
+    """
+    now = datetime.now(MADRID_TZ)
+    current_seconds = now.hour * 3600 + now.minute * 60 + now.second
+
+    try:
+        # Query RT stop_time_updates for TMB Metro stops
+        # Filter for arrivals in the next 2 hours
+        rt_updates = (
+            db.query(StopTimeUpdateModel)
+            .filter(
+                StopTimeUpdateModel.stop_id.in_(stop_ids),
+                StopTimeUpdateModel.arrival_time.isnot(None),
+                StopTimeUpdateModel.arrival_time > now,
+                StopTimeUpdateModel.arrival_time < now + timedelta(hours=2)
+            )
+            .order_by(StopTimeUpdateModel.arrival_time)
+            .limit(limit * 2)  # Get extra to account for deduplication
+            .all()
+        )
+
+        if not rt_updates:
+            return []
+
+        departures = []
+        seen_keys = set()  # For deduplication: (line, headsign, minute)
+
+        for stu in rt_updates:
+            # Extract line name from synthetic trip_id
+            line_name = _extract_line_from_tmb_trip_id(stu.trip_id)
+            if not line_name:
+                continue
+
+            # Calculate minutes until arrival
+            arrival_dt = stu.arrival_time
+            if arrival_dt.tzinfo is None:
+                # Assume UTC if no timezone
+                arrival_dt = arrival_dt.replace(tzinfo=ZoneInfo("UTC"))
+
+            time_diff = arrival_dt - now
+            minutes_until = int(time_diff.total_seconds() / 60)
+
+            if minutes_until < 0:
+                continue  # Skip past arrivals
+
+            # Deduplicate by line+headsign+minute
+            headsign = stu.headsign or ""
+            dedup_key = (line_name, headsign, minutes_until)
+            if dedup_key in seen_keys:
+                continue
+            seen_keys.add(dedup_key)
+
+            # Format departure time
+            departure_seconds = arrival_dt.hour * 3600 + arrival_dt.minute * 60 + arrival_dt.second
+            departure_time = f"{arrival_dt.hour:02d}:{arrival_dt.minute:02d}:{arrival_dt.second:02d}"
+
+            # Get route color
+            route_color = TMB_LINE_COLORS.get(line_name, "999999")
+
+            # Parse occupancy per car if available
+            occupancy_per_car = None
+            if stu.occupancy_per_car:
+                occupancy_per_car = parse_occupancy_per_car(stu.occupancy_per_car)
+
+            # Get occupancy status
+            occupancy_status = None
+            if stu.occupancy_percent is not None:
+                occupancy_status = percentage_to_status(stu.occupancy_percent)
+
+            departures.append(
+                DepartureResponse(
+                    trip_id=stu.trip_id,
+                    route_id=f"TMB_METRO_{line_name}",
+                    route_short_name=line_name,
+                    route_color=route_color,
+                    headsign=normalize_headsign(headsign),
+                    departure_time=departure_time,
+                    departure_seconds=departure_seconds,
+                    minutes_until=minutes_until,
+                    stop_sequence=0,  # Not available from RT
+                    platform=stu.platform,
+                    platform_estimated=False,  # RT data is real
+                    delay_seconds=None,  # RT gives direct arrival time, no delay calculation
+                    realtime_departure_time=departure_time,
+                    realtime_minutes_until=minutes_until,
+                    is_delayed=False,
+                    train_position=None,  # Could be added later
+                    occupancy_status=occupancy_status,
+                    occupancy_percentage=stu.occupancy_percent,
+                    occupancy_per_car=occupancy_per_car,
+                    is_express=False,
+                    express_name=None,
+                    express_color=None,
+                )
+            )
+
+            if len(departures) >= limit:
+                break
+
+        return departures
+
+    except Exception as e:
+        # Log error but don't crash - return empty list for fallback
+        import logging
+        logging.getLogger(__name__).warning(f"Error fetching TMB Metro RT departures: {e}")
+        return []
+
+
+def _get_renfe_rt_by_line(
+    db: Session,
+    stop_ids: List[str],
+) -> dict:
+    """Get Renfe RT data indexed by line and approximate time.
+
+    Returns a dict: {line_name: [(arrival_seconds, rt_trip_id, platform, stu), ...]}
+    """
+    now = datetime.now(MADRID_TZ)
+    rt_by_line = {}
+
+    try:
+        # Query RT stop_time_updates for Renfe stops (next 2 hours)
+        rt_updates = (
+            db.query(StopTimeUpdateModel)
+            .filter(
+                StopTimeUpdateModel.stop_id.in_(stop_ids),
+                StopTimeUpdateModel.arrival_time.isnot(None),
+                StopTimeUpdateModel.arrival_time > now,
+                StopTimeUpdateModel.arrival_time < now + timedelta(hours=2)
+            )
+            .order_by(StopTimeUpdateModel.arrival_time)
+            .all()
+        )
+
+        for stu in rt_updates:
+            line = _extract_line_from_renfe_trip_id(stu.trip_id)
+            if not line:
+                continue
+
+            arrival_dt = stu.arrival_time
+            if arrival_dt.tzinfo is None:
+                arrival_dt = arrival_dt.replace(tzinfo=MADRID_TZ)
+
+            # Convert to seconds since midnight for easy comparison
+            arrival_seconds = arrival_dt.hour * 3600 + arrival_dt.minute * 60 + arrival_dt.second
+
+            if line not in rt_by_line:
+                rt_by_line[line] = []
+            rt_by_line[line].append((arrival_seconds, stu.trip_id, stu.platform, stu))
+
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"Error fetching Renfe RT data: {e}")
+
+    return rt_by_line
+
+
+def _match_static_to_rt(
+    static_line: str,
+    static_departure_seconds: int,
+    rt_by_line: dict,
+    used_rt_trips: set,
+    match_window_seconds: int = 300  # 5 minutes
+) -> Optional[tuple]:
+    """Try to match a static departure to an RT update.
+
+    Args:
+        static_line: Line name from static GTFS (e.g., "C4a")
+        static_departure_seconds: Scheduled departure in seconds since midnight
+        rt_by_line: RT data indexed by line
+        used_rt_trips: Set of RT trip_ids already matched (to avoid duplicates)
+        match_window_seconds: Time window for matching (default 5 min)
+
+    Returns:
+        Tuple of (rt_arrival_seconds, rt_trip_id, platform, stu) or None if no match
+    """
+    if static_line not in rt_by_line:
+        return None
+
+    best_match = None
+    best_diff = float('inf')
+
+    for rt_arrival_seconds, rt_trip_id, platform, stu in rt_by_line[static_line]:
+        if rt_trip_id in used_rt_trips:
+            continue
+
+        time_diff = abs(rt_arrival_seconds - static_departure_seconds)
+        if time_diff <= match_window_seconds and time_diff < best_diff:
+            best_diff = time_diff
+            best_match = (rt_arrival_seconds, rt_trip_id, platform, stu)
+
+    return best_match
+
+
+def _get_renfe_departures_from_rt(
+    db: Session,
+    stop_ids: List[str],
+    limit: int,
+    compact: bool = False
+) -> Optional[dict]:
+    """Get Renfe RT data for merging with static departures.
+
+    This function no longer returns departures directly. Instead, it returns
+    RT data that will be merged with static GTFS data in get_stop_departures.
+
+    The merge approach ensures:
+    - Headsigns come from static GTFS (correct destinations like "Parla")
+    - Timing comes from RT data (real-time accuracy)
+
+    Returns:
+        dict with 'rt_by_line' for matching, or None if no RT data
+    """
+    rt_by_line = _get_renfe_rt_by_line(db, stop_ids)
+    if not rt_by_line:
+        return None
+    return {'rt_by_line': rt_by_line}
 
 
 def _project_point_to_polyline(
@@ -1011,6 +1304,48 @@ def get_stop_departures(
     else:
         stop_ids_to_query = [stop_id]
 
+    # -------------------------------------------------------------------------
+    # TMB Metro Barcelona: Use RT data directly (trip_ids don't match GTFS)
+    # -------------------------------------------------------------------------
+    is_tmb_metro = any(sid.startswith("TMB_METRO_") for sid in stop_ids_to_query)
+
+    if is_tmb_metro:
+        # Try to get departures directly from RT data
+        rt_departures = _get_tmb_metro_departures_from_rt(db, stop_ids_to_query, limit, compact)
+
+        if rt_departures:
+            # RT data available - return it
+            if compact:
+                compact_departures = [
+                    CompactDepartureResponse(
+                        line=d.route_short_name,
+                        color=d.route_color,
+                        dest=d.headsign[:20] if d.headsign else None,
+                        mins=d.realtime_minutes_until if d.realtime_minutes_until is not None else d.minutes_until,
+                        plat=d.platform,
+                        occ=d.occupancy_percentage,
+                    )
+                    for d in rt_departures
+                ]
+                return CompactDeparturesWrapper(departures=compact_departures)
+            return rt_departures
+
+        # No RT data - fall through to GTFS static logic below
+        # This provides a fallback when iMetro API is down or no trains are running
+
+    # -------------------------------------------------------------------------
+    # Renfe Cercanías/Rodalies: Fetch RT data for merging with static GTFS
+    # RT provides accurate timing, static GTFS provides correct headsigns
+    # -------------------------------------------------------------------------
+    is_renfe = any(sid.startswith("RENFE_") for sid in stop_ids_to_query)
+    renfe_rt_data = None
+    renfe_used_rt_trips = set()  # Track which RT trips have been matched
+
+    if is_renfe:
+        # Fetch RT data indexed by line for later merging
+        renfe_rt_data = _get_renfe_departures_from_rt(db, stop_ids_to_query, limit, compact)
+        # Continue to static GTFS query - we'll merge RT times into static departures
+
     # Get current time in seconds since midnight (Madrid timezone)
     now = datetime.now(MADRID_TZ)
     current_seconds = now.hour * 3600 + now.minute * 60 + now.second
@@ -1264,20 +1599,16 @@ def get_stop_departures(
 
     # 1. Try GTFS-RT vehicle positions
     vehicle_platforms = {}
-    # Extract numeric stop_id for comparison (e.g., "17000" from "RENFE_17000")
-    queried_stop_numeric = stop_id.replace("RENFE_", "") if stop_id.startswith("RENFE_") else stop_id
 
     if trip_ids:
         vehicle_positions = db.query(VehiclePositionModel).filter(
             VehiclePositionModel.trip_id.in_(trip_ids)
         ).all()
         for vp in vehicle_positions:
-            # Get current stop name from stop_id (try with RENFE_ prefix)
+            # Get current stop name from stop_id (RT now has RENFE_ prefix)
             current_stop = None
             if vp.stop_id:
-                current_stop = db.query(StopModel).filter(StopModel.id == f"RENFE_{vp.stop_id}").first()
-                if not current_stop:
-                    current_stop = db.query(StopModel).filter(StopModel.id == vp.stop_id).first()
+                current_stop = db.query(StopModel).filter(StopModel.id == vp.stop_id).first()
 
             status = vp.current_status.value if vp.current_status else "IN_TRANSIT_TO"
             train_positions[vp.trip_id] = TrainPositionSchema(
@@ -1290,9 +1621,7 @@ def get_stop_departures(
             )
 
             # Only store platform if train is AT or INCOMING to the queried stop
-            # Compare stop_ids (handle both "17000" and "RENFE_17000" formats)
-            vp_stop_numeric = vp.stop_id.replace("RENFE_", "") if vp.stop_id and vp.stop_id.startswith("RENFE_") else vp.stop_id
-            train_at_queried_stop = vp_stop_numeric == queried_stop_numeric
+            train_at_queried_stop = vp.stop_id == stop_id
 
             if vp.platform and train_at_queried_stop and status in ("STOPPED_AT", "INCOMING_AT"):
                 vehicle_platforms[vp.trip_id] = vp.platform
@@ -1316,6 +1645,11 @@ def get_stop_departures(
                 estimated=True
             )
 
+    # Extract numeric stop_id for platform history lookup (e.g., "RENFE_11511" → "11511")
+    # Platform history has mixed formats: some numeric only, some with RENFE_ prefix
+    queried_stop_numeric = stop_id.split('_')[-1] if '_' in stop_id else stop_id
+    queried_stop_variants = [queried_stop_numeric, stop_id]  # Search both formats
+
     # Helper function to get estimated platform from history
     def get_estimated_platform(route_short: str, headsign: str) -> tuple[Optional[str], bool]:
         """Get most likely platform from historical data with confidence calculation.
@@ -1331,11 +1665,12 @@ def get_stop_departures(
         from sqlalchemy import func
 
         # Aggregate all historical data with exact headsign match
+        # Search both numeric and prefixed stop_id formats for compatibility
         platform_counts = db.query(
             PlatformHistoryModel.platform,
             func.sum(PlatformHistoryModel.count).label('total_count')
         ).filter(
-            PlatformHistoryModel.stop_id == queried_stop_numeric,
+            PlatformHistoryModel.stop_id.in_(queried_stop_variants),
             PlatformHistoryModel.route_short_name == route_short,
             PlatformHistoryModel.headsign == headsign,
         ).group_by(
@@ -1350,7 +1685,7 @@ def get_stop_departures(
                 PlatformHistoryModel.platform,
                 func.sum(PlatformHistoryModel.count).label('total_count')
             ).filter(
-                PlatformHistoryModel.stop_id == queried_stop_numeric,
+                PlatformHistoryModel.stop_id.in_(queried_stop_variants),
                 PlatformHistoryModel.route_short_name == route_short,
             ).group_by(
                 PlatformHistoryModel.platform
@@ -1389,8 +1724,41 @@ def get_stop_departures(
         realtime_departure_time = None
         realtime_minutes_until = None
         is_delayed = False
+        rt_platform = None  # Platform from RT data (for Renfe merge)
 
-        if delay_seconds is not None and delay_seconds != 0:
+        # -------------------------------------------------------------------------
+        # Renfe RT merge: Match static departure to RT data by line + time
+        # This gives us accurate RT timing while keeping static headsigns
+        # -------------------------------------------------------------------------
+        if is_renfe and renfe_rt_data and renfe_rt_data.get('rt_by_line'):
+            route_short = route.short_name.strip() if route.short_name else ""
+            rt_match = _match_static_to_rt(
+                static_line=route_short,
+                static_departure_seconds=stop_time.departure_seconds,
+                rt_by_line=renfe_rt_data['rt_by_line'],
+                used_rt_trips=renfe_used_rt_trips,
+            )
+            if rt_match:
+                rt_arrival_seconds, rt_trip_id, rt_plat, rt_stu = rt_match
+                renfe_used_rt_trips.add(rt_trip_id)  # Mark as used
+
+                # Calculate delay from difference between RT and scheduled time
+                delay_seconds = rt_arrival_seconds - stop_time.departure_seconds
+
+                # Use RT platform if available
+                if rt_plat:
+                    rt_platform = rt_plat
+
+                # Set RT timing
+                is_delayed = delay_seconds > 60  # More than 1 minute delay
+                rt_hours = rt_arrival_seconds // 3600
+                rt_minutes = (rt_arrival_seconds % 3600) // 60
+                rt_secs = rt_arrival_seconds % 60
+                realtime_departure_time = f"{rt_hours:02d}:{rt_minutes:02d}:{rt_secs:02d}"
+                realtime_minutes_until = max(0, (rt_arrival_seconds - current_seconds) // 60)
+
+        # Standard delay handling (for non-Renfe or unmatched Renfe)
+        elif delay_seconds is not None and delay_seconds != 0:
             is_delayed = delay_seconds > 60  # More than 1 minute delay
             realtime_departure_seconds = stop_time.departure_seconds + delay_seconds
             # Convert to HH:MM:SS format
@@ -1408,7 +1776,8 @@ def get_stop_departures(
         headsign = normalize_headsign(trip.headsign or last_stop_names.get(trip.id))
 
         # Get platform from GTFS-RT (prefer stop_time_update, then vehicle_position, then by stop_id)
-        platform = stop_platforms.get(trip.id) or vehicle_platforms.get(trip.id)
+        # For Renfe: use rt_platform from merge if available
+        platform = rt_platform or stop_platforms.get(trip.id) or vehicle_platforms.get(trip.id)
         # For TMB/FGC: try platform by stop_id if not found by trip_id
         if not platform and stop_time.stop_id in stop_platforms_by_stop:
             platform = stop_platforms_by_stop[stop_time.stop_id]
@@ -1483,41 +1852,39 @@ def get_stop_departures(
         departures.extend(frequency_departures)
 
     # Deduplicate departures with overlapping times (GTFS frequency overlap bug)
-    # ONLY deduplicate static entries (no realtime data) - GTFS-RT may have legitimate
-    # multiple trains at same time which should NOT be deduplicated
-    #
     # Use a minimum gap of 90 seconds between departures of same route+headsign
     # to filter out duplicates caused by overlapping frequency periods in GTFS
+    #
+    # For Renfe: multiple static trips may match the same RT data, causing duplicates
+    # We deduplicate ALL departures using the effective display time
     MIN_GAP_SECONDS = 90
 
-    # First, separate realtime and static departures
-    realtime_departures = []
-    static_departures = []
-    for dep in departures:
-        if dep.delay_seconds is not None:
-            realtime_departures.append(dep)
-        else:
-            static_departures.append(dep)
+    # Sort all departures by their effective display time
+    def get_effective_seconds(dep):
+        """Get the time that will be displayed (RT if available, else static)."""
+        if dep.realtime_minutes_until is not None:
+            # Convert RT minutes back to seconds for comparison
+            return current_seconds + (dep.realtime_minutes_until * 60)
+        return dep.departure_seconds
 
-    # Sort static departures by departure time
-    static_departures.sort(key=lambda d: d.departure_seconds)
+    departures.sort(key=get_effective_seconds)
 
-    # Deduplicate static departures using minimum time gap
-    # Key: (route_short_name, headsign) -> last_departure_seconds
+    # Deduplicate using minimum time gap on effective display time
+    # Key: (route_short_name, headsign) -> last_effective_seconds
     last_departure_by_route_headsign: dict = {}
-    deduplicated_static = []
+    deduplicated = []
 
-    for dep in static_departures:
+    for dep in departures:
         key = (dep.route_short_name, dep.headsign)
-        last_dep_seconds = last_departure_by_route_headsign.get(key)
+        effective_seconds = get_effective_seconds(dep)
+        last_effective = last_departure_by_route_headsign.get(key)
 
         # Keep if no previous departure or gap is >= MIN_GAP_SECONDS
-        if last_dep_seconds is None or (dep.departure_seconds - last_dep_seconds) >= MIN_GAP_SECONDS:
-            deduplicated_static.append(dep)
-            last_departure_by_route_headsign[key] = dep.departure_seconds
+        if last_effective is None or (effective_seconds - last_effective) >= MIN_GAP_SECONDS:
+            deduplicated.append(dep)
+            last_departure_by_route_headsign[key] = effective_seconds
 
-    # Combine: all realtime departures + deduplicated static departures
-    departures = realtime_departures + deduplicated_static
+    departures = deduplicated
 
     # Sort by realtime departure (use realtime_minutes_until if available, else minutes_until)
     departures.sort(key=lambda d: d.realtime_minutes_until if d.realtime_minutes_until is not None else d.minutes_until)
