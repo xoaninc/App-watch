@@ -1,8 +1,8 @@
 from pathlib import Path
-import os
+import hmac
 
 from dotenv import load_dotenv
-load_dotenv()  # Load .env file for ADMIN_TOKEN and other env vars
+load_dotenv()  # Load .env file before importing settings
 
 from fastapi import FastAPI, BackgroundTasks, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -17,8 +17,7 @@ from src.gtfs_bc.realtime.infrastructure.services.gtfs_rt_scheduler import lifes
 
 def create_app() -> FastAPI:
     """Create and configure the FastAPI application."""
-    # Validate SECRET_KEY is properly configured in production
-    settings.auth.validate_secret_key(settings.ENVIRONMENT)
+    # Settings validation is done automatically in core/config.py on import
 
     app = FastAPI(
         title="RenfeServer API",
@@ -103,10 +102,11 @@ def create_app() -> FastAPI:
 
         Requires X-Admin-Token header for authentication.
         """
-        # Verify admin token
-        expected_token = os.getenv('ADMIN_TOKEN')
-        if not expected_token or x_admin_token != expected_token:
-            raise HTTPException(status_code=401, detail="Unauthorized: Invalid or missing X-Admin-Token")
+        # Verify admin token (using constant-time comparison to prevent timing attacks)
+        if not x_admin_token or not settings.ADMIN_TOKEN:
+            raise HTTPException(status_code=401, detail="Unauthorized: Missing admin token")
+        if not hmac.compare_digest(settings.ADMIN_TOKEN, x_admin_token):
+            raise HTTPException(status_code=401, detail="Unauthorized: Invalid admin token")
 
         from src.gtfs_bc.routing.gtfs_store import GTFSStore
         from core.database import SessionLocal
