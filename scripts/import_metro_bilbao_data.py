@@ -10,10 +10,13 @@ GTFS-RT URLs:
 - Trip Updates: https://ctb-gtfs-rt.s3.eu-south-2.amazonaws.com/metro-bilbao-trip-updates.pb
 - Alerts: https://ctb-gtfs-rt.s3.eu-south-2.amazonaws.com/metro-bilbao-service-alerts.pb
 
+Platform coordinates from OSM: docs/archive/osm_coords/metro_bilbao_by_line.csv
+
 Usage:
     source .venv/bin/activate && python scripts/import_metro_bilbao_data.py
     source .venv/bin/activate && python scripts/import_metro_bilbao_data.py --dry-run
     source .venv/bin/activate && python scripts/import_metro_bilbao_data.py --trips-only
+    source .venv/bin/activate && python scripts/import_metro_bilbao_data.py --platforms-only
 """
 
 import os
@@ -42,6 +45,7 @@ DATABASE_URL = os.getenv(
 )
 STOP_ID_PREFIX = "METRO_BILBAO_"
 ROUTE_ID = "METRO_BILBAO_MB"
+OSM_COORDS_CSV = os.path.join(os.path.dirname(__file__), '..', 'docs', 'archive', 'osm_coords', 'metro_bilbao_by_line.csv')
 
 
 def download_gtfs() -> Dict[str, str]:
@@ -195,6 +199,109 @@ def time_to_seconds(time_str: str) -> int:
     minutes = int(parts[1])
     seconds = int(parts[2])
     return hours * 3600 + minutes * 60 + seconds
+
+
+def load_osm_platform_coords() -> Dict[str, Dict[str, Tuple[float, float]]]:
+    """Load platform coordinates from OSM CSV file.
+
+    Returns:
+        Dict mapping station_name -> {line: (lat, lon)}
+        e.g., {'Zazpikaleak': {'L1': (43.259, -2.920), 'L2': (43.259, -2.920), 'L3': (43.260, -2.921)}}
+    """
+    if not os.path.exists(OSM_COORDS_CSV):
+        logger.warning(f"OSM coords CSV not found: {OSM_COORDS_CSV}")
+        return {}
+
+    coords = {}
+    with open(OSM_COORDS_CSV, 'r', encoding='utf-8') as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            station_name = row['station_name'].strip()
+            line = row['line'].strip()
+            lat = float(row['lat'].strip())
+            lon = float(row['lon'].strip())
+
+            if station_name not in coords:
+                coords[station_name] = {}
+            coords[station_name][line] = (lat, lon)
+
+    logger.info(f"Loaded OSM coords for {len(coords)} stations")
+    return coords
+
+
+def normalize_station_name(name: str) -> str:
+    """Normalize station name for matching (remove accents, lowercase, etc.)."""
+    import unicodedata
+    # Remove accents
+    name = unicodedata.normalize('NFD', name)
+    name = ''.join(c for c in name if unicodedata.category(c) != 'Mn')
+    # Lowercase and remove extra parts like "/Casco Viejo"
+    name = name.lower().split('/')[0].strip()
+    return name
+
+
+def import_platform_coords(conn, osm_coords: Dict, parents: Dict, dry_run: bool = False) -> int:
+    """Update platform coordinates in gtfs_stops using OSM data.
+
+    This updates the coordinates of existing platforms (location_type=0)
+    with more accurate coordinates from OSM.
+    """
+    cur = conn.cursor()
+
+    # Build mapping from normalized name to station ID
+    name_to_id = {}
+    for station_id, station in parents.items():
+        norm_name = normalize_station_name(station['name'])
+        name_to_id[norm_name] = station_id
+
+    # Also build mapping from OSM names
+    osm_name_to_id = {}
+    for osm_name in osm_coords.keys():
+        norm_name = normalize_station_name(osm_name)
+        if norm_name in name_to_id:
+            osm_name_to_id[osm_name] = name_to_id[norm_name]
+
+    updated = 0
+
+    for osm_name, lines in osm_coords.items():
+        station_id = osm_name_to_id.get(osm_name)
+        if not station_id:
+            logger.warning(f"  No match for OSM station: {osm_name}")
+            continue
+
+        # Get average coords if multiple lines, or use L1 as default
+        if 'L1' in lines:
+            lat, lon = lines['L1']
+        else:
+            # Use average of all lines
+            lats = [c[0] for c in lines.values()]
+            lons = [c[1] for c in lines.values()]
+            lat = sum(lats) / len(lats)
+            lon = sum(lons) / len(lons)
+
+        # Update platform (X.0) coordinates
+        platform_id = f"{STOP_ID_PREFIX}{station_id}.0"
+
+        if dry_run:
+            logger.info(f"  [DRY-RUN] Would update {platform_id} to ({lat}, {lon})")
+            updated += 1
+            continue
+
+        cur.execute("""
+            UPDATE gtfs_stops
+            SET lat = %s, lon = %s
+            WHERE id = %s
+        """, (lat, lon, platform_id))
+
+        if cur.rowcount > 0:
+            updated += 1
+            logger.debug(f"  Updated {platform_id} to ({lat}, {lon})")
+
+    if not dry_run:
+        conn.commit()
+
+    logger.info(f"Updated {updated} platform coordinates from OSM")
+    return updated
 
 
 def import_shapes(conn, shapes: Dict[str, List[Tuple[float, float, int]]], dry_run: bool = False) -> int:
@@ -372,11 +479,16 @@ def get_route_for_headsign(headsign: str) -> str:
 
     L1 = Etxebarri - Plentzia
     L2 = Basauri - Kabiezes
+    L3 = Matiko - Kukullaga (uses Euskotren infrastructure)
     """
     headsign_lower = headsign.lower()
 
+    # L3 headsigns (Matiko - Kukullaga line, uses Euskotren infrastructure)
+    if any(h in headsign_lower for h in ['kukullaga', 'matiko', 'txurdinaga', 'zurbaranbarri', 'otxarkoaga', 'uribarri']):
+        return 'METRO_BILBAO_L3'
+
     # L2 headsigns
-    if any(h in headsign_lower for h in ['kabiezes', 'basauri', 'ansio', 'barakaldo', 'sestao', 'portugalete', 'santurtzi', 'urbinaga', 'bagatza', 'gurutzeta']):
+    if any(h in headsign_lower for h in ['kabiezes', 'basauri', 'ansio', 'barakaldo', 'sestao', 'portugalete', 'santurtzi', 'urbinaga', 'bagatza', 'gurutzeta', 'san ignazio']):
         return 'METRO_BILBAO_L2'
 
     # L1 headsigns (default)
@@ -522,10 +634,14 @@ def main():
     parser.add_argument('--dry-run', action='store_true', help='Dry run - do not write to database')
     parser.add_argument('--trips-only', action='store_true', help='Only import trips and stop_times')
     parser.add_argument('--shapes-only', action='store_true', help='Only import shapes and accesses')
+    parser.add_argument('--platforms-only', action='store_true', help='Only update platform coordinates from OSM')
     args = parser.parse_args()
 
     # Download GTFS
     files = download_gtfs()
+
+    # Load OSM platform coordinates
+    osm_coords = load_osm_platform_coords()
 
     # Parse data
     shapes = parse_shapes(files['shapes.txt'])
@@ -550,6 +666,15 @@ def main():
     conn = psycopg2.connect(DATABASE_URL)
 
     try:
+        # Handle --platforms-only flag
+        if args.platforms_only:
+            logger.info("\n=== Updating Platform Coordinates from OSM ===")
+            import_platform_coords(conn, osm_coords, parents, args.dry_run)
+            logger.info("\n" + "=" * 60)
+            logger.info("PLATFORM COORDINATES UPDATE COMPLETE")
+            logger.info("=" * 60)
+            return
+
         if not args.trips_only:
             # Import shapes
             logger.info("\n=== Importing Shapes ===")
@@ -558,6 +683,10 @@ def main():
             # Import accesses
             logger.info("\n=== Importing Accesses ===")
             import_accesses(conn, accesses, parents, args.dry_run)
+
+            # Update platform coordinates from OSM
+            logger.info("\n=== Updating Platform Coordinates from OSM ===")
+            import_platform_coords(conn, osm_coords, parents, args.dry_run)
 
         if not args.shapes_only:
             # Import calendars
@@ -579,6 +708,7 @@ def main():
         logger.info(f"Shapes: {len(shapes)}")
         logger.info(f"Shape points: {sum(len(pts) for pts in shapes.values())}")
         logger.info(f"Accesses: {len(accesses)}")
+        logger.info(f"OSM platform coords: {len(osm_coords)} stations")
         logger.info(f"Calendars: {len(calendars)}")
         logger.info(f"Trips: {len(trips)}")
         logger.info(f"Stop times: {len(stop_times)}")
