@@ -98,7 +98,8 @@ def create_calendars(db, dry_run: bool) -> int:
             logger.info(f"  [DRY-RUN] Crearía calendario: {cal[0]}")
         return len(calendars)
 
-    # Delete existing calendars first
+    # Delete calendar_dates first (FK constraint), then calendars
+    db.execute(text("DELETE FROM gtfs_calendar_dates WHERE service_id LIKE 'METRO_MALAGA_%'"))
     db.execute(text("DELETE FROM gtfs_calendar WHERE service_id LIKE 'METRO_MALAGA_%'"))
 
     for cal_id, mon, tue, wed, thu, fri, sat, sun in calendars:
@@ -173,7 +174,8 @@ def import_trips(db, dry_run: bool) -> int:
     trips_file = os.path.join(GTFS_DIR, 'trips.txt')
 
     if not dry_run:
-        # Delete existing trips
+        # Delete stop_times first (FK constraint), then trips
+        db.execute(text("DELETE FROM gtfs_stop_times WHERE trip_id LIKE 'METRO_MALAGA_%'"))
         db.execute(text("DELETE FROM gtfs_trips WHERE route_id LIKE 'METRO_MALAGA_%'"))
 
     count = 0
@@ -351,9 +353,80 @@ def import_shapes(db, dry_run: bool) -> int:
     return count
 
 
+def import_stop_sequences(db, dry_run: bool) -> int:
+    """Generate gtfs_stop_route_sequence from stop_times.txt.
+
+    This ensures each route only has the stops that actually appear in its trips,
+    preventing incorrect associations (e.g., La Unión appearing in L2).
+    """
+    logger.info("Paso 6: Generando gtfs_stop_route_sequence desde stop_times...")
+
+    stop_times_file = os.path.join(GTFS_DIR, 'stop_times.txt')
+    trips_file = os.path.join(GTFS_DIR, 'trips.txt')
+
+    # Read trips to get trip_id -> route_id mapping
+    trip_to_route = {}
+    with open(trips_file, 'r', encoding='utf-8') as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            trip_to_route[row['trip_id']] = row['route_id']
+
+    # Read stop_times and group by route
+    route_stops = {}  # route_id -> list of (stop_id, min_sequence)
+
+    with open(stop_times_file, 'r', encoding='utf-8') as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            trip_id = row['trip_id']
+            route_id = trip_to_route.get(trip_id)
+            if not route_id:
+                continue
+
+            stop_id = row['stop_id']
+            sequence = int(row['stop_sequence'])
+
+            if route_id not in route_stops:
+                route_stops[route_id] = {}
+
+            # Keep the minimum sequence for each stop (first occurrence)
+            if stop_id not in route_stops[route_id]:
+                route_stops[route_id][stop_id] = sequence
+            else:
+                route_stops[route_id][stop_id] = min(route_stops[route_id][stop_id], sequence)
+
+    if dry_run:
+        for route_id, stops in route_stops.items():
+            our_route = f"METRO_MALAGA_{route_id}"
+            logger.info(f"  [DRY-RUN] {our_route}: {len(stops)} paradas")
+        return sum(len(s) for s in route_stops.values())
+
+    # Delete existing sequences for Metro Málaga
+    db.execute(text("DELETE FROM gtfs_stop_route_sequence WHERE route_id LIKE 'METRO_MALAGA_%'"))
+
+    count = 0
+    for route_id, stops_dict in route_stops.items():
+        our_route = f"METRO_MALAGA_{route_id}"
+
+        # Sort stops by their sequence and renumber
+        sorted_stops = sorted(stops_dict.items(), key=lambda x: x[1])
+
+        for new_seq, (stop_id, _) in enumerate(sorted_stops, start=1):
+            our_stop = f"METRO_MALAGA_{stop_id}"
+
+            db.execute(text('''
+                INSERT INTO gtfs_stop_route_sequence (route_id, stop_id, sequence)
+                VALUES (:route_id, :stop_id, :sequence)
+            '''), {'route_id': our_route, 'stop_id': our_stop, 'sequence': new_seq})
+            count += 1
+
+        logger.info(f"  {our_route}: {len(sorted_stops)} paradas")
+    logger.info(f"  Total gtfs_stop_route_sequence: {count}")
+    return count
+
+
 def verify_import(db) -> dict:
     """Verify the import was successful."""
-    logger.info("Paso 6: Verificando importación...")
+    logger.info("Paso 7: Verificando importación...")
 
     stats = {}
 
@@ -401,6 +474,18 @@ def verify_import(db) -> dict:
     for shape, count in stats['shapes'].items():
         logger.info(f"    {shape}: {count} puntos")
 
+    # Stop route sequences
+    result = db.execute(text('''
+        SELECT route_id, COUNT(*)
+        FROM gtfs_stop_route_sequence
+        WHERE route_id LIKE 'METRO_MALAGA_%'
+        GROUP BY route_id
+    ''')).fetchall()
+    stats['sequences'] = {r[0]: r[1] for r in result}
+    logger.info(f"  Stop sequences por ruta:")
+    for route, count in stats['sequences'].items():
+        logger.info(f"    {route}: {count} paradas")
+
     return stats
 
 
@@ -423,6 +508,7 @@ def main():
         trips = import_trips(db, args.dry_run)
         stop_times = import_stop_times(db, args.dry_run)
         shapes = import_shapes(db, args.dry_run)
+        sequences = import_stop_sequences(db, args.dry_run)
 
         if not args.dry_run:
             db.commit()
@@ -441,6 +527,7 @@ def main():
         logger.info(f"  Trips: {trips}")
         logger.info(f"  Stop_times: {stop_times}")
         logger.info(f"  Shape points: {shapes}")
+        logger.info(f"  Stop sequences: {sequences}")
 
         if args.dry_run:
             logger.info("")
