@@ -851,6 +851,10 @@ def get_stops_by_coordinates(
         None,
         description="Filter by transport type: metro, cercanias, fgc, tram, all. Default returns only stops with GTFS-RT."
     ),
+    filter_by_province: bool = Query(
+        True,
+        description="If true (default), only returns stops from the user's administrative province. Set to false to get all nearby stops regardless of province."
+    ),
     limit: int = Query(100, ge=1, le=1000, description="Maximum results"),
     db: Session = Depends(get_db),
 ):
@@ -863,7 +867,12 @@ def get_stops_by_coordinates(
     - Tram
     - Euskotren
 
+    **Province filtering (default=true):** Returns only stops from the user's administrative
+    province. This prevents showing Málaga stops when the user is in Sevilla province but
+    geographically closer to Málaga.
+
     Use transport_type=all to include all stops (including bus stops without real-time).
+    Use filter_by_province=false to get all nearby stops regardless of province.
 
     For Barcelona example: lat=41.3851&lon=2.1734
     For Madrid example: lat=40.42&lon=-3.72
@@ -957,9 +966,18 @@ def get_stops_by_coordinates(
         query
         .filter(distance <= radius_m)
         .order_by(distance)
-        .limit(limit)
+        .limit(limit * 2 if filter_by_province else limit)  # Get more to filter by province
         .all()
     )
+
+    # Filter by administrative province if enabled
+    if filter_by_province and stops:
+        # Use PostGIS to determine the actual administrative province
+        user_province = get_province_by_coordinates(db, lat, lon)
+
+        # Filter stops to only those in the user's province
+        if user_province:
+            stops = [s for s in stops if s.province == user_province][:limit]
 
     return stops
 
@@ -1772,7 +1790,34 @@ def get_stop_departures(
             func.sum(PlatformHistoryModel.count).desc()
         ).all()
 
-        # If no exact headsign match, try without headsign filter
+        # If no exact headsign match, try partial match using first word
+        # ONLY for Málaga Cercanías (RENFE_544xx, RENFE_545xx) where destinations are consistent
+        # This handles cases like "Málaga-Centro Alameda" (static) vs "Málaga Centro" (RT)
+        is_malaga_cercanias = any(
+            sv.startswith('RENFE_544') or sv.startswith('RENFE_545') or
+            sv.startswith('544') or sv.startswith('545')
+            for sv in queried_stop_variants
+        )
+        if not platform_counts and headsign and is_malaga_cercanias:
+            # Extract first word (split on space or hyphen)
+            import re
+            first_word = re.split(r'[\s\-]', headsign)[0]
+            if first_word and len(first_word) >= 3:
+                platform_counts = db.query(
+                    PlatformHistoryModel.platform,
+                    func.sum(PlatformHistoryModel.count).label('total_count')
+                ).filter(
+                    PlatformHistoryModel.stop_id.in_(queried_stop_variants),
+                    PlatformHistoryModel.route_short_name == route_short,
+                    PlatformHistoryModel.headsign.ilike(f"{first_word}%"),
+                    PlatformHistoryModel.headsign != "Unknown",
+                ).group_by(
+                    PlatformHistoryModel.platform
+                ).order_by(
+                    func.sum(PlatformHistoryModel.count).desc()
+                ).all()
+
+        # If still no match, try without headsign filter
         if not platform_counts:
             platform_counts = db.query(
                 PlatformHistoryModel.platform,

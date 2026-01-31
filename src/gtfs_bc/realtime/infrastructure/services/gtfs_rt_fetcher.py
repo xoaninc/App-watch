@@ -540,6 +540,112 @@ class GTFSRealtimeFetcher:
 
         return count
 
+    def _fetch_platforms_from_visor(self) -> int:
+        """Fetch platform data from Renfe's web visor for stations with missing platforms.
+
+        The GTFS-RT feed doesn't include platforms for some stations (e.g., María Zambrano).
+        The web visor at tiempo-real.renfe.com provides this data for trains that are
+        close to arriving.
+
+        This method:
+        1. Finds stop_time_updates without platform info
+        2. Queries the visor API for those stations
+        3. Updates platforms when available
+
+        Returns the number of platforms fetched from visor.
+        """
+        from sqlalchemy import func
+
+        # Get stations with stop_time_updates that don't have platform
+        # Group by stop_id to avoid querying the same station multiple times
+        stations_needing_platform = (
+            self.db.query(StopTimeUpdateModel.stop_id)
+            .filter(StopTimeUpdateModel.platform.is_(None))
+            .distinct()
+            .all()
+        )
+
+        if not stations_needing_platform:
+            return 0
+
+        count = 0
+        visor_base_url = "https://tiempo-real.renfe.com/renfe-json-cutter/write/salidas/estacion"
+
+        for (stop_id,) in stations_needing_platform:
+            # Extract the numeric stop code (remove RENFE_ prefix if present)
+            stop_code = stop_id.replace("RENFE_", "") if stop_id.startswith("RENFE_") else stop_id
+
+            try:
+                response = httpx.get(
+                    f"{visor_base_url}/{stop_code}.json",
+                    timeout=10.0,
+                    headers={"User-Agent": "RenfeServer/1.0"}
+                )
+                if response.status_code != 200:
+                    continue
+
+                data = response.json()
+                salidas = data.get("estacion", {}).get("salidas", [])
+
+                for salida in salidas:
+                    via = salida.get("via")
+                    if not via:
+                        continue
+
+                    trip_id_raw = salida.get("tripId")
+                    if not trip_id_raw:
+                        continue
+
+                    # Add RENFE_ prefix to trip_id
+                    trip_id = self._add_prefix(trip_id_raw)
+
+                    # Update stop_time_update with platform
+                    updated = (
+                        self.db.query(StopTimeUpdateModel)
+                        .filter(StopTimeUpdateModel.trip_id == trip_id)
+                        .filter(StopTimeUpdateModel.stop_id == stop_id)
+                        .filter(StopTimeUpdateModel.platform.is_(None))
+                        .update({"platform": str(via)}, synchronize_session=False)
+                    )
+
+                    if updated > 0:
+                        count += updated
+
+                        # Also record in platform_history for future predictions
+                        linea = salida.get("linea", "")
+                        destino = salida.get("destinoNombre", "Unknown")
+                        today = date.today()
+                        now = datetime.utcnow()
+
+                        stmt = insert(PlatformHistoryModel).values(
+                            stop_id=stop_id,
+                            route_short_name=linea,
+                            headsign=destino,
+                            platform=str(via),
+                            count=1,
+                            observation_date=today,
+                            last_seen=now,
+                        )
+                        stmt = stmt.on_conflict_do_update(
+                            constraint='uq_platform_history_business_key',
+                            set_={
+                                'count': PlatformHistoryModel.count + 1,
+                                'last_seen': now,
+                            }
+                        )
+                        self.db.execute(stmt)
+
+            except httpx.HTTPError as e:
+                logger.debug(f"Error fetching visor data for {stop_code}: {e}")
+            except Exception as e:
+                logger.warning(f"Error processing visor data for {stop_code}: {e}")
+
+        if count > 0:
+            self.db.commit()
+            logger.info(f"Fetched {count} platforms from visor web")
+
+        return count
+
     def _cleanup_stale_realtime_data(self) -> dict:
         """Clean up stale GTFS-RT data that's no longer being updated.
 
@@ -618,6 +724,9 @@ class GTFSRealtimeFetcher:
         # Correlate platforms from vehicle_positions to stop_time_updates
         platform_correlations = self._correlate_platforms_from_vehicle_positions()
 
+        # Fetch platforms from visor web for stations missing in GTFS-RT
+        platform_from_visor = self._fetch_platforms_from_visor()
+
         # Predict platforms from historical data for remaining stop_time_updates
         platform_predictions = self._predict_platforms_from_history()
 
@@ -626,6 +735,7 @@ class GTFSRealtimeFetcher:
             "trip_updates": trip_count,
             "alerts": alerts_count,
             "platform_correlations": platform_correlations,
+            "platform_from_visor": platform_from_visor,
             "platform_predictions": platform_predictions,
         }
 

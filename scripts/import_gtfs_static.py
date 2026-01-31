@@ -475,9 +475,90 @@ def build_route_mapping(db, zf: zipfile.ZipFile, nucleo_filter: Optional[int] = 
     return gtfs_to_our
 
 
-def import_trips(db, zf: zipfile.ZipFile, route_mapping: dict) -> int:
-    """Import trips.txt data, mapping GTFS routes to our routes."""
+def build_headsigns_from_last_stop(zf: zipfile.ZipFile, route_mapping: dict) -> dict:
+    """Build headsign mapping from the last stop of each trip.
+
+    Since Renfe GTFS has empty trip_headsign, we calculate it from the
+    last stop name of each trip (the destination).
+
+    Args:
+        zf: Opened GTFS zip file
+        route_mapping: Mapping from GTFS route_id to our route_id (to filter trips)
+
+    Returns:
+        Dict mapping trip_id -> headsign (last stop name)
+    """
+    logger.info("Building headsigns from last stops...")
+
+    # Step 1: Read stops.txt to get stop names
+    stop_names = {}
+    with zf.open('stops.txt') as f:
+        reader = csv.DictReader(TextIOWrapper(f, encoding='utf-8'))
+        reader.fieldnames = [name.strip() for name in reader.fieldnames]
+        for row in reader:
+            stop_id = row['stop_id'].strip()
+            stop_name = row.get('stop_name', '').strip()
+            if stop_name:
+                stop_names[stop_id] = stop_name
+    logger.info(f"  Loaded {len(stop_names)} stop names")
+
+    # Step 2: Read trips.txt to get trip -> route mapping (only for routes we're importing)
+    trip_routes = {}
+    with zf.open('trips.txt') as f:
+        reader = csv.DictReader(TextIOWrapper(f, encoding='utf-8'))
+        reader.fieldnames = [name.strip() for name in reader.fieldnames]
+        for row in reader:
+            gtfs_route_id = row['route_id'].strip()
+            if gtfs_route_id in route_mapping:
+                trip_id = row['trip_id'].strip()
+                trip_routes[trip_id] = gtfs_route_id
+    logger.info(f"  Found {len(trip_routes)} trips to process")
+
+    # Step 3: Read stop_times.txt to find last stop of each trip
+    trip_last_stop = {}  # trip_id -> (max_sequence, stop_id)
+
+    with zf.open('stop_times.txt') as f:
+        reader = csv.DictReader(TextIOWrapper(f, encoding='utf-8'))
+        reader.fieldnames = [name.strip() for name in reader.fieldnames]
+        for row in reader:
+            trip_id = row['trip_id'].strip()
+
+            # Only process trips we're importing
+            if trip_id not in trip_routes:
+                continue
+
+            stop_id = row['stop_id'].strip()
+            sequence = int(row['stop_sequence'].strip())
+
+            # Track the stop with highest sequence (last stop)
+            if trip_id not in trip_last_stop or sequence > trip_last_stop[trip_id][0]:
+                trip_last_stop[trip_id] = (sequence, stop_id)
+
+    # Step 4: Build headsign mapping
+    headsigns = {}
+    for trip_id, (_, stop_id) in trip_last_stop.items():
+        stop_name = stop_names.get(stop_id)
+        if stop_name:
+            headsigns[trip_id] = stop_name
+
+    logger.info(f"  Generated {len(headsigns)} headsigns from last stops")
+    return headsigns
+
+
+def import_trips(db, zf: zipfile.ZipFile, route_mapping: dict, headsigns: dict = None) -> tuple:
+    """Import trips.txt data, mapping GTFS routes to our routes.
+
+    Args:
+        db: Database session
+        zf: Opened GTFS zip file
+        route_mapping: Mapping from GTFS route_id to our route_id
+        headsigns: Optional dict mapping trip_id -> headsign (from last stop)
+
+    Returns:
+        Tuple of (count, imported_trip_ids)
+    """
     logger.info("Importing trips data...")
+    imported_trip_ids = set()
 
     with zf.open('trips.txt') as f:
         reader = csv.DictReader(TextIOWrapper(f, encoding='utf-8'))
@@ -494,11 +575,23 @@ def import_trips(db, zf: zipfile.ZipFile, route_mapping: dict) -> int:
                 skipped += 1
                 continue
 
+            trip_id = row['trip_id'].strip()
+
+            # Use headsign from GTFS if available, otherwise use calculated from last stop
+            gtfs_headsign = row.get('trip_headsign', '').strip()
+            if gtfs_headsign:
+                headsign = gtfs_headsign
+            elif headsigns and trip_id in headsigns:
+                headsign = headsigns[trip_id]
+            else:
+                headsign = None
+
+            imported_trip_ids.add(trip_id)
             rows.append({
-                'id': row['trip_id'].strip(),
+                'id': trip_id,
                 'route_id': our_route_id,
                 'service_id': row['service_id'].strip(),
-                'headsign': row.get('trip_headsign', '').strip() or None,
+                'headsign': headsign,
                 'short_name': None,
                 'direction_id': None,
                 'block_id': row.get('block_id', '').strip() or None,
@@ -531,16 +624,26 @@ def import_trips(db, zf: zipfile.ZipFile, route_mapping: dict) -> int:
 
             db.commit()
 
-    return len(rows)
+    return len(rows), imported_trip_ids
 
 
-def import_stop_times(db, zf: zipfile.ZipFile) -> int:
-    """Import stop_times.txt data."""
+def import_stop_times(db, zf: zipfile.ZipFile, trip_ids_filter: set = None) -> int:
+    """Import stop_times.txt data.
+
+    Args:
+        db: Database session
+        zf: Opened GTFS zip file
+        trip_ids_filter: Optional set of trip_ids to import. If None, imports all.
+    """
     logger.info("Importing stop_times data (this may take a while)...")
 
-    # Get existing trip_ids and stop_ids
-    existing_trips = set(row[0] for row in db.execute(text("SELECT id FROM gtfs_trips")).fetchall())
-    logger.info(f"Found {len(existing_trips)} trips in database")
+    # Get trip_ids to import
+    if trip_ids_filter:
+        existing_trips = trip_ids_filter
+        logger.info(f"Filtering to {len(existing_trips)} specific trips")
+    else:
+        existing_trips = set(row[0] for row in db.execute(text("SELECT id FROM gtfs_trips")).fetchall())
+        logger.info(f"Found {len(existing_trips)} trips in database")
 
     # Build stop mapping: GTFS stop_id -> our stop_id
     # Our format: RENFE_{number}, GTFS format: {number}
@@ -771,7 +874,10 @@ def main():
             else:
                 logger.info("Skipping calendar import (nucleo-specific import)")
 
-            trips_count = import_trips(db, zf, route_mapping)
+            # Build headsigns from last stop (since Renfe GTFS has empty trip_headsign)
+            headsigns = build_headsigns_from_last_stop(zf, route_mapping)
+
+            trips_count, imported_trip_ids = import_trips(db, zf, route_mapping, headsigns)
             logger.info(f"Imported {trips_count:,} trips")
 
             # Import missing stops before stop_times
@@ -779,7 +885,10 @@ def main():
             if missing_stops_count > 0:
                 logger.info(f"Imported {missing_stops_count:,} missing stops")
 
-            stop_times_count = import_stop_times(db, zf)
+            # For nucleo-specific imports, only import stop_times for imported trips
+            # This avoids duplicate key errors when trips from other núcleos already exist
+            trip_filter = imported_trip_ids if nucleo_filter else None
+            stop_times_count = import_stop_times(db, zf, trip_filter)
             logger.info(f"Imported {stop_times_count:,} stop_times")
 
             elapsed = datetime.now() - start_time
