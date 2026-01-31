@@ -646,6 +646,88 @@ class GTFSRealtimeFetcher:
 
         return count
 
+    def _log_stations_needing_manual_platforms(self) -> None:
+        """Log stations that have departures but no platform data.
+
+        Creates/updates a JSON file with stations that need manual platform assignment.
+        This helps identify stations where Renfe doesn't provide platform info.
+        """
+        import json
+        import os
+        from sqlalchemy import func, text
+
+        try:
+            # Find Renfe stops with stop_time_updates but no platform and no history
+            sql = text("""
+                WITH stops_without_platform AS (
+                    SELECT DISTINCT stu.stop_id
+                    FROM gtfs_rt_stop_time_updates stu
+                    WHERE stu.stop_id LIKE 'RENFE_%'
+                      AND stu.platform IS NULL
+                ),
+                stops_with_history AS (
+                    SELECT DISTINCT stop_id
+                    FROM gtfs_rt_platform_history
+                    WHERE stop_id LIKE 'RENFE_%'
+                      AND count >= 3
+                )
+                SELECT swp.stop_id
+                FROM stops_without_platform swp
+                LEFT JOIN stops_with_history swh ON swp.stop_id = swh.stop_id
+                WHERE swh.stop_id IS NULL
+            """)
+
+            result = self.db.execute(sql)
+            stops_needing_platforms = [r[0] for r in result.fetchall()]
+
+            if not stops_needing_platforms:
+                return
+
+            # Load existing file or create new
+            filepath = "data/revision_manual_vias.json"
+            os.makedirs("data", exist_ok=True)
+
+            existing_data = {}
+            if os.path.exists(filepath):
+                try:
+                    with open(filepath, "r") as f:
+                        existing_data = json.load(f)
+                except (json.JSONDecodeError, IOError):
+                    existing_data = {}
+
+            # Update with new stops
+            updated = False
+            from src.gtfs_bc.stop.infrastructure.models import StopModel
+
+            for stop_id in stops_needing_platforms:
+                if stop_id not in existing_data:
+                    # Get stop name from database
+                    stop = self.db.query(StopModel).filter(StopModel.id == stop_id).first()
+                    stop_name = stop.name if stop else None
+                    in_gtfs_static = stop is not None
+
+                    existing_data[stop_id] = {
+                        "name": stop_name or "NO EXISTE EN GTFS ESTÁTICO",
+                        "in_gtfs_static": in_gtfs_static,
+                        "first_seen": datetime.utcnow().isoformat(),
+                        "status": "pending",
+                        "suggested_platform": None,
+                        "notes": "Esta estación no existe en nuestro GTFS estático" if not in_gtfs_static else ""
+                    }
+                    updated = True
+
+                    if in_gtfs_static:
+                        logger.info(f"Added {stop_id} ({stop_name}) to revision_manual_vias.json - needs platform")
+                    else:
+                        logger.warning(f"Added {stop_id} to revision_manual_vias.json - NOT IN GTFS STATIC")
+
+            if updated:
+                with open(filepath, "w") as f:
+                    json.dump(existing_data, f, indent=2, ensure_ascii=False)
+
+        except Exception as e:
+            logger.warning(f"Error logging stations needing manual platforms: {e}")
+
     def _cleanup_stale_realtime_data(self) -> dict:
         """Clean up stale GTFS-RT data that's no longer being updated.
 
@@ -729,6 +811,9 @@ class GTFSRealtimeFetcher:
 
         # Predict platforms from historical data for remaining stop_time_updates
         platform_predictions = self._predict_platforms_from_history()
+
+        # Log stations that still need manual platform assignment
+        self._log_stations_needing_manual_platforms()
 
         return {
             "vehicle_positions": vehicle_count,
