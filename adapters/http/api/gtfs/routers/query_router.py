@@ -1,8 +1,10 @@
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Dict, Any
 from datetime import datetime, time, timedelta
 from zoneinfo import ZoneInfo
 import math
 import re as regex_module
+import json
+from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_, func, literal
@@ -83,6 +85,54 @@ from src.gtfs_bc.stop.infrastructure.models.stop_access_model import StopAccessM
 from src.gtfs_bc.stop.infrastructure.models.stop_vestibule_model import StopVestibuleModel
 from src.gtfs_bc.routing import RaptorService
 from src.gtfs_bc.routing.gtfs_store import gtfs_store
+
+
+# Load Asturias default platforms for FEVE metric gauge lines (C4-C8)
+# These lines don't have GTFS-RT data, so we use preconfigured default platforms
+ASTURIAS_DEFAULT_PLATFORMS: Dict[str, Any] = {}
+# Path: adapters/http/api/gtfs/routers/ -> project root (6 parents)
+_asturias_platforms_path = Path(__file__).parent.parent.parent.parent.parent.parent / "data" / "asturias_default_platforms.json"
+if _asturias_platforms_path.exists():
+    try:
+        with open(_asturias_platforms_path, 'r', encoding='utf-8') as f:
+            ASTURIAS_DEFAULT_PLATFORMS = json.load(f)
+    except Exception as e:
+        print(f"⚠️ Error loading asturias_default_platforms.json: {e}")
+
+
+def get_default_platform_for_stop(stop_id: str, route_short_name: str) -> Optional[str]:
+    """Get default platform for FEVE metric gauge lines in Asturias.
+
+    Args:
+        stop_id: The stop ID (e.g., 'RENFE_15206')
+        route_short_name: The route short name (e.g., 'C8', 'C5', 'C4')
+
+    Returns:
+        Default platform string or None if not found
+    """
+    if stop_id not in ASTURIAS_DEFAULT_PLATFORMS:
+        return None
+
+    stop_data = ASTURIAS_DEFAULT_PLATFORMS[stop_id]
+    if not isinstance(stop_data, dict) or 'platforms' not in stop_data:
+        return None
+
+    platforms = stop_data['platforms']
+
+    # Try exact match first
+    if route_short_name in platforms:
+        platform_list = platforms[route_short_name]
+        if platform_list:
+            return platform_list[0]  # Return first default platform
+
+    # Try case variations (C5a vs C5A)
+    for key in platforms:
+        if key.upper() == route_short_name.upper():
+            platform_list = platforms[key]
+            if platform_list:
+                return platform_list[0]
+
+    return None
 
 
 router = APIRouter(prefix="/gtfs", tags=["GTFS Query"])
@@ -1939,6 +1989,15 @@ def get_stop_departures(
                 platform = estimated_platform
                 # High confidence (>80%) predictions are marked as confirmed, not estimated
                 platform_estimated = not is_high_confidence
+
+        # If still no platform, try default platforms for Asturias FEVE lines (C4-C8)
+        # These metric gauge lines don't have GTFS-RT data
+        if not platform and stop_time.stop_id.startswith('RENFE_'):
+            route_short = route.short_name.strip() if route.short_name else ""
+            default_platform = get_default_platform_for_stop(stop_time.stop_id, route_short)
+            if default_platform:
+                platform = default_platform
+                platform_estimated = False  # Default platforms are confirmed, not estimated
 
         # Get occupancy data from GTFS-RT (available for TMB Metro Barcelona)
         occupancy_percent = None
