@@ -97,6 +97,7 @@ class GTFSStore:
         self.load_time_seconds = 0.0
         self.stats: Dict[str, int] = {}
         self._reload_lock = threading.Lock()
+        self.last_loaded_date: Optional[date] = None  # Para lazy reload de calendarios
 
     @classmethod
     def get_instance(cls) -> 'GTFSStore':
@@ -487,6 +488,7 @@ class GTFSStore:
 
         # Finalizar
         self.is_loaded = True
+        self.last_loaded_date = date.today()
         self.load_time_seconds = time.time() - start
 
         # Garbage collection optimization
@@ -500,6 +502,76 @@ class GTFSStore:
     # MÉTODOS DE ACCESO RÁPIDO PARA RAPTOR
     # =========================================================================
 
+    def _reload_calendars_if_needed(self) -> None:
+        """Recargar calendarios si el día cambió (Lazy Reload).
+
+        Esto soluciona el problema de que los calendarios se cargan con
+        date.today() al iniciar el servidor, y si el servidor se inició
+        ayer, los calendarios de hoy no están disponibles.
+        """
+        today = date.today()
+        if self.last_loaded_date is not None and self.last_loaded_date != today:
+            print(f"📅 Día cambió ({self.last_loaded_date} → {today}), recargando calendarios...")
+
+            try:
+                from core.database import SessionLocal
+                from sqlalchemy import text
+
+                db = SessionLocal()
+                try:
+                    # Limpiar calendarios actuales
+                    for day in self.services_by_weekday:
+                        self.services_by_weekday[day].clear()
+                    self.calendar_exceptions.clear()
+
+                    # Recargar calendarios
+                    result = db.execute(text("""
+                        SELECT service_id, monday, tuesday, wednesday, thursday, friday, saturday, sunday
+                        FROM gtfs_calendar
+                        WHERE start_date <= :today AND end_date >= :today
+                    """), {'today': today})
+
+                    calendar_count = 0
+                    for row in result:
+                        service_id = sys.intern(row[0])
+                        if row[1]: self.services_by_weekday['monday'].add(service_id)
+                        if row[2]: self.services_by_weekday['tuesday'].add(service_id)
+                        if row[3]: self.services_by_weekday['wednesday'].add(service_id)
+                        if row[4]: self.services_by_weekday['thursday'].add(service_id)
+                        if row[5]: self.services_by_weekday['friday'].add(service_id)
+                        if row[6]: self.services_by_weekday['saturday'].add(service_id)
+                        if row[7]: self.services_by_weekday['sunday'].add(service_id)
+                        calendar_count += 1
+
+                    # Recargar excepciones
+                    result = db.execute(text("""
+                        SELECT service_id, date, exception_type
+                        FROM gtfs_calendar_dates
+                    """))
+
+                    for row in result:
+                        service_id = sys.intern(row[0])
+                        date_str = str(row[1])
+                        exception_type = row[2]
+
+                        if date_str not in self.calendar_exceptions:
+                            self.calendar_exceptions[date_str] = {'added': set(), 'removed': set()}
+
+                        if exception_type == 1:
+                            self.calendar_exceptions[date_str]['added'].add(service_id)
+                        elif exception_type == 2:
+                            self.calendar_exceptions[date_str]['removed'].add(service_id)
+
+                    self.last_loaded_date = today
+                    self.stats['calendars'] = calendar_count
+                    print(f"    ✓ Calendarios recargados: {calendar_count} activos para {today}")
+
+                finally:
+                    db.close()
+
+            except Exception as e:
+                print(f"    ⚠️ Error recargando calendarios: {e}")
+
     def get_active_services(self, travel_date: date) -> Set[str]:
         """Obtener service_ids activos para una fecha.
 
@@ -509,6 +581,9 @@ class GTFSStore:
         Returns:
             Set de service_ids activos
         """
+        # Lazy reload: recargar calendarios si el día cambió
+        self._reload_calendars_if_needed()
+
         weekday = travel_date.weekday()
         weekday_names = ['monday', 'tuesday', 'wednesday', 'thursday',
                          'friday', 'saturday', 'sunday']
