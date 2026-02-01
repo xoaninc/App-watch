@@ -1,0 +1,724 @@
+{
+  "_comment": "Vías por defecto para red de ancho métrico de Asturias. Datos de ADIF (adif.es). C1/C2/C3 usan GTFS-RT del visor de RENFE.",
+  "_source": "https://www.adif.es/w/{codigo}-{nombre}",
+  "_date": "2026-02-01",
+  "_revision": "Revisión completa de todas las estaciones métricas",
+
+  "RENFE_15410": {
+    "station_name": "Gijón-Sanz Crespo",
+    "platforms": {
+      "C4": ["1", "2", "3"],
+      "C5": ["1", "2", "3"],
+      "C5a": ["1", "2", "3"],
+      "C5A": ["1", "2", "3"],
+      "C6": ["1", "2", "3"],
+      "C7": ["1", "2", "3"]
+    },
+    "notes": "Estación compartida ancho ibérico (C1/C2/C3) y métrico (C4-C7). 6 vías totales."
+  },
+
+  "_C4_GIJON_CUDILLERO": "=== LÍNEA C4: Gijón - Cudillero / Candás - Avilés ===",
+
+  "RENFE_15400": {
+    "station_name": "Veriña",
+    "platforms": { "C4": ["1", "3"] },
+    "notes": "Estación compartida ancho ibérico (C1) y métrico (C4). Vía 1 hacia Gijón, vía 3 hacia Cudillero/Avilés."
+  },
+
+  "RENFE_5204": {
+    "station_name": "Centro de Transportes",
+    "platforms": { "C4": ["1"] },
+    "notes": "Vía única. URL: centro-transportes"
+  },
+
+  "RENFE_5203": {
+    "station_name": "Tremañes Carreño",
+    "platforms": { "C4": ["1"] },
+    "notes": "Vía única."
+  },
+
+  "RENFE_5207": {
+    "station_name": "Aboño Apeadero",
+    "platforms": { "C4": ["1"] },
+    "notes": "Vía única."
+  },
+
+  "RENFE_5208": {
+    "station_name": "Xivares",
+    "platforms": { "C4": ["1"] },
+    "notes": "Vía única."
+  },
+
+  "RENFE_5209": {
+    "station_name": "Perlora",
+    "platforms": { "C4": ["1", "2"] },
+    "notes": "Dos vías."
+  },
+
+  "RENFE_5210": {
+    "station_name": "Candás Apeadero",
+    "platforms": { "C4": ["1"] },
+    "notes": "Vía única."
+  },
+
+  "RENFE_5211": {
+    "station_name": "Candás",
+    "platforms": { "C4": ["1", "3"] },
+    "notes": "Terminal C4 ramal Candás. Vía 1 hacia Gijón, vía 3 hacia Avilés."
+  },
+
+  "RENFE_5213": {
+    "station_name": "Regueral",
+    "platforms": { "C4": ["1"] },
+    "notes": "Vía única."
+  },
+
+  "RENFE_5215": {
+    "station_name": "Zanzabornín",
+    "platforms": { "C4": ["1"] },
+    "notes": "Vía única."
+  },
+
+  "RENFE_5216": {
+    "station_name": "Gudín Laminación",
+    "platforms": { "C4": ["1"] },
+    "notes": "Vía única."
+  },
+
+  "RENFE_5217": {
+    "station_name": "Trasona",
+    "platforms": { "C4": ["1", "3"] },
+    "notes": "Patrón FEVE: vía 1 edificio, vía 3 andén isla."
+  },
+
+  "RENFE_5219": {
+    "station_name": "Llaranes",
+    "platforms": { "C4": ["1"] },
+    "notes": "Vía única."
+  },
+
+  "RENFE_5220": {
+    "station_name": "Cristalería",
+    "platforms": { "C4": ["1"] },
+    "notes": "Vía única."
+  },
+
+  "RENFE_5221": {
+    "station_name": "Avilés Apeadero",
+    "platforms": { "C4": ["1"] },
+    "notes": "Apeadero vía única."
+  },
+
+  "RENFE_16403": {
+    "station_name": "Avilés",
+    "platforms": { "C4": ["1"] },
+    "notes": "Estación compartida ancho ibérico (C2/C3) y métrico (C4). Métrico: vía 1."
+  },
+
+  "RENFE_5224": {
+    "station_name": "Raíces",
+    "platforms": { "C4": ["1"] },
+    "notes": "Vía única."
+  },
+
+  "RENFE_5225": {
+    "station_name": "Salinas",
+    "platforms": { "C4": ["1"] },
+    "notes": "Vía única."
+  },
+
+  "RENFE_5227": {
+    "station_name": "Piedras Blancas",
+    "platforms": { "C4": ["1", "5"] },
+    "notes": "Patrón especial: vías 1 y 5."
+  },
+
+  "RENFE_5229": {
+    "station_name": "Vegarrozadas",
+    "platforms": { "C4": ["1"] },
+    "notes": "Vía única."
+  },
+
+  "RENFE_5231": {
+    "station_name": "Santiago del Monte",
+    "platforms": { "C4": ["1"] },
+    "notes": "Vía única. URL: santiago-monte"
+  },
+
+  "RENFE_5232": {
+    "station_name": "El Parador",
+    "platforms": { "C4": ["1"] },
+    "notes": "Vía única."
+  },
+
+  "RENFE_5233": {
+    "station_name": "Soto del Barco",
+    "platforms": { "C4": ["1", "4"] },
+    "notes": "Patrón especial: vías 1 y 4."
+  },
+
+  "RENFE_5235": {
+    "station_name": "Riberas",
+    "platforms": { "C4": ["1"] },
+    "notes": "Vía única."
+  },
+
+  "RENFE_5237": {
+    "station_name": "Peñaullán",
+    "platforms": { "C4": ["1"] },
+    "notes": "Vía única."
+  },
+
+  "RENFE_5239": {
+    "station_name": "Santianes",
+    "platforms": { "C4": ["1"] },
+    "notes": "Vía única."
+  },
+
+  "RENFE_5241": {
+    "station_name": "Los Cabos",
+    "platforms": { "C4": ["1"] },
+    "notes": "Vía única."
+  },
+
+  "RENFE_5243": {
+    "station_name": "Muros del Nalón",
+    "platforms": { "C4": ["2"] },
+    "notes": "Vía 2 única. URL: muros-nalón"
+  },
+
+  "RENFE_5244": {
+    "station_name": "El Pito Piñera",
+    "platforms": { "C4": ["1"] },
+    "notes": "Vía única."
+  },
+
+  "RENFE_5245": {
+    "station_name": "Cudillero",
+    "platforms": { "C4": ["1"] },
+    "notes": "Terminal C4. Vía única."
+  },
+
+  "RENFE_5325": {
+    "station_name": "Pravia",
+    "platforms": {
+      "C4": ["1", "2", "3"],
+      "C7": ["1", "2"]
+    },
+    "notes": "Nudo C4/C7. C4: vía 1 Gijón, vía 3 Cudillero. C7: vía 1 San Esteban, vía 2 Oviedo."
+  },
+
+  "_C5_GIJON_LAVIANA": "=== LÍNEA C5: Gijón - Pola de Laviana ===",
+
+  "RENFE_5403": {
+    "station_name": "Tremañes-Langreo",
+    "platforms": { "C5": ["1"] },
+    "notes": "Vía única."
+  },
+
+  "RENFE_5405": {
+    "station_name": "Sotiello",
+    "platforms": { "C5": ["1"] },
+    "notes": "Vía única."
+  },
+
+  "RENFE_5407": {
+    "station_name": "Pinzales",
+    "platforms": { "C5": ["1"] },
+    "notes": "Vía única."
+  },
+
+  "RENFE_5409": {
+    "station_name": "Aguda",
+    "platforms": { "C5": ["1"] },
+    "notes": "Vía única."
+  },
+
+  "RENFE_5410": {
+    "station_name": "Xixún",
+    "platforms": { "C5": ["1", "2"] },
+    "notes": "Vía 2 hacia Gijón, vía 1 hacia Laviana."
+  },
+
+  "RENFE_5411": {
+    "station_name": "La Florida",
+    "platforms": { "C5": ["1", "2"] },
+    "notes": "Vía 1 hacia Laviana, vía 2 hacia Gijón."
+  },
+
+  "RENFE_5412": {
+    "station_name": "Puente Buracos",
+    "platforms": { "C5": ["1"] },
+    "notes": "Vía única."
+  },
+
+  "RENFE_5413": {
+    "station_name": "Noreña",
+    "platforms": {
+      "C5": ["5", "7"],
+      "C5a": ["5", "7"],
+      "C5A": ["5", "7"]
+    },
+    "notes": "Vía 5 hacia Gijón, vía 7 hacia Laviana/Oviedo."
+  },
+
+  "RENFE_5415": {
+    "station_name": "Bendición",
+    "platforms": { "C5": ["1", "2"] },
+    "notes": "Dos vías. URL: bendición"
+  },
+
+  "RENFE_5416": {
+    "station_name": "Valdesoto",
+    "platforms": { "C5": ["1", "2"] },
+    "notes": "Vía 1 hacia Gijón, vía 2 hacia Laviana."
+  },
+
+  "RENFE_5417": {
+    "station_name": "Carbayín",
+    "platforms": { "C5": ["1", "2"] },
+    "notes": "Dos vías."
+  },
+
+  "RENFE_5420": {
+    "station_name": "Curuxona",
+    "platforms": { "C5": ["1"] },
+    "notes": "Vía única."
+  },
+
+  "RENFE_5421": {
+    "station_name": "Tuilla",
+    "platforms": { "C5": ["1", "2"] },
+    "notes": "Dos vías."
+  },
+
+  "RENFE_5426": {
+    "station_name": "La Felguera-Langreo",
+    "platforms": { "C5": ["1A", "2A"] },
+    "notes": "Vía 1A hacia Gijón, vía 2A hacia Laviana."
+  },
+
+  "RENFE_5427": {
+    "station_name": "Sama Los Llerones",
+    "platforms": { "C5": ["1A", "2A"] },
+    "notes": "Mismo patrón que La Felguera. Vía 1A hacia Gijón, vía 2A hacia Laviana."
+  },
+
+  "RENFE_5431": {
+    "station_name": "Ciaño Escobio",
+    "platforms": { "C5": ["1"] },
+    "notes": "Vía única."
+  },
+
+  "RENFE_5433": {
+    "station_name": "El Entrego Oscura",
+    "platforms": { "C5": ["1"] },
+    "notes": "Vía única. URL: el-entrego-oscura"
+  },
+
+  "RENFE_5432": {
+    "station_name": "San Vicente",
+    "platforms": { "C5": ["1"] },
+    "notes": "Vía única."
+  },
+
+  "RENFE_5435": {
+    "station_name": "Carrocera",
+    "platforms": { "C5": ["1"] },
+    "notes": "Vía única."
+  },
+
+  "RENFE_5436": {
+    "station_name": "San Martín",
+    "platforms": { "C5": ["1"] },
+    "notes": "Vía única."
+  },
+
+  "RENFE_5437": {
+    "station_name": "Sotrondio",
+    "platforms": { "C5": ["1"] },
+    "notes": "Vía única."
+  },
+
+  "RENFE_5439": {
+    "station_name": "Blimea",
+    "platforms": { "C5": ["1"] },
+    "notes": "Vía única."
+  },
+
+  "RENFE_5441": {
+    "station_name": "Barredos",
+    "platforms": { "C5": ["1"] },
+    "notes": "Vía única."
+  },
+
+  "RENFE_5443": {
+    "station_name": "Laviana",
+    "platforms": { "C5": ["1"] },
+    "notes": "Terminal C5. Vía única."
+  },
+
+  "_C6_OVIEDO_INFIESTO": "=== LÍNEA C6: Oviedo - Infiesto ===",
+
+  "RENFE_15211": {
+    "station_name": "Oviedo",
+    "platforms": {
+      "C5a": ["1"],
+      "C5A": ["1"],
+      "C6": ["1"],
+      "C7": ["2"]
+    },
+    "notes": "Estación compartida ancho ibérico (C1/C2/C3) y métrico (C5a/C6/C7). Métrico: vía 1 hacia El Berrón/Infiesto, vía 2 hacia Trubia."
+  },
+
+  "RENFE_15217": {
+    "station_name": "La Corredoria",
+    "platforms": { "C6": ["1", "2"] },
+    "notes": "Estación compartida ancho ibérico (C1/C3) y métrico (C6). Vía 1 hacia Infiesto, vía 2 hacia Oviedo."
+  },
+
+  "RENFE_5504": {
+    "station_name": "Parque Principado",
+    "platforms": {
+      "C5a": ["1", "2"],
+      "C5A": ["1", "2"],
+      "C6": ["1", "2"]
+    },
+    "notes": "Vía 1 hacia El Berrón/Infiesto, vía 2 hacia Oviedo."
+  },
+
+  "RENFE_5505": {
+    "station_name": "Colloto",
+    "platforms": {
+      "C5a": ["1", "2"],
+      "C5A": ["1", "2"],
+      "C6": ["1", "2"]
+    },
+    "notes": "Vía 1 hacia El Berrón/Infiesto, vía 2 hacia Oviedo."
+  },
+
+  "RENFE_5507": {
+    "station_name": "Meres",
+    "platforms": {
+      "C5a": ["1", "2"],
+      "C5A": ["1", "2"],
+      "C6": ["1", "2"]
+    },
+    "notes": "Vía 1 hacia El Berrón/Infiesto, vía 2 hacia Oviedo."
+  },
+
+  "RENFE_5508": {
+    "station_name": "Fonciello",
+    "platforms": { "C6": ["1", "2"] },
+    "notes": "Vía 1 hacia Infiesto, vía 2 hacia Oviedo."
+  },
+
+  "RENFE_5509": {
+    "station_name": "El Berrón",
+    "platforms": {
+      "C5": ["5", "7"],
+      "C5a": ["5", "7"],
+      "C5A": ["5", "7"],
+      "C6": ["5", "7"]
+    },
+    "notes": "Nudo principal. C5/C5a/C6 comparten vías 5 y 7. Vía 5 hacia Gijón, vía 7 hacia Laviana/Oviedo."
+  },
+
+  "RENFE_5511": {
+    "station_name": "La Carrera Siero",
+    "platforms": { "C6": ["1"] },
+    "notes": "Vía única. URL: la-carrera-siero"
+  },
+
+  "RENFE_5513": {
+    "station_name": "Pola de Siero",
+    "platforms": { "C6": ["3", "4"] },
+    "notes": "Vías 1-2 son depósito/apartaderos. Vía 3 desde Infiesto, vía 4 desde Oviedo."
+  },
+
+  "RENFE_5515": {
+    "station_name": "Los Corros",
+    "platforms": { "C6": ["1"] },
+    "notes": "Vía única."
+  },
+
+  "RENFE_5517": {
+    "station_name": "Lieres",
+    "platforms": { "C6": ["1", "3"] },
+    "notes": "Patrón FEVE: vía 1 hacia El Berrón/Oviedo, vía 3 hacia Infiesto/Nava."
+  },
+
+  "RENFE_5521": {
+    "station_name": "El Remedio",
+    "platforms": { "C6": ["1"] },
+    "notes": "Vía única."
+  },
+
+  "RENFE_5522": {
+    "station_name": "Llames",
+    "platforms": { "C6": ["1"] },
+    "notes": "Vía única."
+  },
+
+  "RENFE_5523": {
+    "station_name": "Nava",
+    "platforms": { "C6": ["1", "2", "3"] },
+    "notes": "Nudo importante. Vía 1 hacia Infiesto, vías 2-3 hacia Oviedo/El Berrón."
+  },
+
+  "RENFE_5525": {
+    "station_name": "Fuente Santa Nava",
+    "platforms": { "C6": ["1"] },
+    "notes": "Vía única. URL: fuente-santa-nava"
+  },
+
+  "RENFE_5527": {
+    "station_name": "Ceceda",
+    "platforms": { "C6": ["1"] },
+    "notes": "Vía única."
+  },
+
+  "RENFE_5529": {
+    "station_name": "Carancos",
+    "platforms": { "C6": ["1"] },
+    "notes": "Vía única."
+  },
+
+  "RENFE_5531": {
+    "station_name": "Pintueles",
+    "platforms": { "C6": ["1"] },
+    "notes": "Vía única."
+  },
+
+  "RENFE_5533": {
+    "station_name": "Infiesto",
+    "platforms": { "C6": ["1", "2"] },
+    "notes": "Vías 1 y 2."
+  },
+
+  "RENFE_5534": {
+    "station_name": "Infiesto Apeadero",
+    "platforms": { "C6": ["1"] },
+    "notes": "Terminal C6. Vía única. URL: infiesto-apd"
+  },
+
+  "_C7_OVIEDO_TRUBIA": "=== LÍNEA C7: Oviedo - Trubia / San Esteban ===",
+
+  "RENFE_5300": {
+    "station_name": "Vallobín",
+    "platforms": { "C7": ["1"] },
+    "notes": "Vía única."
+  },
+
+  "RENFE_5301": {
+    "station_name": "La Argañosa-Lavapiés",
+    "platforms": { "C7": ["1"] },
+    "notes": "Vía única. URL: la-argañosa-lavap."
+  },
+
+  "RENFE_5302": {
+    "station_name": "Las Campas",
+    "platforms": { "C7": ["1"] },
+    "notes": "Vía única."
+  },
+
+  "RENFE_5303": {
+    "station_name": "Las Mazas",
+    "platforms": { "C7": ["1"] },
+    "notes": "Vía única."
+  },
+
+  "RENFE_5304": {
+    "station_name": "San Claudio",
+    "platforms": { "C7": ["1", "2"] },
+    "notes": "Vía 1 hacia Trubia/San Esteban, vía 2 hacia Oviedo."
+  },
+
+  "RENFE_5306": {
+    "station_name": "San Pedro de Nora",
+    "platforms": { "C7": ["1"] },
+    "notes": "Vía única. URL: san-pedro-nora"
+  },
+
+  "RENFE_5308": {
+    "station_name": "Soto Udrión",
+    "platforms": { "C7": ["2"] },
+    "notes": "Vía 2 única. URL: soto-udrión"
+  },
+
+  "RENFE_5311": {
+    "station_name": "Trubia",
+    "platforms": { "C7": ["1", "3"] },
+    "notes": "Patrón FEVE: vía 1 edificio, vía 2 sin andén (paso), vía 3 andén isla."
+  },
+
+  "RENFE_5313": {
+    "station_name": "Sta. María de Grado",
+    "platforms": { "C7": ["1"] },
+    "notes": "Vía única. URL: sta.maría-de-grado"
+  },
+
+  "RENFE_5315": {
+    "station_name": "Vega de Anzo",
+    "platforms": { "C7": ["1"] },
+    "notes": "Vía única. URL: vega-de-anzo"
+  },
+
+  "RENFE_5316": {
+    "station_name": "Peñaflor de Grado",
+    "platforms": { "C7": ["1"] },
+    "notes": "Vía única. URL: peñaflor-de-grado"
+  },
+
+  "RENFE_5317": {
+    "station_name": "Grado",
+    "platforms": { "C7": ["1", "3"] },
+    "notes": "Patrón FEVE: vía 1 edificio, vía 2 sin andén (paso), vía 3 andén isla."
+  },
+
+  "RENFE_5319": {
+    "station_name": "Sandiche",
+    "platforms": { "C7": ["1"] },
+    "notes": "Vía única."
+  },
+
+  "RENFE_5320": {
+    "station_name": "Aces",
+    "platforms": { "C7": ["1"] },
+    "notes": "Vía única."
+  },
+
+  "RENFE_5321": {
+    "station_name": "San Román",
+    "platforms": { "C7": ["1"] },
+    "notes": "Vía única. URL: san-román"
+  },
+
+  "RENFE_5323": {
+    "station_name": "Beifar",
+    "platforms": { "C7": ["1"] },
+    "notes": "Vía única."
+  },
+
+  "RENFE_5327": {
+    "station_name": "San Ranón",
+    "platforms": { "C7": ["1"] },
+    "notes": "Vía única. URL: san-ranón"
+  },
+
+  "RENFE_5329": {
+    "station_name": "San Esteban de Pravia",
+    "platforms": { "C7": ["1"] },
+    "notes": "Terminal C7. Vía única."
+  },
+
+  "_C8_ABLANA_COLLANZO": "=== LÍNEA C8: Ablaña - Collanzo ===",
+
+  "RENFE_15205": {
+    "station_name": "Ablaña",
+    "platforms": { "C8": ["1"] },
+    "notes": "Estación compartida C1 (ibérico) y C8 (métrico). C8 usa vía 1."
+  },
+
+  "RENFE_15206": {
+    "station_name": "La Pereda Riosa",
+    "platforms": { "C8": ["1"] },
+    "notes": "Estación compartida C1/C8. C8 usa vía 1."
+  },
+
+  "RENFE_5369": {
+    "station_name": "Mieres Vasco",
+    "platforms": { "C8": ["4"] },
+    "notes": "Vía 4. Estación de intercambio con C1 en Mieres."
+  },
+
+  "RENFE_5361": {
+    "station_name": "Baiña",
+    "platforms": { "C8": ["1"] },
+    "notes": "Vía única. URL: baíña"
+  },
+
+  "RENFE_5371": {
+    "station_name": "Caudalia",
+    "platforms": { "C8": ["1"] },
+    "notes": "Vía única."
+  },
+
+  "RENFE_5373": {
+    "station_name": "Figaredo",
+    "platforms": { "C8": ["1"] },
+    "notes": "Vía única."
+  },
+
+  "RENFE_5375": {
+    "station_name": "Ujo Taruelo",
+    "platforms": { "C8": ["1"] },
+    "notes": "Vía única."
+  },
+
+  "RENFE_5376": {
+    "station_name": "Santa Cruz",
+    "platforms": { "C8": ["1"] },
+    "notes": "Vía única."
+  },
+
+  "RENFE_5377": {
+    "station_name": "Caborana",
+    "platforms": { "C8": ["1"] },
+    "notes": "Vía única."
+  },
+
+  "RENFE_5379": {
+    "station_name": "Moreda de Aller",
+    "platforms": { "C8": ["1"] },
+    "notes": "Vía única."
+  },
+
+  "RENFE_5380": {
+    "station_name": "San Antonio",
+    "platforms": { "C8": ["1"] },
+    "notes": "Vía única."
+  },
+
+  "RENFE_5381": {
+    "station_name": "Oyanco",
+    "platforms": { "C8": ["1"] },
+    "notes": "Vía única."
+  },
+
+  "RENFE_5382": {
+    "station_name": "Corigos",
+    "platforms": { "C8": ["1"] },
+    "notes": "Vía única."
+  },
+
+  "RENFE_5383": {
+    "station_name": "Piñeres",
+    "platforms": { "C8": ["1"] },
+    "notes": "Vía única."
+  },
+
+  "RENFE_5384": {
+    "station_name": "Santa Ana-Soto",
+    "platforms": { "C8": ["1"] },
+    "notes": "Vía única."
+  },
+
+  "RENFE_5385": {
+    "station_name": "Cabañaquinta",
+    "platforms": { "C8": ["1"] },
+    "notes": "Vía única."
+  },
+
+  "RENFE_5387": {
+    "station_name": "Levinco",
+    "platforms": { "C8": ["1"] },
+    "notes": "Vía única."
+  },
+
+  "RENFE_5389": {
+    "station_name": "Collanzo",
+    "platforms": { "C8": ["1"] },
+    "notes": "Terminal C8. Vía única."
+  }
+}
