@@ -40,6 +40,25 @@ class StopModel(Base):
     parent_station = relationship("StopModel", remote_side=[id], backref="child_stops")
 
     @property
+    def effective_accessibility(self) -> str | None:
+        """Get accessibility as text, derived from accesibilidad field or wheelchair_boarding.
+
+        wheelchair_boarding values (GTFS standard):
+        - 0: No accessibility information
+        - 1: Accessible (at least some vehicles can board wheelchair)
+        - 2: Not accessible (wheelchair boarding not possible)
+
+        Returns Spanish text for display.
+        """
+        if self.accesibilidad:
+            return self.accesibilidad
+        if self.wheelchair_boarding == 1:
+            return "Accesible"
+        if self.wheelchair_boarding == 2:
+            return "No accesible"
+        return None
+
+    @property
     def is_hub(self) -> bool:
         """Calculate if this stop is a transport hub.
 

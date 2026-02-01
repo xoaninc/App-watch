@@ -1,7 +1,7 @@
 """Stop-related response schemas."""
 
 from typing import Optional, List
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class StopResponse(BaseModel):
@@ -16,7 +16,7 @@ class StopResponse(BaseModel):
     province: Optional[str]
     lineas: Optional[str]
     parking_bicis: Optional[str]
-    accesibilidad: Optional[str]
+    accesibilidad: Optional[str] = Field(None, validation_alias="effective_accessibility")
     cor_bus: Optional[str]
     cor_metro: Optional[str]
     cor_ml: Optional[str]
@@ -26,6 +26,7 @@ class StopResponse(BaseModel):
 
     class Config:
         from_attributes = True
+        populate_by_name = True
 
 
 class RouteStopResponse(BaseModel):

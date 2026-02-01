@@ -187,13 +187,19 @@ def import_missing_stops(db, zf: zipfile.ZipFile, route_mapping: dict) -> int:
     logger.info("Checking for missing stops...")
 
     # Get existing RENFE stops
+    # NOTE: Store both with and without leading zeros to handle GTFS format variations
     existing_stops = set()
     our_stops = db.execute(text("SELECT id FROM gtfs_stops WHERE id LIKE 'RENFE_%'")).fetchall()
     for stop in our_stops:
         # Extract the numeric part: RENFE_65000 -> 65000
         gtfs_id = stop[0].replace('RENFE_', '')
         existing_stops.add(gtfs_id)
-    logger.info(f"Found {len(existing_stops)} existing RENFE stops")
+        # Also add variants with/without leading zeros
+        gtfs_id_stripped = gtfs_id.lstrip('0') or '0'
+        gtfs_id_padded = gtfs_id.zfill(5)
+        existing_stops.add(gtfs_id_stripped)
+        existing_stops.add(gtfs_id_padded)
+    logger.info(f"Found {len(our_stops)} existing RENFE stops ({len(existing_stops)} with zero-padded variants)")
 
     # Get trips we're importing (based on route_mapping)
     importing_trips = set()
@@ -247,6 +253,8 @@ def import_missing_stops(db, zf: zipfile.ZipFile, route_mapping: dict) -> int:
 
         lat = float(stop.get('stop_lat', '0').strip() or '0')
         lon = float(stop.get('stop_lon', '0').strip() or '0')
+        wb_str = stop.get('wheelchair_boarding', '').strip()
+        wheelchair_boarding = int(wb_str) if wb_str.isdigit() else None
 
         rows.append({
             'id': our_stop_id,
@@ -254,6 +262,7 @@ def import_missing_stops(db, zf: zipfile.ZipFile, route_mapping: dict) -> int:
             'lat': lat,
             'lon': lon,
             'location_type': 1,  # Station
+            'wheelchair_boarding': wheelchair_boarding,
         })
 
     if rows:
@@ -262,12 +271,13 @@ def import_missing_stops(db, zf: zipfile.ZipFile, route_mapping: dict) -> int:
             db.execute(
                 text("""
                     INSERT INTO gtfs_stops
-                    (id, name, lat, lon, location_type)
-                    VALUES (:id, :name, :lat, :lon, :location_type)
+                    (id, name, lat, lon, location_type, wheelchair_boarding)
+                    VALUES (:id, :name, :lat, :lon, :location_type, :wheelchair_boarding)
                     ON CONFLICT (id) DO UPDATE SET
                         name = EXCLUDED.name,
                         lat = EXCLUDED.lat,
-                        lon = EXCLUDED.lon
+                        lon = EXCLUDED.lon,
+                        wheelchair_boarding = COALESCE(EXCLUDED.wheelchair_boarding, gtfs_stops.wheelchair_boarding)
                 """),
                 batch
             )
@@ -647,6 +657,8 @@ def import_stop_times(db, zf: zipfile.ZipFile, trip_ids_filter: set = None) -> i
 
     # Build stop mapping: GTFS stop_id -> our stop_id
     # Our format: RENFE_{number}, GTFS format: {number}
+    # NOTE: GTFS uses leading zeros (05210) but our DB may have them stripped (5210)
+    # We map BOTH formats to handle this mismatch
     stop_mapping = {}
     our_stops = db.execute(text("SELECT id FROM gtfs_stops")).fetchall()
     for stop in our_stops:
@@ -654,7 +666,15 @@ def import_stop_times(db, zf: zipfile.ZipFile, trip_ids_filter: set = None) -> i
         if our_id.startswith('RENFE_'):
             gtfs_id = our_id.replace('RENFE_', '')
             stop_mapping[gtfs_id] = our_id
-    logger.info(f"Built stop mapping with {len(stop_mapping)} stops")
+            # Also map with/without leading zeros to handle GTFS format variations
+            # GTFS uses 05210, our DB might have 5210 or vice versa
+            gtfs_id_stripped = gtfs_id.lstrip('0') or '0'  # Strip leading zeros (keep at least '0')
+            gtfs_id_padded = gtfs_id.zfill(5)  # Pad to 5 digits with leading zeros
+            if gtfs_id_stripped != gtfs_id:
+                stop_mapping[gtfs_id_stripped] = our_id
+            if gtfs_id_padded != gtfs_id:
+                stop_mapping[gtfs_id_padded] = our_id
+    logger.info(f"Built stop mapping with {len(stop_mapping)} entries (including zero-padded variants)")
 
     with zf.open('stop_times.txt') as f:
         reader = csv.DictReader(TextIOWrapper(f, encoding='utf-8'))

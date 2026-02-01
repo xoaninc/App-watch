@@ -10,7 +10,11 @@ from sqlalchemy import and_, or_, func, literal
 from core.rate_limiter import limiter, RateLimits
 
 # Centralized imports
-from adapters.http.api.gtfs.utils.holiday_utils import get_effective_day_type, MADRID_TZ
+from adapters.http.api.gtfs.utils.holiday_utils import (
+    get_effective_day_type,
+    get_effective_day_type_for_province,
+    MADRID_TZ,
+)
 from adapters.http.api.gtfs.utils.route_utils import is_static_gtfs_route, is_route_operating, has_real_cercanias
 from adapters.http.api.gtfs.utils.shape_utils import normalize_shape, smooth_shape_chaikin
 from adapters.http.api.gtfs.utils.walking_route import generate_walking_route, coords_to_json, json_to_coords
@@ -1079,8 +1083,9 @@ def _get_frequency_based_departures(
     """
     departures = []
 
-    # Determine day type considering holidays and pre-holidays (vísperas)
-    day_type = get_effective_day_type(now)
+    # Determine day type considering regional holidays and pre-holidays (vísperas)
+    # Use stop's province for province-aware holiday checking
+    day_type = get_effective_day_type_for_province(now, stop.province, db)
 
     current_time = now.time()
     current_time_str = now.strftime("%H:%M:%S")  # For VARCHAR comparison with end_time
@@ -1845,7 +1850,8 @@ def get_stop_departures(
         return top_platform, is_high_confidence
 
     # Determine day type for operating hours check
-    day_type = get_effective_day_type(now)
+    # Use stop's province for province-aware regional holiday checking
+    day_type = get_effective_day_type_for_province(now, stop.province, db)
 
     departures = []
     for stop_time, trip, route, trip_start_seconds in results:
@@ -2205,7 +2211,7 @@ def get_route_stops(route_id: str, db: Session = Depends(get_db)):
                 province=stop.province,
                 lineas=stop.lineas,
                 parking_bicis=stop.parking_bicis,
-                accesibilidad=stop.accesibilidad,
+                accesibilidad=stop.effective_accessibility,
                 cor_bus=stop.cor_bus,
                 cor_metro=stop.cor_metro,
                 cor_ml=stop.cor_ml,
@@ -2262,7 +2268,7 @@ def get_route_stops(route_id: str, db: Session = Depends(get_db)):
             province=stop.province,
             lineas=stop.lineas,
             parking_bicis=stop.parking_bicis,
-            accesibilidad=stop.accesibilidad,
+            accesibilidad=stop.effective_accessibility,
             cor_bus=stop.cor_bus,
             cor_metro=stop.cor_metro,
             cor_ml=stop.cor_ml,
