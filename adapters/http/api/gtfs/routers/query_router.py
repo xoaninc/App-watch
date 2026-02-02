@@ -4,12 +4,14 @@ from zoneinfo import ZoneInfo
 import math
 import re as regex_module
 import json
+import logging
 from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_, func, literal
 
 from core.rate_limiter import limiter, RateLimits
+from core.config import settings
 
 # Centralized imports
 from adapters.http.api.gtfs.utils.holiday_utils import (
@@ -77,6 +79,8 @@ from src.gtfs_bc.province.province_lookup import (
     get_province_and_networks_by_coordinates,
 )
 from src.gtfs_bc.realtime.infrastructure.services.estimated_positions import EstimatedPositionsService
+from src.gtfs_bc.realtime.infrastructure.services.gtfs_rt_fetcher import GTFSRealtimeFetcher
+from src.gtfs_bc.realtime.infrastructure.services.ai_alert_classifier import AIAlertClassifier
 from src.gtfs_bc.stop_route_sequence.infrastructure.models import StopRouteSequenceModel
 from src.gtfs_bc.stop.infrastructure.models.stop_platform_model import StopPlatformModel
 from src.gtfs_bc.stop.infrastructure.models.stop_correspondence_model import StopCorrespondenceModel
@@ -134,6 +138,7 @@ def get_default_platform_for_stop(stop_id: str, route_short_name: str) -> Option
     return None
 
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/gtfs", tags=["GTFS Query"])
 
 
@@ -2392,9 +2397,29 @@ def get_route_operating_hours(route_id: str, db: Session = Depends(get_db)):
     if not route:
         raise HTTPException(status_code=404, detail=f"Route {route_id} not found")
 
-    # Suspension detection removed - will be handled by Groq AI
+    # AI-based suspension detection using Groq
     is_suspended = False
     suspension_message = None
+    
+    try:
+        fetcher = GTFSRealtimeFetcher(db)
+        alerts = fetcher.get_alerts_for_route(route_id)
+        
+        if alerts and settings.GROQ_API_KEY:
+            classifier = AIAlertClassifier(settings)
+            analysis = classifier.analyze_alerts(route_id, alerts)
+            
+            # Determinar suspensión basándose en el análisis de IA
+            if analysis.status in ["FULL_SUSPENSION"]:
+                is_suspended = True
+                suspension_message = analysis.reason
+            elif analysis.status in ["PARTIAL_SUSPENSION", "DELAYS"]:
+                # No marcar como suspendida, pero podríamos agregar info
+                is_suspended = False
+                suspension_message = None
+    except Exception as e:
+        logger.error(f"Error analyzing alerts with AI for {route_id}: {e}")
+        # Continuar sin análisis AI
 
     # Get all trips for this route with their calendar info
     trips_with_calendar = (

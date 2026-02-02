@@ -36,6 +36,9 @@ dependencies = [
     "beautifulsoup4>=4.14.3",
     "geoalchemy2>=0.18.1",
     "gtfs-realtime-bindings>=2.0.0",
+    # AI/ML dependencies
+    "groq>=0.11.0",
+    "instructor>=1.6.4",
     # Rate limiting
     "slowapi>=0.1.9",
     # Coordinate transformations

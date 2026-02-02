@@ -3462,5 +3462,61 @@
     "status": "pending",
     "suggested_platform": null,
     "notes": ""
+  },
+  "RENFE_65402": {
+    "name": "L'Aldea-Amposta",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T15:10:58.687361",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_15217": {
+    "name": "La Corredoria",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T15:12:08.838893",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_71703": {
+    "name": "Garraf",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T15:13:14.064980",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_05663": {
+    "name": "NO EXISTE EN GTFS ESTÁTICO",
+    "in_gtfs_static": false,
+    "first_seen": "2026-02-02T15:15:24.262922",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": "Esta estación no existe en nuestro GTFS estático"
+  },
+  "RENFE_11510": {
+    "name": "Loiola",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T15:16:28.517533",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_14236": {
+    "name": "Vioño",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T15:19:46.164347",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_40122": {
+    "name": "Tocina",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T15:22:53.923910",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
   }
 }

@@ -43,6 +43,9 @@ class Settings(BaseSettings):
     # Sentry (only used in production)
     SENTRY_DSN: str = ""
 
+    # Groq AI
+    GROQ_API_KEY: str = ""
+
     # Auth settings (nested)
     auth: AuthSettings = AuthSettings()
 
