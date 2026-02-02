@@ -3286,5 +3286,37 @@
     "status": "pending",
     "suggested_platform": null,
     "notes": ""
+  },
+  "RENFE_14206": {
+    "name": "Bárcena",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T14:30:58.085620",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_14207": {
+    "name": "Molledo",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T14:30:58.086250",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_51461": {
+    "name": "Compañía de María",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T14:30:58.086914",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_79301": {
+    "name": "Celrà",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T14:30:58.088859",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
   }
 }

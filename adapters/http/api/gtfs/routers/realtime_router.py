@@ -60,6 +60,26 @@ def fetch_realtime_data(request: Request, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=f"Error fetching GTFS-RT data: {str(e)}")
 
 
+@router.post("/cleanup")
+def cleanup_stale_data(db: Session = Depends(get_db)):
+    """Force cleanup of stale realtime data.
+    
+    Removes:
+    - Trip updates older than 2 hours
+    - Alerts that have expired (active_period_end in past)
+    - Alerts without end date that haven't been updated in 12 hours
+    """
+    fetcher = GTFSRealtimeFetcher(db)
+    try:
+        result = fetcher._cleanup_stale_realtime_data()
+        return {
+            "message": "Stale data cleaned up successfully",
+            **result
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error cleaning up data: {str(e)}")
+
+
 @router.get("/vehicles", response_model=List[VehiclePositionResponse])
 def get_vehicle_positions(
     stop_id: Optional[str] = Query(None, description="Filter by stop ID"),
