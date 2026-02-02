@@ -36,6 +36,12 @@ class GTFSRealtimeFetcher:
     # Prefix for Renfe stop IDs to match static GTFS data in BD
     RENFE_PREFIX = "RENFE_"
 
+    # Mapping for stop IDs that need to be translated to different ones
+    # RT visor may return old/different codes than static GTFS
+    STOP_ID_MAPPING = {
+        "5222": "16403",  # Avilés-CIM → Avilés (C3 Asturias)
+    }
+
     def __init__(self, db: Session):
         self.db = db
 
@@ -48,8 +54,12 @@ class GTFSRealtimeFetcher:
         return f"{self.RENFE_PREFIX}{id_value}"
 
     def _add_stop_prefix(self, stop_id: str) -> str:
-        """Add RENFE_ prefix to stop_id (alias for _add_prefix)."""
-        return self._add_prefix(stop_id)
+        """Add RENFE_ prefix to stop_id, applying any ID mappings first."""
+        if not stop_id:
+            return stop_id
+        # Apply mapping if exists (e.g., 5222 → 16403)
+        mapped_id = self.STOP_ID_MAPPING.get(stop_id, stop_id)
+        return self._add_prefix(mapped_id)
 
     # Madrid Cercanías routes that need variant detection based on destination
     # C4 and C8 don't exist as services - only C4a/C4b and C8a/C8b do
