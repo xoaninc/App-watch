@@ -3318,5 +3318,109 @@
     "status": "pending",
     "suggested_platform": null,
     "notes": ""
+  },
+  "RENFE_51460": {
+    "name": "Plaza del Rey",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T14:34:07.210734",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_15218": {
+    "name": "Llamaquique",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T14:36:19.927374",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_79302": {
+    "name": "Bordils-Juià",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T14:40:34.658454",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_51457": {
+    "name": "Tres Caminos",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T14:42:44.315251",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_62109": {
+    "name": "Sant Gabriel",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T14:44:50.299180",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_43005": {
+    "name": "Benacazón",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T14:46:53.461590",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_79304": {
+    "name": "Sant Jordi Desvalls",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T14:46:53.462401",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_05615": {
+    "name": "NO EXISTE EN GTFS ESTÁTICO",
+    "in_gtfs_static": false,
+    "first_seen": "2026-02-02T14:47:59.742313",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": "Esta estación no existe en nuestro GTFS estático"
+  },
+  "RENFE_05633": {
+    "name": "NO EXISTE EN GTFS ESTÁTICO",
+    "in_gtfs_static": false,
+    "first_seen": "2026-02-02T14:50:13.764529",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": "Esta estación no existe en nuestro GTFS estático"
+  },
+  "RENFE_79305": {
+    "name": "Camallera",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T14:50:13.764853",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_05675": {
+    "name": "NO EXISTE EN GTFS ESTÁTICO",
+    "in_gtfs_static": false,
+    "first_seen": "2026-02-02T14:52:20.343735",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": "Esta estación no existe en nuestro GTFS estático"
+  },
+  "RENFE_14211": {
+    "name": "Caldas",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T14:52:20.344746",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_16402": {
+    "name": "La Rocica",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T14:55:45.382960",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
   }
 }

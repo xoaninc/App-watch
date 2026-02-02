@@ -925,10 +925,13 @@ class GTFSRealtimeFetcher:
                     # Search by route_short_name (matches C4a, C5, etc.)
                     query = query.filter(AlertEntityModel.route_short_name == route_short_name)
                     # Also filter by network to avoid mixing alerts from different networks
-                    # (e.g., Madrid C4 vs Bilbao C4). GTFS route_id starts with network code.
+                    # (e.g., Madrid C4 vs Bilbao C4). GTFS route_id format has network code.
+                    # Could be: 10T0036C5 (old format) or RENFE_30T0001C1 (new format)
                     if network_id:
-                        # GTFS route_id format: {network}T{code}C{line} (e.g., 10T0036C5)
-                        query = query.filter(AlertEntityModel.route_id.like(f"{network_id}%"))
+                        query = query.filter(
+                            (AlertEntityModel.route_id.like(f"{network_id}%")) |
+                            (AlertEntityModel.route_id.like(f"%{network_id}%"))
+                        )
                 else:
                     # Fallback: search by original route_id
                     query = query.filter(AlertEntityModel.route_id == route_id)
