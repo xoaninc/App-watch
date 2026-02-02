@@ -1528,12 +1528,15 @@ def get_stop_departures(
     # This is used for better RT matching - trips are identified by their start time
     # Only compute for Renfe trips to avoid performance impact on other operators
     if is_renfe:
+        # Get start time for Renfe trips by joining with trips table to filter by route_id
+        # (trip_ids in GTFS static don't have RENFE_ prefix, but route_ids do)
         start_time_subquery = (
             db.query(
                 StopTimeModel.trip_id,
                 func.min(StopTimeModel.departure_seconds).label("start_seconds")
             )
-            .filter(StopTimeModel.trip_id.like("RENFE_%"))  # Only Renfe trips
+            .join(TripModel, StopTimeModel.trip_id == TripModel.id)
+            .filter(TripModel.route_id.like("RENFE_%"))  # Filter by route_id instead
             .group_by(StopTimeModel.trip_id)
             .subquery()
         )
