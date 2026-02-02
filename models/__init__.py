@@ -29,6 +29,9 @@ from src.gtfs_bc.eta.infrastructure.models import (
 # Network models
 from src.gtfs_bc.network.infrastructure.models import NetworkModel, NetworkProvinceModel
 
+# Holiday models
+from src.gtfs_bc.holiday.infrastructure.models import LocalHolidayModel
+
 __all__ = [
     # GTFS BC
     "AgencyModel",
@@ -53,4 +56,6 @@ __all__ = [
     # Network
     "NetworkModel",
     "NetworkProvinceModel",
+    # Holiday
+    "LocalHolidayModel",
 ]

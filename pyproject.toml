@@ -40,6 +40,8 @@ dependencies = [
     "slowapi>=0.1.9",
     # Coordinate transformations
     "pyproj>=3.6.0",
+    # Spanish holidays
+    "holidays>=0.40",
 ]
 
 [project.optional-dependencies]
