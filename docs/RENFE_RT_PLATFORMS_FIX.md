@@ -1,7 +1,8 @@
 # Fix: Prefijo RENFE_ en datos RT y Scraping de Vías
 
-**Fecha:** 2026-01-31
+**Fecha:** 2026-02-01
 **Estado:** DESPLEGADO ✅
+**Última actualización:** Vías manuales Málaga, Santander, Asturias, Barcelona, Tarragona, Valencia
 
 ---
 
@@ -148,9 +149,79 @@ def _fetch_platforms_from_visor(self) -> int:
 
 ---
 
-## Estado de Vías por Estación (Málaga)
+## Vías Manuales Configuradas
 
-### Estaciones CON datos de vías
+### Málaga (C1/C2)
+
+| Estación | Código | Vía | Notas |
+|----------|--------|-----|-------|
+| María Zambrano | RENFE_54500 | 10/11 | Vía 10: Fuengirola/Álora, Vía 11: Málaga Centro |
+| María Zambrano (alt) | RENFE_54413 | 10/11 | Código alternativo de data.renfe.com |
+| Campanillas | RENFE_54410 | 2 (1 excepciones) | Vía 2 siempre, excepto Álora 08:15/11:50 → Vía 1 |
+| Los Prados | RENFE_54412 | 1 (2 excepciones) | Vía 1 por defecto. Dom 13:24/17:26, Lun 07:05/20:22 → Vía 2 |
+| Aljaima | RENFE_54407 | 3/1 | Mayoría vía 3, algunos vía 1 |
+| Cártama | RENFE_54408 | 2 | Vía 2 siempre |
+| Pizarra | RENFE_54406 | 1 | Vía única |
+| Álora | RENFE_54405 | 1 | Final de línea, automático |
+
+### Santander (C3) - EN OBRAS
+
+| Estación | Código | Vía | Notas |
+|----------|--------|-----|-------|
+| Astillero | RENFE_05657 | 4 | Provisional por obras C3 |
+| Heras | RENFE_05661 | - | Sin servicio por obras |
+
+### Asturias (C7/C8)
+
+| Estación | Código | Vía | Notas |
+|----------|--------|-----|-------|
+| San Ranón | RENFE_05327 | 1 | C7 Oviedo-Pravia, vía única |
+| Ablaña FEVE | RENFE_05363 | 1 | C8, vía única. No existe en GTFS estático |
+
+### Girona (R11)
+
+| Estación | Código | Vía | Notas |
+|----------|--------|-----|-------|
+| Sils | RENFE_79202 | 1/2 | Vía 1: Norte (Figueres), Vía 2: Sur (Barcelona) |
+| Caldes de Malavella | RENFE_79203 | 1/2 | Vía 1: Norte, Vía 2: Sur |
+| Sant Miquel de Fluvià | RENFE_79306 | 1/2 | Vía 1: Norte, Vía 2: Sur |
+| Girona | RENFE_79300 | ⏸️ | 4 vías, pendiente revisar patrón |
+| Figueres | RENFE_79309 | ⏸️ | 3 vías, asignación variable |
+
+### Barcelona (R11)
+
+| Estación | Código | Vía | Notas |
+|----------|--------|-----|-------|
+| Passeig de Gràcia | RENFE_71802 | 1/2 | Vía 1: Sur (Tarragona, Aeroport), Vía 2: Norte (Girona, França) |
+
+### Tarragona (R14/R15/R16)
+
+| Estación | Código | Vía | Notas |
+|----------|--------|-----|-------|
+| Vila-seca | RENFE_71401 | 1/2 | Vía 1: Sur (Reus, Vinaròs), Vía 2: Norte (Barcelona) |
+| Altafulla-Tamarit | RENFE_71502 | 1/2 | Vía 1: Sur, Vía 2: Norte |
+| Camarles-Deltebre | RENFE_65403 | 1/2 | Vía 1: Sur, Vía 2: Norte |
+| L'Ametlla de Mar | RENFE_65405 | 3/4 | Vía 3: Sur (Tortosa, Valencia), Vía 4: Norte |
+| L'Hospitalet de l'Infant | RENFE_65420 | 3/4 | Vía 3: Sur, Vía 4: Norte |
+| Reus | RENFE_71400 | ⏸️ | 3 vías, pendiente revisar patrón |
+
+### Valencia (C6)
+
+| Estación | Código | Vía | Notas |
+|----------|--------|-----|-------|
+| La Llosa | RENFE_65203 | 1/2 | Vía 1: Norte (Valencia Nord), Vía 2: Sur (Vinaròs, Castelló) |
+
+### Sevilla
+
+| Estación | Código | Vía | Notas |
+|----------|--------|-----|-------|
+| La Salud | RENFE_51101 | CERRADA | Estación cerrada. Existe en GTFS sin servicio |
+
+---
+
+## Estado de Vías Automáticas (Málaga)
+
+### Estaciones CON datos automáticos de Renfe
 
 | Estación | Código | Observaciones | Patrón |
 |----------|--------|---------------|--------|
@@ -160,15 +231,6 @@ def _fetch_platforms_from_visor(self) -> int:
 | Aeropuerto | 54505 | 2,401+ | Vía 1 (64%), Vía 2 (36%) |
 | Torremolinos | 54509 | 2,609+ | Vía 1/2 alternando |
 | Álora | 54405 | 1,163+ | Vía 1 siempre |
-
-### Estaciones SIN datos de vías
-
-| Estación | Código | Razón |
-|----------|--------|-------|
-| **María Zambrano** | 54500 | Renfe no publica vías para esta estación |
-| **Pizarra** | 54406 | Renfe no publica vías |
-| Aljaima | 54407 | Muy pocas observaciones (14) |
-| Cártama | 54408 | Muy pocas observaciones (7) |
 
 **Nota:** María Zambrano es una estación intermodal grande (AVE + Cercanías). Renfe usa código 54413 en data.renfe.com vs 54500 en GTFS-RT.
 
@@ -216,18 +278,18 @@ curl "https://redcercanias.com/api/v1/gtfs/stops/RENFE_54501/departures"
 2. **En el visor web**: El endpoint de salidas tampoco devuelve `via` para María Zambrano
 3. **Posible razón**: Es una estación terminal donde las vías de Cercanías (10/11) son fijas y no se gestionan dinámicamente
 
-### Solución para María Zambrano
+### Sistema de Detección Automática
 
-Para añadir vías manuales a María Zambrano, se puede insertar directamente en `platform_history`:
+Se añadió el método `_log_stations_needing_manual_platforms()` que:
+- Detecta estaciones con salidas pero sin datos de vías
+- Crea/actualiza `data/revision_manual_vias.json`
+- Incluye campo `in_gtfs_static` para identificar estaciones no existentes
 
-```sql
-INSERT INTO gtfs_rt_platform_history
-(stop_id, route_short_name, headsign, platform, count, observation_date)
-VALUES
-('RENFE_54500', 'C1', 'Fuengirola', '10', 100, CURRENT_DATE),
-('RENFE_54500', 'C1', 'Málaga-Centro Alameda', '11', 100, CURRENT_DATE),
-('RENFE_54500', 'C2', 'Álora', '10', 100, CURRENT_DATE),
-('RENFE_54500', 'C2', 'Málaga-Centro Alameda', '11', 100, CURRENT_DATE);
+```python
+def _log_stations_needing_manual_platforms(self) -> None:
+    """Log stations that have departures but no platform data."""
+    # Detecta stops con stop_time_updates pero sin platform ni history
+    # Guarda en data/revision_manual_vias.json
 ```
 
 ### Códigos de estación duplicados
@@ -236,10 +298,15 @@ María Zambrano tiene diferentes códigos según la fuente:
 - **54500** - GTFS-RT / tiempo-real.renfe.com (Cercanías)
 - **54413** - data.renfe.com (catálogo general, incluye AVE)
 
+Ablaña tiene dos estaciones enfrentadas:
+- **RENFE_15205** - Ablaña convencional (León-Gijón, ancho ibérico)
+- **RENFE_05363** - Ablaña FEVE (ancho métrico)
+
 ---
 
-## Commit
+## Commits
 
 ```
 cfe7c45 fix(rt): Add RENFE_ prefix to RT data and visor web scraping for platforms
+319c4f5 feat(rt): Add automatic detection of stations needing manual platforms
 ```

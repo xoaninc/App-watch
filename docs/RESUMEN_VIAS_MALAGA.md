@@ -163,44 +163,47 @@ El ramal hacia Álora (C2) tiene muy pocos datos de vías comparado con el C1 (F
 
 Se añadieron vías manualmente basándonos en conocimiento local:
 
-### María Zambrano (RENFE_54500)
+### María Zambrano (RENFE_54500 / RENFE_54413)
 - **Vía 10**: Dirección Fuengirola (C1) y Álora (C2)
 - **Vía 11**: Dirección Málaga Centro-Alameda (C1 y C2)
 
-*Nota: Son las vías subterráneas específicas de Cercanías.*
+*Nota: Son las vías subterráneas específicas de Cercanías. Código 54413 es el alternativo de data.renfe.com.*
 
-### Pizarra (RENFE_54406)
-- **Vía 1**: Ambas direcciones (estación en tramo de vía única)
+### Campanillas (RENFE_54410)
+- **Vía 2**: Dirección Málaga Centro (siempre)
+- **Vía 2**: Dirección Álora (mayoría)
+- **Vía 1**: Dirección Álora solo a las 08:15 y 11:50
+
+### Los Prados (RENFE_54412)
+- **Vía 1**: Por defecto ambas direcciones
+- **Vía 2**: Dirección Málaga Centro excepciones:
+  - Domingos: 13:24, 17:26
+  - Lunes: 07:05, 20:22
+
+### Aljaima (RENFE_54407)
+- **Vía 3**: Mayoría de servicios
+- **Vía 1**: Algunos servicios
 
 ### Cártama (RENFE_54408)
-- **Vía 1**: Ambas direcciones (vía única operativa)
+- **Vía 2**: Ambas direcciones
+
+### Pizarra (RENFE_54406)
+- **Vía 1**: Ambas direcciones (vía única)
 
 ### Álora (RENFE_54405)
-- **Vía 1**: Final de línea, vía principal
+- **Vía 1**: Final de línea (automático desde GTFS-RT)
 
-### SQL Ejecutado
+### Tabla Resumen Málaga
 
-```sql
-INSERT INTO gtfs_rt_platform_history
-(stop_id, route_short_name, headsign, platform, count, observation_date)
-VALUES
--- María Zambrano: Vía 10 sale hacia Fuengirola/Álora, Vía 11 hacia Málaga Centro
-('RENFE_54500', 'C1', 'Fuengirola', '10', 500, CURRENT_DATE),
-('RENFE_54500', 'C2', 'Álora', '10', 500, CURRENT_DATE),
-('RENFE_54500', 'C1', 'Málaga-Centro Alameda', '11', 500, CURRENT_DATE),
-('RENFE_54500', 'C2', 'Málaga-Centro Alameda', '11', 500, CURRENT_DATE),
-
--- Pizarra: Vía única
-('RENFE_54406', 'C2', 'Málaga-Centro Alameda', '1', 100, CURRENT_DATE),
-('RENFE_54406', 'C2', 'Álora', '1', 100, CURRENT_DATE),
-
--- Cártama: Vía única
-('RENFE_54408', 'C2', 'Málaga-Centro Alameda', '1', 100, CURRENT_DATE),
-('RENFE_54408', 'C2', 'Álora', '1', 100, CURRENT_DATE),
-
--- Álora: Final de línea
-('RENFE_54405', 'C2', 'Málaga-Centro Alameda', '1', 100, CURRENT_DATE);
-```
+| Estación | Código | Vía | Notas |
+|----------|--------|-----|-------|
+| María Zambrano | 54500/54413 | 10/11 | Vía 10: Fuengirola/Álora, Vía 11: Málaga Centro |
+| Campanillas | 54410 | 2 (1 exc.) | Vía 1 solo Álora 08:15/11:50 |
+| Los Prados | 54412 | 1 (2 exc.) | Vía 2 algunos horarios específicos |
+| Aljaima | 54407 | 3/1 | Mayoría vía 3 |
+| Cártama | 54408 | 2 | Siempre vía 2 |
+| Pizarra | 54406 | 1 | Vía única |
+| Álora | 54405 | 1 | Final de línea |
 
 ### Verificación
 
@@ -210,6 +213,21 @@ María Zambrano:
   C1 → Málaga Centro      | Vía 11 ✅
   C2 → Álora              | Vía 10 ✅
   C2 → Málaga Centro      | Vía 11 ✅
+
+Campanillas:
+  C2 → Málaga Centro      | Vía 2 ✅
+  C2 → Álora              | Vía 2 (1 excepciones) ✅
+
+Los Prados:
+  C2 → Málaga Centro      | Vía 1 (2 excepciones) ✅
+  C2 → Álora              | Vía 1 ✅
+
+Aljaima:
+  C2 → ambas              | Vía 3/1 ✅
+
+Cártama:
+  C2 → Málaga Centro      | Vía 2 ✅
+  C2 → Álora              | Vía 2 ✅
 
 Pizarra:
   C2 → Málaga Centro      | Vía 1 ✅

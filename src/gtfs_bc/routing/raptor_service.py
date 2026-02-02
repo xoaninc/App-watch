@@ -211,7 +211,31 @@ class RaptorService:
         from_stop_id: str,
         to_stop_id: str
     ) -> List[dict]:
-        """Get coordinates for walking segment (straight line)."""
+        """Get coordinates for walking segment.
+
+        First tries to get the actual pedestrian route from stop_correspondence.
+        Falls back to straight line if no walking_shape is available.
+        """
+        # Try to get walking_shape from database
+        try:
+            from sqlalchemy import text
+            import json
+
+            result = self.db.execute(text("""
+                SELECT walking_shape FROM stop_correspondence
+                WHERE from_stop_id = :from_id AND to_stop_id = :to_id
+                AND walking_shape IS NOT NULL
+                LIMIT 1
+            """), {"from_id": from_stop_id, "to_id": to_stop_id}).fetchone()
+
+            if result and result[0]:
+                # Parse the walking_shape JSON [[lat, lon], [lat, lon], ...]
+                coords_list = json.loads(result[0])
+                return [{"lat": c[0], "lon": c[1]} for c in coords_list]
+        except Exception:
+            pass  # Fall back to straight line
+
+        # Fallback: straight line between stops
         from_info = self._get_stop_info(from_stop_id)
         to_info = self._get_stop_info(to_stop_id)
 

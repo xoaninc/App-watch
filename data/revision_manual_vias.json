@@ -1,0 +1,3234 @@
+{
+  "RENFE_05327": {
+    "name": "San Ranón",
+    "in_gtfs_static": true,
+    "first_seen": "2026-01-31T22:07:30.612253",
+    "status": "resolved",
+    "suggested_platform": "1",
+    "notes": "Asturias C7. Vía única."
+  },
+  "RENFE_79202": {
+    "name": "Sils",
+    "in_gtfs_static": true,
+    "first_seen": "2026-01-31T22:07:30.614596",
+    "status": "resolved",
+    "suggested_platform": "1 norte / 2 sur",
+    "notes": "R11. Vía 1: Figueres/Portbou, Vía 2: Barcelona"
+  },
+  "RENFE_71502": {
+    "name": "Altafulla-Tamarit",
+    "in_gtfs_static": true,
+    "first_seen": "2026-01-31T22:07:30.616557",
+    "status": "resolved",
+    "suggested_platform": "1 sur / 2 norte",
+    "notes": "Vía 1: Sur. Vía 2: Norte (Barcelona, Tarragona)"
+  },
+  "RENFE_05657": {
+    "name": "Astillero",
+    "in_gtfs_static": true,
+    "first_seen": "2026-01-31T22:07:30.618028",
+    "status": "resolved",
+    "suggested_platform": "4",
+    "notes": "C3 Santander EN OBRAS. Vía 4 provisional. Revisar cuando acaben obras."
+  },
+  "RENFE_79306": {
+    "name": "Sant Miquel de Fluvià",
+    "in_gtfs_static": true,
+    "first_seen": "2026-01-31T22:07:30.619922",
+    "status": "resolved",
+    "suggested_platform": "1 norte / 2 sur",
+    "notes": "R11. Vía 1: Figueres/Portbou, Vía 2: Barcelona"
+  },
+  "RENFE_54413": {
+    "name": "Málaga-María Zambrano (código alternativo)",
+    "in_gtfs_static": false,
+    "first_seen": "2026-01-31T22:07:30.621945",
+    "status": "resolved",
+    "suggested_platform": "10/11",
+    "notes": "Mismo que RENFE_54500. Vía 10: Fuengirola/Álora, Vía 11: Málaga Centro"
+  },
+  "RENFE_71802": {
+    "name": "Barcelona-Passeig de Gràcia",
+    "in_gtfs_static": true,
+    "first_seen": "2026-01-31T22:07:30.624461",
+    "status": "resolved",
+    "suggested_platform": "1 sur / 2 norte",
+    "notes": "Vía 1: Sur (Tarragona, Lleida, Aeroport, Vilanova). Vía 2: Norte (Girona, Figueres, França)"
+  },
+  "RENFE_65403": {
+    "name": "Camarles-Deltebre",
+    "in_gtfs_static": true,
+    "first_seen": "2026-01-31T22:07:30.626135",
+    "status": "resolved",
+    "suggested_platform": "1 sur / 2 norte",
+    "notes": "Vía 1: Sur. Vía 2: Norte (Barcelona, Tarragona)"
+  },
+  "RENFE_79309": {
+    "name": "Figueres",
+    "in_gtfs_static": true,
+    "first_seen": "2026-01-31T22:07:30.627416",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": "R11. Tiene 3 vías, asignación variable. Dejar que el sistema capture automáticamente."
+  },
+  "RENFE_05661": {
+    "name": "Heras",
+    "in_gtfs_static": true,
+    "first_seen": "2026-01-31T22:07:30.628847",
+    "status": "resolved",
+    "suggested_platform": "SIN SERVICIO",
+    "notes": "C3 Santander EN OBRAS. Sin servicio actualmente."
+  },
+  "RENFE_51101": {
+    "name": "La Salud",
+    "in_gtfs_static": true,
+    "first_seen": "2026-01-31T22:07:30.630331",
+    "status": "resolved",
+    "suggested_platform": "CERRADA",
+    "notes": "Estación cerrada. Existe en GTFS estático pero sin servicio (0 trips)."
+  },
+  "RENFE_71400": {
+    "name": "Reus",
+    "in_gtfs_static": true,
+    "first_seen": "2026-01-31T22:07:30.631651",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": "Tiene 3 vías. Pendiente revisar patrón."
+  },
+  "RENFE_05363": {
+    "name": "Ablaña FEVE (probable)",
+    "in_gtfs_static": false,
+    "first_seen": "2026-01-31T22:07:30.632999",
+    "status": "resolved",
+    "suggested_platform": "1",
+    "notes": "Probablemente Ablaña FEVE (ancho métrico), enfrente de Ablaña convencional (RENFE_15205). Vía única."
+  },
+  "RENFE_54410": {
+    "name": "Campanillas",
+    "in_gtfs_static": true,
+    "first_seen": "2026-01-31T22:10:35.460982",
+    "status": "resolved",
+    "suggested_platform": "2 (1 para Álora 08:15/11:50)",
+    "notes": "Vía 2 siempre excepto Álora a las 08:15 y 11:50"
+  },
+  "RENFE_79203": {
+    "name": "Caldes de Malavella",
+    "in_gtfs_static": true,
+    "first_seen": "2026-01-31T22:11:50.008217",
+    "status": "resolved",
+    "suggested_platform": "1 norte / 2 sur",
+    "notes": "R11. Vía 1: Figueres/Portbou, Vía 2: Barcelona"
+  },
+  "RENFE_71401": {
+    "name": "Vila-seca",
+    "in_gtfs_static": true,
+    "first_seen": "2026-01-31T22:15:14.514920",
+    "status": "resolved",
+    "suggested_platform": "1 sur / 2 norte",
+    "notes": "Vía 1: Sur (Reus, Zaragoza, Vinaròs). Vía 2: Norte (Barcelona, Tarragona, França)"
+  },
+  "RENFE_54412": {
+    "name": "Los Prados",
+    "in_gtfs_static": true,
+    "first_seen": "2026-01-31T22:16:19.105796",
+    "status": "resolved",
+    "suggested_platform": "1 (2 para excepciones)",
+    "notes": "Vía 1 por defecto. Vía 2: Dom 13:24/17:26, Lun 07:05/20:22 hacia Málaga Centro"
+  },
+  "RENFE_79300": {
+    "name": "Girona",
+    "in_gtfs_static": true,
+    "first_seen": "2026-01-31T22:17:31.336941",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": "R11. Tiene 4 vías. Pendiente revisar patrón."
+  },
+  "RENFE_65203": {
+    "name": "la Llosa",
+    "in_gtfs_static": true,
+    "first_seen": "2026-01-31T22:18:44.609225",
+    "status": "resolved",
+    "suggested_platform": "1 norte / 2 sur",
+    "notes": "C6. Vía 1: Valencia Nord. Vía 2: Vinaròs, Castelló"
+  },
+  "RENFE_65420": {
+    "name": "L'Hospitalet de l'Infant - Vandellòs",
+    "in_gtfs_static": true,
+    "first_seen": "2026-01-31T22:49:07.894271",
+    "status": "resolved",
+    "suggested_platform": "3 sur / 4 norte",
+    "notes": "Vía 3: Sur (Tortosa, Valencia). Vía 4: Norte (Barcelona, Tarragona)"
+  },
+  "RENFE_65405": {
+    "name": "L'Ametlla de Mar",
+    "in_gtfs_static": true,
+    "first_seen": "2026-01-31T23:00:00.476779",
+    "status": "resolved",
+    "suggested_platform": "3 sur / 4 norte",
+    "notes": "Vía 3: Sur (Tortosa, Valencia). Vía 4: Norte (Barcelona, Tarragona)"
+  },
+  "RENFE_05455": {
+    "name": "NO EXISTE EN GTFS ESTÁTICO",
+    "in_gtfs_static": false,
+    "first_seen": "2026-02-02T05:24:15.983530",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": "Esta estación no existe en nuestro GTFS estático"
+  },
+  "RENFE_05467": {
+    "name": "NO EXISTE EN GTFS ESTÁTICO",
+    "in_gtfs_static": false,
+    "first_seen": "2026-02-02T05:24:15.985191",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": "Esta estación no existe en nuestro GTFS estático"
+  },
+  "RENFE_10001": {
+    "name": "Aravaca",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:24:15.987270",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_10101": {
+    "name": "Las Matas",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:24:15.988578",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_10202": {
+    "name": "Las Zorreras - Navalquejigo",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:24:15.989824",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_11408": {
+    "name": "Ikaztegieta",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:24:15.991458",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_11509": {
+    "name": "Martutene",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:24:15.992758",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_12004": {
+    "name": "Collado Mediano",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:24:15.994329",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_13205": {
+    "name": "Zabálburu",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:24:15.995666",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_13207": {
+    "name": "Autonomía",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:24:15.997370",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_13505": {
+    "name": "Putxeta",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:24:15.998644",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_17000": {
+    "name": "Madrid-Chamartín-Clara Campoamor",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:24:16.000076",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_17004": {
+    "name": "Tres Cantos",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:24:16.001414",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_17009": {
+    "name": "Universidad Cantoblanco",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:24:16.002573",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_18001": {
+    "name": "Recoletos",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:24:16.003705",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_18002": {
+    "name": "Nuevos Ministerios",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:24:16.004832",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_18101": {
+    "name": "Sol",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:24:16.006198",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_19001": {
+    "name": "Universidad Pontificia de Comillas",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:24:16.007577",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_19002": {
+    "name": "Valdelasfuentes",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:24:16.009109",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_35001": {
+    "name": "Leganés",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:24:16.010455",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_35002": {
+    "name": "Fuenlabrada",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:24:16.011875",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_35011": {
+    "name": "Parque Polvoranca",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:24:16.013160",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_35603": {
+    "name": "Cuatro Vientos",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:24:16.014451",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_37010": {
+    "name": "Las Margaritas",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:24:16.015694",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_37012": {
+    "name": "Parla",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:24:16.016904",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_54407": {
+    "name": "Aljaima",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:24:16.018429",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_60100": {
+    "name": "Villaverde Bajo",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:24:16.019985",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_60102": {
+    "name": "Getafe-Industrial",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:24:16.021239",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_60103": {
+    "name": "Pinto",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:24:16.022437",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_69105": {
+    "name": "Tavernes de la Valldigna",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:24:16.024159",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_70005": {
+    "name": "NO EXISTE EN GTFS ESTÁTICO",
+    "in_gtfs_static": false,
+    "first_seen": "2026-02-02T05:24:16.025339",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": "Esta estación no existe en nuestro GTFS estático"
+  },
+  "RENFE_70101": {
+    "name": "San Fernando de Henares",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:24:16.026782",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_70104": {
+    "name": "Meco",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:24:16.028051",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_70105": {
+    "name": "Azuqueca",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:24:16.029289",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_70108": {
+    "name": "Coslada",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:24:16.030454",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_70111": {
+    "name": "La Garena",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:24:16.031629",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_70112": {
+    "name": "Soto del Henares",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:24:16.032834",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_70200": {
+    "name": "Guadalajara",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:24:16.033964",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_97200": {
+    "name": "Mirasierra-Paco de Lucía",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:24:16.035196",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_05460": {
+    "name": "NO EXISTE EN GTFS ESTÁTICO",
+    "in_gtfs_static": false,
+    "first_seen": "2026-02-02T05:24:45.405031",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": "Esta estación no existe en nuestro GTFS estático"
+  },
+  "RENFE_10103": {
+    "name": "Torrelodones",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:24:45.405919",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_10200": {
+    "name": "Villalba de Guadarrama",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:24:45.406510",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_11404": {
+    "name": "Beasain",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:24:45.407418",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_11522": {
+    "name": "Intxaurrondo",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:24:45.408029",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_13110": {
+    "name": "Ugao Miraballes",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:24:45.408727",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_13200": {
+    "name": "Abando",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:24:45.409637",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_13206": {
+    "name": "Ametzola",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:24:45.410248",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_13208": {
+    "name": "San Mamés",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:24:45.410845",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_13303": {
+    "name": "Olabeaga",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:24:45.411422",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_13304": {
+    "name": "Zorrotza",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:24:45.411992",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_13401": {
+    "name": "Sestao Urbínaga",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:24:45.412564",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_13402": {
+    "name": "La Iberia",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:24:45.413125",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_13403": {
+    "name": "Portugalete",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:24:45.413682",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_13404": {
+    "name": "Peñota",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:24:45.414218",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_13405": {
+    "name": "Santurtzi",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:24:45.414750",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_13508": {
+    "name": "Gallarta",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:24:45.415309",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_17001": {
+    "name": "Fuencarral",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:24:45.415882",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_17005": {
+    "name": "Colmenar Viejo",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:24:45.416447",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_18003": {
+    "name": "Méndez Álvaro",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:24:45.417015",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_18005": {
+    "name": "Pirámides",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:24:45.417554",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_35605": {
+    "name": "Alcorcón",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:24:45.418038",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_35606": {
+    "name": "Móstoles",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:24:45.418529",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_35609": {
+    "name": "Embajadores",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:24:45.419028",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_35702": {
+    "name": "Doce de Octubre",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:24:45.419506",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_35704": {
+    "name": "Puente Alcocer",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:24:45.419980",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_37001": {
+    "name": "Villaverde Alto",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:24:45.420458",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_37002": {
+    "name": "Getafe-Centro",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:24:45.420950",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_50602": {
+    "name": "Guadajoz",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:24:45.421432",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_51463": {
+    "name": "Santo Entierro",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:24:45.422340",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_54510": {
+    "name": "El Pinillo",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:24:45.423053",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_54511": {
+    "name": "Benalmádena-Arroyo de la Miel",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:24:45.423686",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_60101": {
+    "name": "San Cristóbal Industrial",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:24:45.424314",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_60107": {
+    "name": "San Cristóbal de los Ángeles",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:24:45.424956",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_65200": {
+    "name": "Sagunt/Sagunto",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:24:45.426019",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_66212": {
+    "name": "València Sant Isidre",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:24:45.426663",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_70002": {
+    "name": "Asamblea de Madrid-Entrevías",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:24:45.427373",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_70100": {
+    "name": "Vicálvaro",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:24:45.428064",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_70102": {
+    "name": "Torrejón de Ardoz",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:24:45.428820",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_70103": {
+    "name": "Alcalá de Henares",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:24:45.429526",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_97201": {
+    "name": "Ramón y Cajal",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:24:45.430265",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_98003": {
+    "name": "Fuente de la Mora",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:24:45.430939",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_05617": {
+    "name": "NO EXISTE EN GTFS ESTÁTICO",
+    "in_gtfs_static": false,
+    "first_seen": "2026-02-02T05:28:13.186423",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": "Esta estación no existe en nuestro GTFS estático"
+  },
+  "RENFE_05631": {
+    "name": "NO EXISTE EN GTFS ESTÁTICO",
+    "in_gtfs_static": false,
+    "first_seen": "2026-02-02T05:28:13.187318",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": "Esta estación no existe en nuestro GTFS estático"
+  },
+  "RENFE_10000": {
+    "name": "Madrid-Príncipe Pío",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:28:13.188093",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_10100": {
+    "name": "Pinar de las Rozas",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:28:13.188718",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_10104": {
+    "name": "Galapagar La Navata",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:28:13.190780",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_11409": {
+    "name": "Alegia",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:28:13.191655",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_13103": {
+    "name": "Luiaondo",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:28:13.192278",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_13106": {
+    "name": "Llodio",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:28:13.192856",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_14217": {
+    "name": "Parbayón",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:28:13.193428",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_17003": {
+    "name": "El Goloso",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:28:13.194421",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_18000": {
+    "name": "Madrid-Atocha Cercanías",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:28:13.195044",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_35009": {
+    "name": "Zarzaquemada",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:28:13.195821",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_35601": {
+    "name": "Maestra Justa Freire Polideportivo Aluche",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:28:13.196467",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_35610": {
+    "name": "Las Retamas",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:28:13.197187",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_35703": {
+    "name": "Orcasitas",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:28:13.197822",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_37011": {
+    "name": "Getafe Sector 3",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:28:13.198483",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_50700": {
+    "name": "Los Rosales",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:28:13.199164",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_51110": {
+    "name": "Virgen del Rocío",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:28:13.199905",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_51462": {
+    "name": "Plaza del Carmen",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:28:13.200662",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_54512": {
+    "name": "Torremuelle",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:28:13.201434",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_60109": {
+    "name": "El Casar",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:28:13.202273",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_64201": {
+    "name": "Catarroja",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:28:13.203002",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_64210": {
+    "name": "Albal",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:28:13.203753",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_65002": {
+    "name": "València la Font de Sant Lluís",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:28:13.204496",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_70107": {
+    "name": "Alcalá de Henares Universidad",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:28:13.205231",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_70109": {
+    "name": "Santa Eugenia",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:28:13.205877",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_98304": {
+    "name": "Valdebebas",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:28:13.206599",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_35600": {
+    "name": "Aluche",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:29:12.400232",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_51100": {
+    "name": "San Bernardo",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:29:12.400862",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_51202": {
+    "name": "Las Cabezas de San Juan",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:29:12.401497",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_51300": {
+    "name": "Jerez de la Frontera",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:29:12.402175",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_51419": {
+    "name": "Río Arillo",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:29:12.403823",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_65008": {
+    "name": "Puçol",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:29:12.404445",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_10010": {
+    "name": "El Barrial - Centro Comercial",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:45:42.837384",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_11406": {
+    "name": "Itsasondo",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:45:42.838046",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_11500": {
+    "name": "Tolosa",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:45:42.838633",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_11501": {
+    "name": "Tolosa Centro",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:45:42.839194",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_14212": {
+    "name": "Viérnoles",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:45:42.839759",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_35608": {
+    "name": "Laguna",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:45:42.840306",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_43003": {
+    "name": "Villanueva del Ariscal",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:45:42.840854",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_50702": {
+    "name": "Brenes",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:45:42.841393",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_51415": {
+    "name": "Las Aletas",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:45:42.841952",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_51456": {
+    "name": "Pinar de los Franceses",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:45:42.842490",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_54503": {
+    "name": "Guadalhorce",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:45:42.843036",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_54520": {
+    "name": "Plaza Mayor",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:45:42.843647",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_60104": {
+    "name": "Valdemoro",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:45:42.844209",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_64103": {
+    "name": "Carcaixent",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:45:42.844750",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_64107": {
+    "name": "Benifaió",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:45:42.845273",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_65005": {
+    "name": "Albuixech",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:45:42.845820",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_65205": {
+    "name": "Moncofa",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:45:42.846334",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_66214": {
+    "name": "Xirivella Alqueries",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:45:42.846855",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_69103": {
+    "name": "Sueca",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:45:42.847363",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_69104": {
+    "name": "Cullera",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:45:42.847871",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_70003": {
+    "name": "El Pozo",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T05:45:42.848414",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_05239": {
+    "name": "NO EXISTE EN GTFS ESTÁTICO",
+    "in_gtfs_static": false,
+    "first_seen": "2026-02-02T06:12:15.739421",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": "Esta estación no existe en nuestro GTFS estático"
+  },
+  "RENFE_05607": {
+    "name": "NO EXISTE EN GTFS ESTÁTICO",
+    "in_gtfs_static": false,
+    "first_seen": "2026-02-02T06:12:15.739769",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": "Esta estación no existe en nuestro GTFS estático"
+  },
+  "RENFE_05619": {
+    "name": "NO EXISTE EN GTFS ESTÁTICO",
+    "in_gtfs_static": false,
+    "first_seen": "2026-02-02T06:12:15.740101",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": "Esta estación no existe en nuestro GTFS estático"
+  },
+  "RENFE_06005": {
+    "name": "NO EXISTE EN GTFS ESTÁTICO",
+    "in_gtfs_static": false,
+    "first_seen": "2026-02-02T06:12:15.740417",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": "Esta estación no existe en nuestro GTFS estático"
+  },
+  "RENFE_10007": {
+    "name": "Majadahonda",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T06:12:15.740764",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_10203": {
+    "name": "El Escorial",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T06:12:15.741074",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_11405": {
+    "name": "Ordizia",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T06:12:15.741377",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_11503": {
+    "name": "Billabona Zizurkil",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T06:12:15.741685",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_12005": {
+    "name": "Los Molinos - Guadarrama",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T06:12:15.741985",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_13111": {
+    "name": "Arrigorriaga",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T06:12:15.742297",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_13116": {
+    "name": "Iñarratxu",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T06:12:15.742607",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_13400": {
+    "name": "Desertu-Barakaldo",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T06:12:15.742911",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_35602": {
+    "name": "Las Águilas",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T06:12:15.743218",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_35604": {
+    "name": "San José de Valderas",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T06:12:15.743510",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_35607": {
+    "name": "Móstoles-El Soto",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T06:12:15.743836",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_43000": {
+    "name": "San Jerónimo",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T06:12:15.744133",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_43026": {
+    "name": "Valencina-Santiponce",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T06:12:15.744436",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_50701": {
+    "name": "Cantillana",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T06:12:15.744743",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_51111": {
+    "name": "Bellavista",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T06:12:15.745048",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_51407": {
+    "name": "Cortadura",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T06:12:15.745620",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_51452": {
+    "name": "Reyes Católicos",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T06:12:15.745928",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_60105": {
+    "name": "Ciempozuelos",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T06:12:15.746231",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_64007": {
+    "name": "l'Énova-Manuel",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T06:12:15.746548",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_64105": {
+    "name": "Algemesí",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T06:12:15.746853",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_65003": {
+    "name": "València Cabanyal",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T06:12:15.747159",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_65202": {
+    "name": "Almenara",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T06:12:15.747461",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_97100": {
+    "name": "Pitis",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T06:12:15.747793",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_98305": {
+    "name": "Aeropuerto T4",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T06:12:15.748115",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_11506": {
+    "name": "Urnieta",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T06:35:45.008664",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_12002": {
+    "name": "Alpedrete",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T06:35:45.009389",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_13504": {
+    "name": "Ortuella",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T06:35:45.010065",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_14218": {
+    "name": "Guarnizo",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T06:35:45.010724",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_18004": {
+    "name": "Delicias",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T06:35:45.011802",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_19003": {
+    "name": "Alcobendas-San Sebastián de los Reyes",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T06:35:45.012440",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_35010": {
+    "name": "La Serna",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T06:35:45.013088",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_43027": {
+    "name": "Salteras",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T06:35:45.013767",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_50704": {
+    "name": "El Cáñamo",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T06:35:45.014420",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_51003": {
+    "name": "Santa Justa",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T06:35:45.015031",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_51113": {
+    "name": "Jardines de Hércules",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T06:35:45.015672",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_51401": {
+    "name": "Puerto Real",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T06:35:45.016296",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_51404": {
+    "name": "Segunda Aguada",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T06:35:45.016925",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_54509": {
+    "name": "Torremolinos",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T06:35:45.017550",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_54514": {
+    "name": "Torreblanca",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T06:35:45.018188",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_64200": {
+    "name": "Silla",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T06:35:45.018841",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_64203": {
+    "name": "Alfafar-Benetússer",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T06:35:45.019461",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_65207": {
+    "name": "Borriana/Burriana-les Alqueries/Alquerías N.P.",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T06:35:45.020062",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_65208": {
+    "name": "Vila-real",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T06:35:45.020747",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_66211": {
+    "name": "Aldaia",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T06:35:45.021455",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_69101": {
+    "name": "el Romaní",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T06:35:45.022125",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_69107": {
+    "name": "Xeraco",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T06:35:45.022816",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_71500": {
+    "name": "Tarragona",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T06:35:45.024157",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_71600": {
+    "name": "Sant Vicenç de Calders",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T06:35:45.024859",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_71700": {
+    "name": "Vilanova i la Geltrú",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T06:35:45.025849",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_71701": {
+    "name": "Sitges",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T06:35:45.026522",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_71801": {
+    "name": "Barcelona-Sants",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T06:35:45.027211",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_72202": {
+    "name": "L'Arboç",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T06:35:45.028472",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_72210": {
+    "name": "Castellbisbal",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T06:35:45.029158",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_72300": {
+    "name": "Molins de Rei",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T06:35:45.029838",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_78703": {
+    "name": "Sabadell Sud",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T06:35:45.030839",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_78709": {
+    "name": "Sabadell Nord",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T06:35:45.031818",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_78805": {
+    "name": "Barcelona-Plaça de Catalunya",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T06:35:45.032513",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_79005": {
+    "name": "Montcada i Reixac",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T06:35:45.033340",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_79007": {
+    "name": "Montmeló",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T06:35:45.034026",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_79011": {
+    "name": "La Llagosta",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T06:35:45.034707",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_79100": {
+    "name": "Granollers Centre",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T06:35:45.035376",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_79102": {
+    "name": "Llinars del Vallès",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T06:35:45.036062",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_79104": {
+    "name": "Sant Celoni",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T06:35:45.036748",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_79403": {
+    "name": "Sant Adrià de Besòs",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T06:35:45.037416",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_79406": {
+    "name": "Montgat Nord",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T06:35:45.038122",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_79407": {
+    "name": "El Masnou",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T06:35:45.038797",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_79408": {
+    "name": "Ocata",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T06:35:45.039467",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_79500": {
+    "name": "Mataró",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T06:35:45.040274",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_79602": {
+    "name": "Sant Pol de Mar",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T06:35:45.041449",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_05611": {
+    "name": "NO EXISTE EN GTFS ESTÁTICO",
+    "in_gtfs_static": false,
+    "first_seen": "2026-02-02T07:13:20.712320",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": "Esta estación no existe en nuestro GTFS estático"
+  },
+  "RENFE_10002": {
+    "name": "Pozuelo",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T07:13:20.713079",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_10005": {
+    "name": "Las Rozas",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T07:13:20.713777",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_11305": {
+    "name": "Brinkola",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T07:13:20.714394",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_11400": {
+    "name": "Zumárraga",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T07:13:20.714969",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_11514": {
+    "name": "Herrera",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T07:13:20.715538",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_12001": {
+    "name": "Los Negrales",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T07:13:20.716108",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_12006": {
+    "name": "Cercedilla",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T07:13:20.716673",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_14214": {
+    "name": "Sierrapando",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T07:13:20.717265",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_43004": {
+    "name": "Sanlúcar la Mayor",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T07:13:20.717833",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_50600": {
+    "name": "Lora del Río",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T07:13:20.718404",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_51405": {
+    "name": "Cádiz",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T07:13:20.718951",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_51417": {
+    "name": "Valdelagrana",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T07:13:20.719486",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_54408": {
+    "name": "Cártama",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T07:13:20.720041",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_54519": {
+    "name": "Montemar Alto",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T07:13:20.720602",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_64102": {
+    "name": "la Pobla Llarga",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T07:13:20.721166",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_65204": {
+    "name": "Chilches/Xilxes",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T07:13:20.721725",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_66208": {
+    "name": "Cheste",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T07:13:20.722258",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_69102": {
+    "name": "Sollana",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T07:13:20.722815",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_71604": {
+    "name": "Cubelles",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T07:13:20.723351",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_71709": {
+    "name": "Viladecans",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T07:13:20.723887",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_78705": {
+    "name": "Barberà del Vallès",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T07:13:20.724428",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_78707": {
+    "name": "Montcada i Reixac-Santa Maria",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T07:13:20.726081",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_78806": {
+    "name": "Barcelona-La Sagrera-Meridiana",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T07:13:20.726923",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_79004": {
+    "name": "Barcelona-Sant Andreu",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T07:13:20.727812",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_79103": {
+    "name": "Palautordera",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T07:13:20.728369",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_79109": {
+    "name": "Les Franqueses-Granollers Nord",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T07:13:20.728917",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_79200": {
+    "name": "Maçanet-Massanes",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T07:13:20.729445",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_79404": {
+    "name": "Badalona",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T07:13:20.729985",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_79409": {
+    "name": "Premià de Mar",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T07:13:20.730508",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_05625": {
+    "name": "NO EXISTE EN GTFS ESTÁTICO",
+    "in_gtfs_static": false,
+    "first_seen": "2026-02-02T08:14:06.283669",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": "Esta estación no existe en nuestro GTFS estático"
+  },
+  "RENFE_05635": {
+    "name": "NO EXISTE EN GTFS ESTÁTICO",
+    "in_gtfs_static": false,
+    "first_seen": "2026-02-02T08:14:06.284611",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": "Esta estación no existe en nuestro GTFS estático"
+  },
+  "RENFE_07007": {
+    "name": "NO EXISTE EN GTFS ESTÁTICO",
+    "in_gtfs_static": false,
+    "first_seen": "2026-02-02T08:14:06.285456",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": "Esta estación no existe en nuestro GTFS estático"
+  },
+  "RENFE_14204": {
+    "name": "Pesquera",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T08:14:06.286537",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_14210": {
+    "name": "Corrales",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T08:14:06.287276",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_35012": {
+    "name": "Humanes",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T08:14:06.287981",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_43002": {
+    "name": "Camas",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T08:14:06.288704",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_51400": {
+    "name": "El Puerto de Santamaría",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T08:14:06.289452",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_51409": {
+    "name": "Estadio",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T08:14:06.290126",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_51414": {
+    "name": "San Severiano",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T08:14:06.290804",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_51453": {
+    "name": "Nuestra Señora de los Remedios",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T08:14:06.291479",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_54505": {
+    "name": "Aeropuerto",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T08:14:06.292181",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_64100": {
+    "name": "Xàtiva",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T08:14:06.292838",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_66209": {
+    "name": "Loriguilla-Reva",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T08:14:06.293458",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_71603": {
+    "name": "Cunit",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T08:14:06.295285",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_71705": {
+    "name": "Castelldefels",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T08:14:06.295948",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_71707": {
+    "name": "El Prat de Llobregat",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T08:14:06.296585",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_71708": {
+    "name": "Bellvitge | Gornal",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T08:14:06.297269",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_72207": {
+    "name": "Sant Sadurní d'Anoia",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T08:14:06.297918",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_72209": {
+    "name": "Martorell Central",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T08:14:06.298569",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_72211": {
+    "name": "El Papiol",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T08:14:06.299202",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_72301": {
+    "name": "Sant Feliu de Llobregat",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T08:14:06.299835",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_72302": {
+    "name": "Sant Joan Despí",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T08:14:06.300470",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_72303": {
+    "name": "Cornellà",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T08:14:06.301108",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_72305": {
+    "name": "L'Hospitalet de Llobregat",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T08:14:06.301789",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_78802": {
+    "name": "Barcelona-Fabra i Puig",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T08:14:06.302989",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_79006": {
+    "name": "Mollet-Sant Fost",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T08:14:06.303665",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_79009": {
+    "name": "Barcelona-El Clot",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T08:14:06.304335",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_79101": {
+    "name": "Cardedeu",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T08:14:06.304984",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_79106": {
+    "name": "Riells i Viabrea-Breda",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T08:14:06.305636",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_79501": {
+    "name": "Sant Andreu de Llavaneres",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T08:14:06.306289",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_79600": {
+    "name": "Arenys de Mar",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T08:14:06.306916",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_79606": {
+    "name": "Blanes",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T08:14:06.307533",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_05629": {
+    "name": "NO EXISTE EN GTFS ESTÁTICO",
+    "in_gtfs_static": false,
+    "first_seen": "2026-02-02T08:14:22.027615",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": "Esta estación no existe en nuestro GTFS estático"
+  },
+  "RENFE_11507": {
+    "name": "Hernani Centro",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T08:14:22.028445",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_65300": {
+    "name": "Castelló de la Plana",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T08:14:22.029148",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_79405": {
+    "name": "Montgat",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T08:14:22.029827",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_05643": {
+    "name": "NO EXISTE EN GTFS ESTÁTICO",
+    "in_gtfs_static": false,
+    "first_seen": "2026-02-02T09:15:12.077848",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": "Esta estación no existe en nuestro GTFS estático"
+  },
+  "RENFE_11407": {
+    "name": "Legorreta",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T09:15:12.079286",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_11504": {
+    "name": "Andoain Centro",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T09:15:12.080276",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_12020": {
+    "name": "Puerto de Navacerrada",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T09:15:12.081289",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_14234": {
+    "name": "Pujayo",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T09:15:12.083751",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_50703": {
+    "name": "La Rinconada",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T09:15:12.084696",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_51103": {
+    "name": "Dos Hermanas",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T09:15:12.085709",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_51200": {
+    "name": "Utrera",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T09:15:12.086637",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_54515": {
+    "name": "Los Boliches",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T09:15:12.087540",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_71704": {
+    "name": "Platja de Castelldefels",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T09:15:12.088411",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_71706": {
+    "name": "Gavà",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T09:15:12.089319",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_78700": {
+    "name": "Terrassa Estació del Nord",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T09:15:12.090227",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_78704": {
+    "name": "Sabadell Centre",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T09:15:12.091069",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_78708": {
+    "name": "Montcada i Reixac-Manresa",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T09:15:12.091995",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_78710": {
+    "name": "Terrassa Est",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T09:15:12.093125",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_78804": {
+    "name": "Barcelona-Arc de Triomf",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T09:15:12.094287",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_79105": {
+    "name": "Gualba",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T09:15:12.095750",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_79603": {
+    "name": "Calella",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T09:15:12.097263",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_79605": {
+    "name": "Malgrat de Mar",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T09:15:12.099018",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_05621": {
+    "name": "NO EXISTE EN GTFS ESTÁTICO",
+    "in_gtfs_static": false,
+    "first_seen": "2026-02-02T10:16:14.070201",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": "Esta estación no existe en nuestro GTFS estático"
+  },
+  "RENFE_05681": {
+    "name": "NO EXISTE EN GTFS ESTÁTICO",
+    "in_gtfs_static": false,
+    "first_seen": "2026-02-02T10:16:14.071088",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": "Esta estación no existe en nuestro GTFS estático"
+  },
+  "RENFE_11502": {
+    "name": "Anoeta",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T10:16:14.071709",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_11600": {
+    "name": "Irún",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T10:16:14.072267",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_70801": {
+    "name": "Utebo",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T10:16:14.072827",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_72206": {
+    "name": "Lavern-Subirats",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T10:16:14.073375",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_78706": {
+    "name": "Cerdanyola del Vallès",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T10:16:14.073917",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_79601": {
+    "name": "Canet de Mar",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T10:16:14.074459",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_11505": {
+    "name": "Andoain",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T10:16:45.485142",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_60914": {
+    "name": "Universidad de Alicante",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T10:16:45.486152",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_51459": {
+    "name": "Plaza de la Iglesia",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T10:37:30.458757",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_65000": {
+    "name": "València Estació del Nord",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T10:37:30.459520",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_72203": {
+    "name": "Els Monjos",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T10:37:30.460321",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_78801": {
+    "name": "Barcelona-Torre Baró | Vallbona",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T10:37:30.460997",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_14233": {
+    "name": "Río Ebro",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T10:50:07.189352",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_51458": {
+    "name": "Venta de Vargas",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T10:50:07.190178",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_79412": {
+    "name": "Cabrera de Mar-Vilassar de Mar",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T10:50:07.190817",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_51112": {
+    "name": "Cantaelgallo",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T11:17:14.043432",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_54513": {
+    "name": "Carvajal",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T11:17:14.044148",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_64006": {
+    "name": "l'Alcúdia de Crespins",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T11:17:14.044766",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_65209": {
+    "name": "Almassora",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T11:17:14.045370",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_65400": {
+    "name": "Tortosa",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T11:17:14.045956",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_70202": {
+    "name": "NO EXISTE EN GTFS ESTÁTICO",
+    "in_gtfs_static": false,
+    "first_seen": "2026-02-02T11:17:14.046505",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": "Esta estación no existe en nuestro GTFS estático"
+  },
+  "RENFE_71503": {
+    "name": "Torredembarra",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T11:17:14.047323",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_72204": {
+    "name": "Vilafranca del Penedès",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T11:17:14.047896",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_78800": {
+    "name": "Montcada Bifurcació",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T11:17:14.048464",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_79604": {
+    "name": "Pineda de Mar",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T11:17:14.049038",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_10201": {
+    "name": "San Yago",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T11:26:49.305618",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_11402": {
+    "name": "Ormaiztegi",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T11:26:49.306803",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_54501": {
+    "name": "Victoria Kent",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T11:26:49.308044",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_72205": {
+    "name": "La Granada",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T11:26:49.309232",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_05602": {
+    "name": "NO EXISTE EN GTFS ESTÁTICO",
+    "in_gtfs_static": false,
+    "first_seen": "2026-02-02T11:28:36.892682",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": "Esta estación no existe en nuestro GTFS estático"
+  },
+  "RENFE_51406": {
+    "name": "San Fernando-Bahía Sur",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T11:28:36.893819",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_54518": {
+    "name": "Los Álamos",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T11:28:36.894485",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_79107": {
+    "name": "Hostalric",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T11:28:36.895150",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_79502": {
+    "name": "Caldes d'Estrac",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T11:28:36.895806",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_05613": {
+    "name": "NO EXISTE EN GTFS ESTÁTICO",
+    "in_gtfs_static": false,
+    "first_seen": "2026-02-02T11:38:20.718932",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": "Esta estación no existe en nuestro GTFS estático"
+  },
+  "RENFE_05623": {
+    "name": "NO EXISTE EN GTFS ESTÁTICO",
+    "in_gtfs_static": false,
+    "first_seen": "2026-02-02T11:38:20.719826",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": "Esta estación no existe en nuestro GTFS estático"
+  },
+  "RENFE_11306": {
+    "name": "Legazpi",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T11:38:20.720700",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_51402": {
+    "name": "San Fernando Centro",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T11:38:20.721437",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_72400": {
+    "name": "Aeroport",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T11:38:20.722157",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_05533": {
+    "name": "NO EXISTE EN GTFS ESTÁTICO",
+    "in_gtfs_static": false,
+    "first_seen": "2026-02-02T11:54:51.657278",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": "Esta estación no existe en nuestro GTFS estático"
+  },
+  "RENFE_51455": {
+    "name": "Marquesado",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T11:54:51.658458",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_54508": {
+    "name": "La Colina",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T11:54:51.659143",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_69110": {
+    "name": "Gandia",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T11:54:51.659799",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_79204": {
+    "name": "Riudellots",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T11:54:51.660493",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_79410": {
+    "name": "Vilassar de Mar",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T11:54:51.661137",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_05627": {
+    "name": "NO EXISTE EN GTFS ESTÁTICO",
+    "in_gtfs_static": false,
+    "first_seen": "2026-02-02T12:18:03.764143",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": "Esta estación no existe en nuestro GTFS estático"
+  },
+  "RENFE_14230": {
+    "name": "Valdecilla",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T12:18:03.765088",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_54406": {
+    "name": "Pizarra",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T12:18:03.765708",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_71601": {
+    "name": "Calafell",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T12:18:03.766351",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_71602": {
+    "name": "Segur de Calafell",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T12:18:03.766949",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_05622": {
+    "name": "NO EXISTE EN GTFS ESTÁTICO",
+    "in_gtfs_static": false,
+    "first_seen": "2026-02-02T12:45:02.473110",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": "Esta estación no existe en nuestro GTFS estático"
+  },
+  "RENFE_51009": {
+    "name": "Palacio de Congresos",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T13:02:09.074877",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_05604": {
+    "name": "NO EXISTE EN GTFS ESTÁTICO",
+    "in_gtfs_static": false,
+    "first_seen": "2026-02-02T13:18:57.347719",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": "Esta estación no existe en nuestro GTFS estático"
+  },
+  "RENFE_51464": {
+    "name": "Ardila",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T13:29:30.734002",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_05655": {
+    "name": "NO EXISTE EN GTFS ESTÁTICO",
+    "in_gtfs_static": false,
+    "first_seen": "2026-02-02T13:43:58.769573",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": "Esta estación no existe en nuestro GTFS estático"
+  },
+  "RENFE_05677": {
+    "name": "NO EXISTE EN GTFS ESTÁTICO",
+    "in_gtfs_static": false,
+    "first_seen": "2026-02-02T13:53:21.588928",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": "Esta estación no existe en nuestro GTFS estático"
+  },
+  "RENFE_11511": {
+    "name": "Donostia-San Sebastián",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T13:53:21.589932",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_11512": {
+    "name": "Gros",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T13:53:21.590786",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_14203": {
+    "name": "Lantueno",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T13:53:21.591551",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_14213": {
+    "name": "Torrelavega Tanos",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T13:54:24.866048",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_14231": {
+    "name": "Nueva Montaña Antana",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T13:54:24.866802",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_79608": {
+    "name": "Santa Susanna",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T13:54:24.867503",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_05605": {
+    "name": "NO EXISTE EN GTFS ESTÁTICO",
+    "in_gtfs_static": false,
+    "first_seen": "2026-02-02T13:55:36.304069",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": "Esta estación no existe en nuestro GTFS estático"
+  },
+  "RENFE_16403": {
+    "name": "Avilés",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T13:55:36.306773",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_05691": {
+    "name": "NO EXISTE EN GTFS ESTÁTICO",
+    "in_gtfs_static": false,
+    "first_seen": "2026-02-02T13:56:43.089022",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": "Esta estación no existe en nuestro GTFS estático"
+  },
+  "RENFE_60200": {
+    "name": "Aranjuez",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T13:56:43.091380",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_65007": {
+    "name": "el Puig de Santa Maria",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T13:57:44.868117",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_05679": {
+    "name": "NO EXISTE EN GTFS ESTÁTICO",
+    "in_gtfs_static": false,
+    "first_seen": "2026-02-02T13:58:47.965455",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": "Esta estación no existe en nuestro GTFS estático"
+  },
+  "RENFE_51454": {
+    "name": "Alameda Solano",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T13:59:50.261871",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_05689": {
+    "name": "NO EXISTE EN GTFS ESTÁTICO",
+    "in_gtfs_static": false,
+    "first_seen": "2026-02-02T14:00:58.070986",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": "Esta estación no existe en nuestro GTFS estático"
+  },
+  "RENFE_64202": {
+    "name": "Massanassa",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T14:00:58.072211",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_14215": {
+    "name": "Zurita",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T14:02:03.345012",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_14219": {
+    "name": "Boo",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T14:03:05.479548",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_11508": {
+    "name": "Hernani",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T14:04:06.285308",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_11515": {
+    "name": "Pasaia",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T14:04:06.286342",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_65201": {
+    "name": "les Valls",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T14:04:06.287164",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_65006": {
+    "name": "Massalfassar",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T14:05:08.142989",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_72201": {
+    "name": "El Vendrell",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T14:05:08.143229",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_11516": {
+    "name": "Lezo-Rentería",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T14:07:18.409381",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_51451": {
+    "name": "La Hoya",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T14:07:18.410022",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_05683": {
+    "name": "NO EXISTE EN GTFS ESTÁTICO",
+    "in_gtfs_static": false,
+    "first_seen": "2026-02-02T14:08:26.008662",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": "Esta estación no existe en nuestro GTFS estático"
+  },
+  "RENFE_14216": {
+    "name": "Renedo",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T14:09:32.488229",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_05687": {
+    "name": "NO EXISTE EN GTFS ESTÁTICO",
+    "in_gtfs_static": false,
+    "first_seen": "2026-02-02T14:10:35.168354",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": "Esta estación no existe en nuestro GTFS estático"
+  },
+  "RENFE_11518": {
+    "name": "Ventas de Irún",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T14:10:35.169188",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_51010": {
+    "name": "Padre Pío - Palmete",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T14:10:35.169829",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_05685": {
+    "name": "NO EXISTE EN GTFS ESTÁTICO",
+    "in_gtfs_static": false,
+    "first_seen": "2026-02-02T14:13:43.945640",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": "Esta estación no existe en nuestro GTFS estático"
+  },
+  "RENFE_64104": {
+    "name": "Alzira",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T14:14:48.962741",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  }
+}
