@@ -104,6 +104,15 @@ class Alert:
             if not description_text:
                 description_text = desc_translations[0].get("text", "")
 
+        # Use description as header if header is empty (Renfe often omits headerText)
+        if not header_text and description_text:
+            # Extract first line or first 150 chars as header
+            first_line = description_text.split('\n')[0].strip()
+            if first_line:
+                header_text = first_line[:150] + ('...' if len(first_line) > 150 else '')
+            else:
+                header_text = description_text[:150] + ('...' if len(description_text) > 150 else '')
+
         # Parse URL
         url_obj = alert.get("url", {})
         url = None
