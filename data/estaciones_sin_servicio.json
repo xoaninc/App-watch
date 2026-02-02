@@ -1,0 +1,1466 @@
+{
+  "_descripcion": "Estaciones RENFE sin servicio programado en el GTFS actual",
+  "_fecha": "2026-02-02",
+  "_total": 201,
+  "_nota": "Estas estaciones existen en stops.txt pero no tienen trenes en stop_times.txt. Pueden ser estaciones cerradas, en obras, o de lineas sin servicio actual.",
+  "_campos": {
+    "id": "Identificador RENFE (RENFE_XXXXX)",
+    "name": "Nombre de la estacion",
+    "lat": "Latitud",
+    "lon": "Longitud",
+    "wheelchair": "Accesibilidad (del GTFS)"
+  },
+  "estaciones_por_provincia": {
+    "ACoruña": [
+      {
+        "id": "RENFE_05141",
+        "name": "Espasante",
+        "lat": 43.70888,
+        "lon": -7.804897,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_05143",
+        "name": "Loiba",
+        "lat": 43.730393,
+        "lon": -7.750044,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_05145",
+        "name": "O Barqueiro",
+        "lat": 43.735649,
+        "lon": -7.70288,
+        "wheelchair": "No accesible"
+      }
+    ],
+    "Alicante": [
+      {
+        "id": "RENFE_69009",
+        "name": "Agres",
+        "lat": 38.796829,
+        "lon": -0.521744,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_69011",
+        "name": "Alcoi",
+        "lat": 38.709349,
+        "lon": -0.470247,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_69010",
+        "name": "Cocentaina",
+        "lat": 38.740618,
+        "lon": -0.446789,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_60905",
+        "name": "Elda-Petrer",
+        "lat": 38.484879,
+        "lon": -0.80109,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_60907",
+        "name": "Novelda-Aspe",
+        "lat": 38.407086,
+        "lon": -0.777744,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_60904",
+        "name": "Sax",
+        "lat": 38.544251,
+        "lon": -0.813729,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_60902",
+        "name": "Villena",
+        "lat": 38.631738,
+        "lon": -0.867689,
+        "wheelchair": "Accesible"
+      }
+    ],
+    "Asturias": [
+      {
+        "id": "RENFE_05543",
+        "name": "Arriondas",
+        "lat": 43.387513,
+        "lon": -5.188258,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_05263",
+        "name": "Ballota",
+        "lat": 43.550716,
+        "lon": -6.322812,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_05565",
+        "name": "Balmori",
+        "lat": 43.42147,
+        "lon": -4.83583,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_05273",
+        "name": "Barcia",
+        "lat": 43.546813,
+        "lon": -6.50828,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_05557",
+        "name": "Belmonte De Pría",
+        "lat": 43.4398,
+        "lon": -4.98228,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_05267",
+        "name": "Cadavedo",
+        "lat": 43.542952,
+        "lon": -6.391612,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_05555",
+        "name": "Camango",
+        "lat": 43.44821,
+        "lon": -5.01882,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_05271",
+        "name": "Canero",
+        "lat": 43.541913,
+        "lon": -6.445878,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_05289",
+        "name": "Cartavio",
+        "lat": 43.550714,
+        "lon": -6.789622,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_05299",
+        "name": "Castropol",
+        "lat": 43.5095861,
+        "lon": -7.0147697,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_05567",
+        "name": "Celorio",
+        "lat": 43.42501,
+        "lon": -4.81133,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_05579",
+        "name": "Colombres",
+        "lat": 43.38272,
+        "lon": -4.55709,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_05549",
+        "name": "Cuevas",
+        "lat": 43.431144,
+        "lon": -5.073302,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_05545",
+        "name": "Fuentes",
+        "lat": 43.401443,
+        "lon": -5.143117,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_05291",
+        "name": "La Caridad",
+        "lat": 43.547074,
+        "lon": -6.827541,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_05249",
+        "name": "La Magdalena",
+        "lat": 43.559309,
+        "lon": -6.184922,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_05297",
+        "name": "Las Campas De Castropol",
+        "lat": 43.5202979,
+        "lon": -6.9771022,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_05571",
+        "name": "Llanes",
+        "lat": 43.42094,
+        "lon": -4.7587,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_05551",
+        "name": "Llovio",
+        "lat": 43.440563,
+        "lon": -5.055592,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_05287",
+        "name": "Loza",
+        "lat": 43.551254,
+        "lon": -6.771675,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_05275",
+        "name": "Luarca",
+        "lat": 43.537949,
+        "lon": -6.536617,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_05285",
+        "name": "Medal",
+        "lat": 43.545692,
+        "lon": -6.752994,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_05283",
+        "name": "Navia",
+        "lat": 43.536802,
+        "lon": -6.719425,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_05259",
+        "name": "Novellana",
+        "lat": 43.557795,
+        "lon": -6.289593,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_05559",
+        "name": "Nueva",
+        "lat": 43.440585,
+        "lon": -4.935531,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_05277",
+        "name": "Otur",
+        "lat": 43.540541,
+        "lon": -6.593562,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_05541",
+        "name": "Ozanes",
+        "lat": 43.368395,
+        "lon": -5.185191,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_05577",
+        "name": "Pendueles",
+        "lat": 43.39283,
+        "lon": -4.63039,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_05281",
+        "name": "Piñera-Villaoril",
+        "lat": 43.535685,
+        "lon": -6.685414,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_05542",
+        "name": "Policlínico",
+        "lat": 43.378622,
+        "lon": -5.18603,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_05569",
+        "name": "Poo",
+        "lat": 43.42429,
+        "lon": -4.78189,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_05563",
+        "name": "Posada",
+        "lat": 43.42483,
+        "lon": -4.865,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_05553",
+        "name": "Ribadesella",
+        "lat": 43.45945,
+        "lon": -5.0545,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_05253",
+        "name": "San Cosme",
+        "lat": 43.544069,
+        "lon": -6.248091,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_05269",
+        "name": "San Cristóbal",
+        "lat": 43.547225,
+        "lon": -6.415264,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_05251",
+        "name": "San Martín De Luiña",
+        "lat": 43.544753,
+        "lon": -6.228702,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_05573",
+        "name": "San Roque Del Acebal",
+        "lat": 43.39473,
+        "lon": -4.73013,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_05261",
+        "name": "Santa Marina",
+        "lat": 43.552674,
+        "lon": -6.305181,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_05537",
+        "name": "Sebares",
+        "lat": 43.36236,
+        "lon": -5.2574,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_05539",
+        "name": "Soto De Dueñas",
+        "lat": 43.3583,
+        "lon": -5.22689,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_05255",
+        "name": "Soto De Luiña",
+        "lat": 43.559635,
+        "lon": -6.234369,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_05265",
+        "name": "Tablizo",
+        "lat": 43.547253,
+        "lon": -6.351225,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_05293",
+        "name": "Tapia",
+        "lat": 43.535026,
+        "lon": -6.909329,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_05295",
+        "name": "Tol",
+        "lat": 43.527204,
+        "lon": -6.952128,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_05547",
+        "name": "Toraño",
+        "lat": 43.412281,
+        "lon": -5.118013,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_05257",
+        "name": "Valdredo",
+        "lat": 43.56638,
+        "lon": -6.263234,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_05575",
+        "name": "Vidiago",
+        "lat": 43.39647,
+        "lon": -4.673,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_05199",
+        "name": "Vilavedelle",
+        "lat": 43.490502,
+        "lon": -7.038353,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_05247",
+        "name": "Villademar",
+        "lat": 43.557065,
+        "lon": -6.155477,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_05561",
+        "name": "Villahormes",
+        "lat": 43.4420099,
+        "lon": -4.90383,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_05535",
+        "name": "Villamayor",
+        "lat": 43.3631,
+        "lon": -5.30285,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_05279",
+        "name": "Villapedre",
+        "lat": 43.546723,
+        "lon": -6.64587,
+        "wheelchair": "No accesible"
+      }
+    ],
+    "Ávila": [
+      {
+        "id": "RENFE_10409",
+        "name": "Arévalo",
+        "lat": 41.047123,
+        "lon": -4.701988,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_10400",
+        "name": "ávila",
+        "lat": 40.657255,
+        "lon": -4.683312,
+        "wheelchair": "Accesible"
+      },
+      {
+        "id": "RENFE_10302",
+        "name": "Guimorcondo",
+        "lat": 40.649062,
+        "lon": -4.614987,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_10300",
+        "name": "Herradón-La Cañada",
+        "lat": 40.599275,
+        "lon": -4.495039,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_10207",
+        "name": "Las Navas Del Marqués",
+        "lat": 40.589205,
+        "lon": -4.362259,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_10208",
+        "name": "Navalperal",
+        "lat": 40.591152,
+        "lon": -4.408382,
+        "wheelchair": "No accesible"
+      }
+    ],
+    "Badajoz": [
+      {
+        "id": "RENFE_40004",
+        "name": "Almendralejo",
+        "lat": 38.684662,
+        "lon": -6.399815,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_40002",
+        "name": "Calamonte",
+        "lat": 38.886931,
+        "lon": -6.382965,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_40107",
+        "name": "Fuente Del Arco",
+        "lat": 38.16353,
+        "lon": -5.900484,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_40105",
+        "name": "Llerena",
+        "lat": 38.237,
+        "lon": -6.009017,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_40006",
+        "name": "Los Santos De Maimona",
+        "lat": 38.449724,
+        "lon": -6.361749,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_37500",
+        "name": "Mérida",
+        "lat": 38.921503,
+        "lon": -6.343794,
+        "wheelchair": "Accesible"
+      },
+      {
+        "id": "RENFE_40005",
+        "name": "Villafranca De Los Barros",
+        "lat": 38.564402,
+        "lon": -6.352048,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_40100",
+        "name": "Zafra",
+        "lat": 38.413635,
+        "lon": -6.405083,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_40008",
+        "name": "Zafra Feria",
+        "lat": 38.424403,
+        "lon": -6.410084,
+        "wheelchair": "No accesible"
+      }
+    ],
+    "Burgos": [
+      {
+        "id": "RENFE_11109",
+        "name": "Briviesca",
+        "lat": 42.542765,
+        "lon": -3.319287,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_11014",
+        "name": "Burgos-Rosa Manzano",
+        "lat": 42.371197,
+        "lon": -3.666308,
+        "wheelchair": "Accesible"
+      },
+      {
+        "id": "RENFE_11009",
+        "name": "Villaquirán",
+        "lat": 42.215717,
+        "lon": -3.999396,
+        "wheelchair": "No accesible"
+      }
+    ],
+    "Cáceres": [
+      {
+        "id": "RENFE_35400",
+        "name": "Cáceres",
+        "lat": 39.461131,
+        "lon": -6.385679,
+        "wheelchair": "Accesible"
+      },
+      {
+        "id": "RENFE_30000",
+        "name": "Monfragüe",
+        "lat": 39.937464,
+        "lon": -6.10091,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_35206",
+        "name": "Navalmoral De La Mata",
+        "lat": 39.894913,
+        "lon": -5.545607,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_30002",
+        "name": "Plasencia",
+        "lat": 40.022282,
+        "lon": -6.099397,
+        "wheelchair": "No accesible"
+      }
+    ],
+    "Castellón": [
+      {
+        "id": "RENFE_67208",
+        "name": "Barracas",
+        "lat": 40.01174,
+        "lon": -0.696151,
+        "wheelchair": "No accesible"
+      }
+    ],
+    "Guadalajara": [
+      {
+        "id": "RENFE_70208",
+        "name": "Carrascosa De Henares",
+        "lat": 40.90598,
+        "lon": -3.014352,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_70207",
+        "name": "Espinosa De Henares",
+        "lat": 40.909686,
+        "lon": -3.073157,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_70204",
+        "name": "Humanes De Mohernando",
+        "lat": 40.831273,
+        "lon": -3.13886,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_70209",
+        "name": "Jadraque",
+        "lat": 40.930229,
+        "lon": -2.935935,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_70210",
+        "name": "Matillas",
+        "lat": 40.953808,
+        "lon": -2.84326,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_70302",
+        "name": "Sigüenza",
+        "lat": 41.071417,
+        "lon": -2.646407,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_70202",
+        "name": "Yunquera De Henares",
+        "lat": 40.747013,
+        "lon": -3.163226,
+        "wheelchair": "No accesible"
+      }
+    ],
+    "Huesca": [
+      {
+        "id": "RENFE_74208",
+        "name": "Anzánigo",
+        "lat": 42.403289,
+        "lon": -0.643344,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_74204",
+        "name": "Ayerbe",
+        "lat": 42.27561,
+        "lon": -0.682569,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_74209",
+        "name": "Caldearenas-Aquilué",
+        "lat": 42.397973,
+        "lon": -0.499309,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_74217",
+        "name": "Canfranc",
+        "lat": 42.751471,
+        "lon": -0.514641,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_74214",
+        "name": "Castiello-Pueblo",
+        "lat": 42.62811,
+        "lon": -0.546291,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_74200",
+        "name": "Huesca",
+        "lat": 42.133594,
+        "lon": -0.409745,
+        "wheelchair": "Accesible"
+      },
+      {
+        "id": "RENFE_74213",
+        "name": "Jaca",
+        "lat": 42.578303,
+        "lon": -0.539231,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_74206",
+        "name": "Riglos",
+        "lat": 42.344756,
+        "lon": -0.731599,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_74211",
+        "name": "Sabiñánigo",
+        "lat": 42.520446,
+        "lon": -0.373085,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_74207",
+        "name": "Santa María Y La Peña",
+        "lat": 42.38039,
+        "lon": -0.695647,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_74216",
+        "name": "Villanúa",
+        "lat": 42.688745,
+        "lon": -0.52346,
+        "wheelchair": "No accesible"
+      }
+    ],
+    "LaRioja": [
+      {
+        "id": "RENFE_81102",
+        "name": "Agoncillo",
+        "lat": 42.443585,
+        "lon": -2.291701,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_81105",
+        "name": "Alcanadre",
+        "lat": 42.407437,
+        "lon": -2.122094,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_81110",
+        "name": "Alfaro",
+        "lat": 42.186525,
+        "lon": -1.747985,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_81108",
+        "name": "Calahorra",
+        "lat": 42.310458,
+        "lon": -1.957755,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_81100",
+        "name": "Logroño",
+        "lat": 42.457459,
+        "lon": -2.442193,
+        "wheelchair": "Accesible"
+      },
+      {
+        "id": "RENFE_81109",
+        "name": "Rincón De Soto",
+        "lat": 42.230011,
+        "lon": -1.847473,
+        "wheelchair": "No accesible"
+      }
+    ],
+    "Lugo": [
+      {
+        "id": "RENFE_05183",
+        "name": "Barreiros",
+        "lat": 43.547366,
+        "lon": -7.225287,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_05165",
+        "name": "Bidueiros",
+        "lat": 43.696712,
+        "lon": -7.468843,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_05171",
+        "name": "Burela",
+        "lat": 43.660607,
+        "lon": -7.361183,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_05173",
+        "name": "Cangas De Foz",
+        "lat": 43.626106,
+        "lon": -7.333309,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_05153",
+        "name": "Covas De Viveiro",
+        "lat": 43.670275,
+        "lon": -7.614613,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_05187",
+        "name": "Esteiro",
+        "lat": 43.551697,
+        "lon": -7.146099,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_05177",
+        "name": "Fazouro",
+        "lat": 43.600457,
+        "lon": -7.299843,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_05151",
+        "name": "Folgueiro",
+        "lat": 43.692766,
+        "lon": -7.635048,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_05181",
+        "name": "Foz",
+        "lat": 43.560886,
+        "lon": -7.272235,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_05163",
+        "name": "Lago",
+        "lat": 43.687108,
+        "lon": -7.481942,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_05169",
+        "name": "Madeiro",
+        "lat": 43.686219,
+        "lon": -7.412863,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_05179",
+        "name": "Marzán",
+        "lat": 43.57475,
+        "lon": -7.26936,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_05149",
+        "name": "Mosende",
+        "lat": 43.706194,
+        "lon": -7.635477,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_05175",
+        "name": "Nois",
+        "lat": 43.610309,
+        "lon": -7.312222,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_05189",
+        "name": "Os Castros",
+        "lat": 43.55157,
+        "lon": -7.130895,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_05147",
+        "name": "O Vicedo",
+        "lat": 43.731026,
+        "lon": -7.673215,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_05185",
+        "name": "Reinante",
+        "lat": 43.54987,
+        "lon": -7.174315,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_05193",
+        "name": "Ribadeo",
+        "lat": 43.53607,
+        "lon": -7.055572,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_05191",
+        "name": "Rinlo",
+        "lat": 43.549761,
+        "lon": -7.108645,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_05167",
+        "name": "San Cibrao",
+        "lat": 43.692319,
+        "lon": -7.44177,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_05197",
+        "name": "Vegadeo Pueblo",
+        "lat": 43.479667,
+        "lon": -7.057327,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_05155",
+        "name": "Viveiro",
+        "lat": 43.6569,
+        "lon": -7.60033,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_05156",
+        "name": "Viveiro Apeadero",
+        "lat": 43.661435,
+        "lon": -7.594532,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_05161",
+        "name": "Xove",
+        "lat": 43.681138,
+        "lon": -7.495251,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_05159",
+        "name": "Xove Pobo",
+        "lat": 43.683567,
+        "lon": -7.510921,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_05157",
+        "name": "Xuances",
+        "lat": 43.687991,
+        "lon": -7.553904,
+        "wheelchair": "No accesible"
+      }
+    ],
+    "Madrid": [
+      {
+        "id": "RENFE_10209",
+        "name": "El Pimpollar",
+        "lat": 40.567587,
+        "lon": -4.283541,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_12007",
+        "name": "Tablada",
+        "lat": 40.705648,
+        "lon": -4.12531,
+        "wheelchair": "No accesible"
+      }
+    ],
+    "Navarra": [
+      {
+        "id": "RENFE_81200",
+        "name": "Castejón De Ebro",
+        "lat": 42.172719,
+        "lon": -1.692114,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_81205",
+        "name": "Cortes De Navarra",
+        "lat": 41.915076,
+        "lon": -1.420439,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_80003",
+        "name": "Etxarri-Aranatz",
+        "lat": 42.911138,
+        "lon": -2.071245,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_81106",
+        "name": "Féculas-Navarra",
+        "lat": 42.411148,
+        "lon": -2.098196,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_80114",
+        "name": "Marcilla De Navarra",
+        "lat": 42.334851,
+        "lon": -1.717418,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_80109",
+        "name": "Olite-Erriberri",
+        "lat": 42.484989,
+        "lon": -1.649964,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_80100",
+        "name": "Pamplona/Iruña",
+        "lat": 42.824877,
+        "lon": -1.661419,
+        "wheelchair": "Accesible"
+      },
+      {
+        "id": "RENFE_81203",
+        "name": "Ribaforada",
+        "lat": 41.997038,
+        "lon": -1.515097,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_80108",
+        "name": "Tafalla",
+        "lat": 42.525756,
+        "lon": -1.671467,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_81202",
+        "name": "Tudela De Navarra",
+        "lat": 42.059434,
+        "lon": -1.597931,
+        "wheelchair": "Accesible"
+      },
+      {
+        "id": "RENFE_80005",
+        "name": "Uharte-Arakil",
+        "lat": 42.920606,
+        "lon": -1.974814,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_80115",
+        "name": "Villafranca De Navarra",
+        "lat": 42.280734,
+        "lon": -1.745716,
+        "wheelchair": "No accesible"
+      }
+    ],
+    "Palencia": [
+      {
+        "id": "RENFE_11004",
+        "name": "Magaz",
+        "lat": 41.976561,
+        "lon": -4.432114,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_11006",
+        "name": "Quintana Del Puente",
+        "lat": 42.079974,
+        "lon": -4.19858,
+        "wheelchair": "No accesible"
+      }
+    ],
+    "Segovia": [
+      {
+        "id": "RENFE_12010",
+        "name": "El Espinar",
+        "lat": 40.740852,
+        "lon": -4.189482,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_12008",
+        "name": "Gudillos",
+        "lat": 40.716914,
+        "lon": -4.157681,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_12011",
+        "name": "Los ángeles De San Rafael",
+        "lat": 40.777909,
+        "lon": -4.206933,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_12014",
+        "name": "Navas De Riofrío-La Losa",
+        "lat": 40.856673,
+        "lon": -4.141103,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_12013",
+        "name": "Ortigosa Del Monte",
+        "lat": 40.832771,
+        "lon": -4.168094,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_12012",
+        "name": "Otero-Herreros",
+        "lat": 40.80097,
+        "lon": -4.203504,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_12009",
+        "name": "San Rafael",
+        "lat": 40.714944,
+        "lon": -4.18143,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_12100",
+        "name": "Segovia",
+        "lat": 40.93403,
+        "lon": -4.11365,
+        "wheelchair": "No accesible"
+      }
+    ],
+    "Sevilla": [
+      {
+        "id": "RENFE_40108",
+        "name": "Guadalcanal",
+        "lat": 38.090197,
+        "lon": -5.803388,
+        "wheelchair": "No accesible"
+      }
+    ],
+    "Soria": [
+      {
+        "id": "RENFE_70403",
+        "name": "Arcos De Jalón",
+        "lat": 41.215854,
+        "lon": -2.278998,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_70401",
+        "name": "Medinaceli",
+        "lat": 41.165207,
+        "lon": -2.421241,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_70404",
+        "name": "Santa María De Huerta",
+        "lat": 41.264421,
+        "lon": -2.177525,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_70400",
+        "name": "Torralba",
+        "lat": 41.136617,
+        "lon": -2.492952,
+        "wheelchair": "No accesible"
+      }
+    ],
+    "Teruel": [
+      {
+        "id": "RENFE_67021",
+        "name": "Calamocha",
+        "lat": 40.903864,
+        "lon": -1.299841,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_67100",
+        "name": "Caminreal-Fuentes Claras",
+        "lat": 40.85111,
+        "lon": -1.33765,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_67107",
+        "name": "Cella",
+        "lat": 40.455266,
+        "lon": -1.244329,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_67017",
+        "name": "Ferreruela",
+        "lat": 41.06387,
+        "lon": -1.239384,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_67113",
+        "name": "Monreal Del Campo",
+        "lat": 40.782321,
+        "lon": -1.360792,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_67206",
+        "name": "Mora De Rubielos",
+        "lat": 40.123142,
+        "lon": -0.786145,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_67105",
+        "name": "Santa Eulalia Del Campo",
+        "lat": 40.572917,
+        "lon": -1.312995,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_67205",
+        "name": "Sarrión",
+        "lat": 40.146339,
+        "lon": -0.823631,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_67200",
+        "name": "Teruel",
+        "lat": 40.341029,
+        "lon": -1.110284,
+        "wheelchair": "Accesible"
+      },
+      {
+        "id": "RENFE_67101",
+        "name": "Torrijo Del Campo",
+        "lat": 40.826012,
+        "lon": -1.340498,
+        "wheelchair": "No accesible"
+      }
+    ],
+    "Toledo": [
+      {
+        "id": "RENFE_35109",
+        "name": "Montearagón",
+        "lat": 39.960996,
+        "lon": -4.647093,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_35203",
+        "name": "Oropesa De Toledo",
+        "lat": 39.921746,
+        "lon": -5.186137,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_35200",
+        "name": "Talavera De La Reina",
+        "lat": 39.970674,
+        "lon": -4.826512,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_35105",
+        "name": "Torrijos",
+        "lat": 39.979003,
+        "lon": -4.283037,
+        "wheelchair": "No accesible"
+      }
+    ],
+    "Valencia": [
+      {
+        "id": "RENFE_69007",
+        "name": "Agullent",
+        "lat": 38.830569,
+        "lon": -0.551183,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_69006",
+        "name": "Albaida",
+        "lat": 38.845645,
+        "lon": -0.518129,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_69002",
+        "name": "Benigànim",
+        "lat": 38.938499,
+        "lon": -0.453424,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_69005",
+        "name": "Bufalí",
+        "lat": 38.867405,
+        "lon": -0.510478,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_69001",
+        "name": "Genovés",
+        "lat": 38.98773,
+        "lon": -0.47988,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_69003",
+        "name": "La Pobla Del Duc",
+        "lat": 38.907606,
+        "lon": -0.453386,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_69004",
+        "name": "Montaberner",
+        "lat": 38.884135,
+        "lon": -0.491619,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_69008",
+        "name": "Ontinyent",
+        "lat": 38.809692,
+        "lon": -0.602457,
+        "wheelchair": "No accesible"
+      }
+    ],
+    "Zaragoza": [
+      {
+        "id": "RENFE_81210",
+        "name": "Alagón",
+        "lat": 41.771422,
+        "lon": -1.112771,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_70502",
+        "name": "Alhama De Aragón",
+        "lat": 41.294398,
+        "lon": -1.904454,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_67007",
+        "name": "Arañales De Muel",
+        "lat": 41.468946,
+        "lon": -1.086394,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_70500",
+        "name": "Ariza",
+        "lat": 41.3098,
+        "lon": -2.059411,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_70504",
+        "name": "Ateca",
+        "lat": 41.324659,
+        "lon": -1.785268,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_81209",
+        "name": "Cabañas De Ebro",
+        "lat": 41.788065,
+        "lon": -1.167533,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_70600",
+        "name": "Calatayud",
+        "lat": 41.346692,
+        "lon": -1.63868,
+        "wheelchair": "Accesible"
+      },
+      {
+        "id": "RENFE_67010",
+        "name": "Cariñena",
+        "lat": 41.335586,
+        "lon": -1.228422,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_70501",
+        "name": "Cetina",
+        "lat": 41.295978,
+        "lon": -1.961811,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_71103",
+        "name": "Fuentes De Ebro",
+        "lat": 41.515065,
+        "lon": -0.618625,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_81206",
+        "name": "Gallur",
+        "lat": 41.867164,
+        "lon": -1.321342,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_81207",
+        "name": "Luceni",
+        "lat": 41.826116,
+        "lon": -1.243536,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_81208",
+        "name": "Pedrola",
+        "lat": 41.805198,
+        "lon": -1.201673,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_70700",
+        "name": "Ricla-La Almunia",
+        "lat": 41.501394,
+        "lon": -1.40345,
+        "wheelchair": "No accesible"
+      },
+      {
+        "id": "RENFE_71205",
+        "name": "Val De Pilas",
+        "lat": 41.230056,
+        "lon": 0.070145,
+        "wheelchair": "No accesible"
+      }
+    ]
+  }
+}
