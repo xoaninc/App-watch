@@ -53,6 +53,13 @@ class AlertModel(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     # Source: 'gtfsrt' for automatic GTFS-RT alerts, 'manual' for user-created alerts
     source = Column(String(20), nullable=True, default='gtfsrt')
+    
+    # AI enrichment fields
+    ai_severity = Column(String(50), nullable=True)  # INFO, WARNING, CRITICAL
+    ai_status = Column(String(50), nullable=True)  # NORMAL, DELAYS, PARTIAL_SUSPENSION, FULL_SUSPENSION, FACILITY_ISSUE
+    ai_summary = Column(String(500), nullable=True)  # Short AI-generated summary
+    ai_affected_segments = Column(Text, nullable=True)  # JSON list of affected stops/segments
+    ai_processed_at = Column(DateTime, nullable=True)  # When AI processed this alert
 
     # Relationship to informed entities
     informed_entities = relationship(

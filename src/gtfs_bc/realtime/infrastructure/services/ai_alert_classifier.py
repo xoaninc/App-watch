@@ -1,6 +1,7 @@
 """AI-based alert classifier using Groq."""
 import instructor
 import logging
+import json
 from datetime import datetime, time
 from typing import Optional, Dict, Tuple
 from groq import Groq
@@ -13,6 +14,9 @@ logger = logging.getLogger(__name__)
 
 # Cache global: {route_id: (AlertAnalysis, timestamp)}
 _analysis_cache: Dict[str, Tuple[AlertAnalysis, datetime]] = {}
+
+# Cache para alertas individuales: {alert_id: AlertAnalysis}
+_alert_cache: Dict[str, AlertAnalysis] = {}
 
 # Horarios de análisis (6am y 6pm hora española)
 ANALYSIS_HOURS = [time(6, 0), time(18, 0)]
@@ -123,7 +127,7 @@ Devuelve JSON con: is_line_open (bool), status, reason (breve), affected_segment
             logger.info(f"[AIClassifier] Analyzing {len(alerts)} alerts for {route_id}")
             
             response = self.client.chat.completions.create(
-                model="llama-3.1-8b-instant",
+                model="llama-3.1-8b-instant",  # 128k context window
                 messages=[
                     {
                         "role": "system",
@@ -154,6 +158,72 @@ Devuelve JSON con: is_line_open (bool), status, reason (breve), affected_segment
             )
             _analysis_cache[route_id] = (fallback, datetime.now(MADRID_TZ))
             return fallback
+    
+    def analyze_single_alert(self, alert_id: str, header_text: str, description_text: str) -> AlertAnalysis:
+        """Analiza una alerta individual para enriquecimiento.
+        
+        Args:
+            alert_id: ID único de la alerta
+            header_text: Texto del encabezado (puede estar vacío)
+            description_text: Descripción de la alerta
+            
+        Returns:
+            AlertAnalysis con clasificación individual
+        """
+        # Check cache first
+        cache_key = f"{alert_id}_{hash(description_text)}"
+        if cache_key in _alert_cache:
+            logger.debug(f"[AIClassifier] Cache hit for alert {alert_id}")
+            return _alert_cache[cache_key]
+        
+        # Construir prompt para alerta individual
+        alert_text = f"{header_text}\n{description_text}" if header_text else description_text
+        
+        prompt = f"""Analiza esta alerta de transporte público individual.
+
+Alerta: {alert_text}
+
+Clasifica:
+- status: NORMAL, DELAYS, PARTIAL_SUSPENSION, FULL_SUSPENSION, o FACILITY_ISSUE
+- severity: INFO, WARNING, o CRITICAL
+- Genera un summary breve (max 60 caracteres) para mostrar como título
+- Extrae affected_segments (estaciones mencionadas) si aplica
+
+Devuelve JSON con: is_line_open, status, reason (summary), affected_segments (lista), severity"""
+
+        try:
+            logger.info(f"[AIClassifier] Analyzing individual alert {alert_id}")
+            
+            response = self.client.chat.completions.create(
+                model="llama-3.1-8b-instant",  # 128k context window
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "Eres un experto en transporte. Analiza alertas y genera resúmenes concisos. Responde SOLO con JSON válido."
+                    },
+                    {"role": "user", "content": prompt},
+                ],
+                response_model=AlertAnalysis,
+                max_tokens=300,
+                temperature=0.1,
+            )
+            
+            # Cache result
+            _alert_cache[cache_key] = response
+            logger.info(f"[AIClassifier] Alert {alert_id}: {response.severity} - {response.reason}")
+            
+            return response
+            
+        except Exception as e:
+            logger.error(f"[AIClassifier] Error analyzing alert {alert_id}: {e}")
+            # Fallback: usar descripción como summary
+            return AlertAnalysis(
+                is_line_open=True,
+                status="NORMAL",
+                reason=description_text[:60] if description_text else "Sin descripción",
+                affected_segments=None,
+                severity="INFO"
+            )
     
     def clear_cache(self, route_id: Optional[str] = None):
         """Limpia el caché (todo o solo una ruta)."""

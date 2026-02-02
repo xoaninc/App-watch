@@ -3518,5 +3518,53 @@
     "status": "pending",
     "suggested_platform": null,
     "notes": ""
+  },
+  "RENFE_16010": {
+    "name": "Ciaño",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T15:33:25.610098",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_40121": {
+    "name": "Alcolea del Río",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T15:33:25.611010",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_05637": {
+    "name": "NO EXISTE EN GTFS ESTÁTICO",
+    "in_gtfs_static": false,
+    "first_seen": "2026-02-02T15:42:42.405573",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": "Esta estación no existe en nuestro GTFS estático"
+  },
+  "RENFE_05641": {
+    "name": "NO EXISTE EN GTFS ESTÁTICO",
+    "in_gtfs_static": false,
+    "first_seen": "2026-02-02T15:43:41.176555",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": "Esta estación no existe en nuestro GTFS estático"
+  },
+  "RENFE_05387": {
+    "name": "NO EXISTE EN GTFS ESTÁTICO",
+    "in_gtfs_static": false,
+    "first_seen": "2026-02-02T15:57:11.327961",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": "Esta estación no existe en nuestro GTFS estático"
+  },
+  "RENFE_79303": {
+    "name": "Flaçà",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T15:58:11.364321",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
   }
 }

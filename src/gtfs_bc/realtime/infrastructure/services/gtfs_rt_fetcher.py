@@ -1,5 +1,6 @@
 import logging
 import re
+import json
 from datetime import datetime, date
 from typing import List, Dict, Any, Optional
 
@@ -21,6 +22,7 @@ from src.gtfs_bc.realtime.infrastructure.models import (
 )
 from src.gtfs_bc.trip.infrastructure.models import TripModel
 from src.gtfs_bc.route.infrastructure.models import RouteModel
+from core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -403,9 +405,59 @@ class GTFSRealtimeFetcher:
             raise
 
     def _upsert_alert(self, alert: Alert) -> None:
-        """Insert or update an alert."""
+        """Insert or update an alert with AI enrichment."""
         # Add RENFE_ prefix to alert_id for consistency with other operators
         alert_id = self._add_prefix(alert.alert_id)
+
+        # Check if alert already exists and has AI analysis
+        existing_alert = self.db.query(AlertModel).filter(
+            AlertModel.alert_id == alert_id
+        ).first()
+        
+        # Only run AI if: (1) new alert, or (2) description changed
+        should_enrich = False
+        if not existing_alert:
+            should_enrich = True
+            logger.info(f"[AlertAI] New alert {alert_id}, will enrich with AI")
+        elif existing_alert.description_text != alert.description_text:
+            should_enrich = True
+            logger.info(f"[AlertAI] Alert {alert_id} text changed, will re-enrich")
+        
+        # AI enrichment
+        ai_severity = None
+        ai_status = None
+        ai_summary = None
+        ai_affected_segments = None
+        ai_processed_at = None
+        
+        if should_enrich and settings.GROQ_API_KEY:
+            try:
+                from src.gtfs_bc.realtime.infrastructure.services.ai_alert_classifier import AIAlertClassifier
+                
+                classifier = AIAlertClassifier(settings)
+                analysis = classifier.analyze_single_alert(
+                    alert_id=alert_id,
+                    header_text=alert.header_text or "",
+                    description_text=alert.description_text or ""
+                )
+                
+                ai_severity = analysis.severity
+                ai_status = analysis.status
+                ai_summary = analysis.reason  # Use AI-generated summary
+                ai_affected_segments = json.dumps(analysis.affected_segments) if analysis.affected_segments else None
+                ai_processed_at = datetime.utcnow()
+                
+                logger.info(f"[AlertAI] {alert_id}: {ai_status} / {ai_severity} - {ai_summary}")
+                
+            except Exception as e:
+                logger.error(f"[AlertAI] Error enriching alert {alert_id}: {e}")
+        elif existing_alert:
+            # Preserve existing AI analysis
+            ai_severity = existing_alert.ai_severity
+            ai_status = existing_alert.ai_status
+            ai_summary = existing_alert.ai_summary
+            ai_affected_segments = existing_alert.ai_affected_segments
+            ai_processed_at = existing_alert.ai_processed_at
 
         # Delete existing alert entities for this alert
         self.db.query(AlertEntityModel).filter(
@@ -416,7 +468,7 @@ class GTFSRealtimeFetcher:
         cause_enum = AlertCauseEnum(alert.cause.value)
         effect_enum = AlertEffectEnum(alert.effect.value)
 
-        # Upsert the alert
+        # Upsert the alert with AI enrichment
         stmt = insert(AlertModel).values(
             alert_id=alert_id,
             cause=cause_enum,
@@ -428,6 +480,11 @@ class GTFSRealtimeFetcher:
             active_period_end=alert.active_period_end,
             timestamp=alert.timestamp,
             updated_at=datetime.utcnow(),
+            ai_severity=ai_severity,
+            ai_status=ai_status,
+            ai_summary=ai_summary,
+            ai_affected_segments=ai_affected_segments,
+            ai_processed_at=ai_processed_at,
         )
         stmt = stmt.on_conflict_do_update(
             index_elements=["alert_id"],
@@ -441,6 +498,11 @@ class GTFSRealtimeFetcher:
                 "active_period_end": stmt.excluded.active_period_end,
                 "timestamp": stmt.excluded.timestamp,
                 "updated_at": stmt.excluded.updated_at,
+                "ai_severity": stmt.excluded.ai_severity,
+                "ai_status": stmt.excluded.ai_status,
+                "ai_summary": stmt.excluded.ai_summary,
+                "ai_affected_segments": stmt.excluded.ai_affected_segments,
+                "ai_processed_at": stmt.excluded.ai_processed_at,
             },
         )
         self.db.execute(stmt)

@@ -1,8 +1,9 @@
 """Realtime-related response schemas."""
 
+import json
 from typing import Optional, List
 from datetime import datetime
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 
 class PositionSchema(BaseModel):
@@ -69,6 +70,23 @@ class AlertResponse(BaseModel):
     informed_entities: List[AlertEntityResponse]
     timestamp: datetime
     updated_at: Optional[datetime]
+    # AI enrichment fields
+    ai_severity: Optional[str] = None  # INFO, WARNING, CRITICAL
+    ai_status: Optional[str] = None  # NORMAL, DELAYS, PARTIAL_SUSPENSION, FULL_SUSPENSION, FACILITY_ISSUE
+    ai_summary: Optional[str] = None  # AI-generated summary
+    ai_affected_segments: Optional[List[str]] = None  # Extracted stop names
+    ai_processed_at: Optional[datetime] = None
+
+    @field_validator('ai_affected_segments', mode='before')
+    @classmethod
+    def parse_segments(cls, v):
+        """Parse JSON string to list if needed."""
+        if isinstance(v, str):
+            try:
+                return json.loads(v)
+            except:
+                return None
+        return v
 
     class Config:
         from_attributes = True
