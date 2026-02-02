@@ -186,9 +186,10 @@ class GTFSRealtimeFetcher:
         status_enum = VehicleStatusEnum(vp.current_status.value)
 
         # Add RENFE_ prefix to IDs to match static GTFS data and other operators
+        # NOTE: trip_id must NOT have prefix to match static GTFS trips table
         stop_id = self._add_prefix(vp.stop_id)
         vehicle_id = self._add_prefix(vp.vehicle_id)
-        trip_id = self._add_prefix(vp.trip_id)
+        trip_id = vp.trip_id  # Keep original trip_id WITHOUT prefix
 
         stmt = insert(VehiclePositionModel).values(
             vehicle_id=vehicle_id,
@@ -334,7 +335,8 @@ class GTFSRealtimeFetcher:
     def _upsert_trip_update(self, tu: TripUpdate) -> None:
         """Insert or update a trip update and its stop time updates."""
         # Add RENFE_ prefix to IDs to match static GTFS data and other operators
-        trip_id = self._add_prefix(tu.trip_id)
+        # NOTE: trip_id must NOT have prefix to match static GTFS trips table
+        trip_id = tu.trip_id  # Keep original trip_id WITHOUT prefix
         vehicle_id = self._add_prefix(tu.vehicle_id)
 
         # First, delete existing stop time updates for this trip
