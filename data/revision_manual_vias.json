@@ -3422,5 +3422,45 @@
     "status": "pending",
     "suggested_platform": null,
     "notes": ""
+  },
+  "RENFE_65404": {
+    "name": "L'Ampolla-Perelló-Deltebre",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T15:01:14.917314",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_79308": {
+    "name": "Vilamalla",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T15:01:14.918070",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_05673": {
+    "name": "NO EXISTE EN GTFS ESTÁTICO",
+    "in_gtfs_static": false,
+    "first_seen": "2026-02-02T15:04:29.678129",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": "Esta estación no existe en nuestro GTFS estático"
+  },
+  "RENFE_14220": {
+    "name": "Maliaño",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T15:05:36.950613",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_70807": {
+    "name": "Zaragoza - Goya",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T15:05:36.952177",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
   }
 }

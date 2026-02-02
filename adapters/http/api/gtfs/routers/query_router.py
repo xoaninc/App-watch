@@ -77,7 +77,6 @@ from src.gtfs_bc.province.province_lookup import (
     get_province_and_networks_by_coordinates,
 )
 from src.gtfs_bc.realtime.infrastructure.services.estimated_positions import EstimatedPositionsService
-from src.gtfs_bc.realtime.infrastructure.services.gtfs_rt_fetcher import GTFSRealtimeFetcher
 from src.gtfs_bc.stop_route_sequence.infrastructure.models import StopRouteSequenceModel
 from src.gtfs_bc.stop.infrastructure.models.stop_platform_model import StopPlatformModel
 from src.gtfs_bc.stop.infrastructure.models.stop_correspondence_model import StopCorrespondenceModel
@@ -2393,49 +2392,9 @@ def get_route_operating_hours(route_id: str, db: Session = Depends(get_db)):
     if not route:
         raise HTTPException(status_code=404, detail=f"Route {route_id} not found")
 
-    # Check for service suspension alerts
+    # Suspension detection removed - will be handled by Groq AI
     is_suspended = False
     suspension_message = None
-
-    fetcher = GTFSRealtimeFetcher(db)
-    alerts = fetcher.get_alerts_for_route(route_id)
-
-    # Keywords that indicate TRAIN SERVICE suspension (not facilities)
-    suspension_keywords = [
-        "suspende el servicio de trenes",
-        "servicio de trenes suspendido",
-        "se suspende el servicio",
-        "sin servicio de trenes",
-        "no circula",
-        "circulación suspendida",
-        "línea cerrada",
-    ]
-
-    # Keywords that indicate facility issues (NOT service suspension)
-    facility_keywords = [
-        "ascensor",
-        "escalera",
-        "aseo",
-        "igogailu",  # Ascensor en euskera
-        "eskailera",  # Escalera en euskera
-    ]
-
-    for alert in alerts:
-        alert_text = (alert.description_text or "") + " " + (alert.header_text or "")
-        alert_text_lower = alert_text.lower()
-
-        # Skip alerts about facilities (elevators, escalators, bathrooms)
-        is_facility_alert = any(fk in alert_text_lower for fk in facility_keywords)
-        if is_facility_alert:
-            continue
-
-        for keyword in suspension_keywords:
-            if keyword in alert_text_lower:
-                is_suspended = True
-                suspension_message = alert.description_text or alert.header_text
-                break
-        if is_suspended:
-            break
 
     # Get all trips for this route with their calendar info
     trips_with_calendar = (
