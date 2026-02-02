@@ -3230,5 +3230,61 @@
     "status": "pending",
     "suggested_platform": null,
     "notes": ""
+  },
+  "RENFE_54405": {
+    "name": "Álora",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T14:16:56.067550",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_14209": {
+    "name": "Fraguas",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T14:21:15.360110",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_66207": {
+    "name": "Chiva",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T14:22:20.394184",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_79205": {
+    "name": "Fornells de la Selva",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T14:22:20.394967",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_65422": {
+    "name": "Cambrils-Salou",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T14:24:24.964781",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_14208": {
+    "name": "Santa Cruz",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T14:25:26.679025",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
+  },
+  "RENFE_65318": {
+    "name": "Benicassim",
+    "in_gtfs_static": true,
+    "first_seen": "2026-02-02T14:27:44.902885",
+    "status": "pending",
+    "suggested_platform": null,
+    "notes": ""
   }
 }

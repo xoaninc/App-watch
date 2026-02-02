@@ -776,12 +776,12 @@ class GTFSRealtimeFetcher:
         result_alerts_exp = self.db.execute(sql_alerts_expired)
         alerts_expired_count = result_alerts_exp.rowcount
 
-        # Delete alerts without end date that haven't been updated in 24 hours
+        # Delete alerts without end date that haven't been updated in 12 hours
         # These are likely alerts that Renfe stopped sending but didn't set an end date
         sql_alerts_stale = text("""
             DELETE FROM gtfs_rt_alerts
             WHERE active_period_end IS NULL
-              AND updated_at < NOW() - INTERVAL '24 hours'
+              AND updated_at < NOW() - INTERVAL '12 hours'
               AND source != 'manual'
         """)
         result_alerts_stale = self.db.execute(sql_alerts_stale)
